@@ -3,11 +3,12 @@ Nombre completo: YTPreload.js
 Ruta: 00_base_app/YTPreload.js
 Función o funciones:
   - Exponer APIs seguras del backend al frontend mediante contextBridge.
-  - Agregar métodos de temática y organización inteligente al flujo maestro.
+  - Agregar métodos de temática, Gemini y organización inteligente.
 Se conecta con:
   - YTIpc.js
   - YTScreenActions.js
   - YTWorkflowIpc.js
+  - YTSmartOrganizerIpc.js
 */
 
 const { contextBridge, ipcRenderer } = require("electron");
@@ -78,6 +79,25 @@ contextBridge.exposeInMainWorld("YTWorkflow", {
   cancel: (payload = {}) => invoke("YT_WORKFLOW_CANCEL", payload),
   reset: () => invoke("YT_WORKFLOW_RESET"),
   check: () => invoke("YT_WORKFLOW_CHECK")
+});
+
+contextBridge.exposeInMainWorld("YTSmart", {
+  organize: (payload = {}) => invoke("YT_SMART_ORGANIZE", payload),
+  organizeLocal: (payload = {}) => invoke("YT_SMART_ORGANIZE_LOCAL", payload),
+  getCurrent: () => invoke("YT_SMART_GET_CURRENT"),
+  getProject: (payload = {}) => invoke("YT_SMART_GET_PROJECT", payload)
+});
+
+contextBridge.exposeInMainWorld("YTGemini", {
+  getConfig: () => invoke("YT_GEMINI_GET_CONFIG"),
+  saveConfig: (payload = {}) => invoke("YT_GEMINI_SAVE_CONFIG", payload),
+  clearKey: () => invoke("YT_GEMINI_CLEAR_KEY")
+});
+
+contextBridge.exposeInMainWorld("YTTheme", {
+  list: () => invoke("YT_THEME_LIST"),
+  saveSelected: (payload = {}) => invoke("YT_THEME_SAVE_SELECTED", payload),
+  loadSelected: () => invoke("YT_THEME_LOAD_SELECTED")
 });
 
 contextBridge.exposeInMainWorld("YTFiles", {
