@@ -3,14 +3,16 @@ Nombre completo: YTWorkflowService.js
 Ruta: 12_flujo_maestro/YTWorkflowService.js
 Función o funciones:
   - Orquestar proyecto, material, temática, procesamiento, revisión, clips, exportación y paquete.
-  - Preparar organización inteligente por temática con propuesta principal y alternativa.
+  - Procesar videos uno por uno con transcripción básica, descripciones visuales y organización Gemini/local.
 Se conecta con:
   - YTWorkflowModel.js
   - YTWorkflowStore.js
-  - 06_proyectos/YTProjectService.js
-  - 03_carga_y_preview_video/YTVideoStore.js
-  - 13_organizacion_inteligente/YTThemeService.js
-  - 13_organizacion_inteligente/YTSmartOrganizerModel.js
+  - YTProjectService.js
+  - YTVideoStore.js
+  - YTTranscriptionEngineService.js
+  - YTFrameCaptureService.js
+  - YTVisualDescriptionService.js
+  - YTSmartOrganizerService.js
 */
 
 const {
@@ -19,7 +21,6 @@ const {
   TASK_STATUS,
   MEDIA_MODE,
   EXPORT_TARGETS,
-  getNextStep,
   updateTask,
   patchWorkflowSession,
   createWorkflowSession,
@@ -75,32 +76,6 @@ function progressFor(items, status = TASK_STATUS.PENDING, message = "Pendiente")
   return items.map((video, index) => ({ id: video.id, name: video.name, index, status, percent: status === TASK_STATUS.OK ? 100 : 0, message }));
 }
 
-function placeholderTranscripts(items) {
-  return items.map((video, index) => ({
-    id: `transcript_${index + 1}`,
-    videoId: video.id,
-    videoName: video.name,
-    status: "PENDING_REAL_TRANSCRIPTION",
-    text: "",
-    summary: "Transcripción pendiente de motor real.",
-    wordCount: 0,
-    createdAt: nowIso()
-  }));
-}
-
-function placeholderVisual(items, seconds = 5) {
-  return items.map((video, index) => ({
-    id: `visual_${index + 1}`,
-    videoId: video.id,
-    videoName: video.name,
-    status: "BASIC_DESCRIPTION",
-    frameCaptureSeconds: seconds,
-    summary: `Descripción visual preliminar. Capturas reales cada ${seconds} segundos se conectarán en el bloque visual.`,
-    scenes: [{ second: 0, description: "Inicio del video pendiente de análisis real.", movement: "unknown", energy: "unknown" }],
-    createdAt: nowIso()
-  }));
-}
-
 function getCurrentWorkflow() {
   const loaded = store.loadWorkflowForCurrentProject ? store.loadWorkflowForCurrentProject() : { ok: true, session: loadSession() };
   return { ok: true, status: "OK", session: loaded.session, workflow: loaded.session, message: loaded.session && loaded.session.projectId ? "Flujo actual cargado." : "Todavía no hay flujo activo." };
@@ -153,6 +128,34 @@ function setThemeForWorkflow(options = {}) {
   return ok("Temática guardada en el flujo.", { workflow: session, session });
 }
 
+async function processVideosOneByOne(items, options) {
+  const transcriber = optionalRequire("../07_transcripcion_y_analisis/YTTranscriptionEngineService");
+  const frameService = optionalRequire("../07_transcripcion_y_analisis/YTFrameCaptureService");
+  const visualService = optionalRequire("../07_transcripcion_y_analisis/YTVisualDescriptionService");
+  const transcriptsByVideo = [];
+  const visualDescriptions = [];
+  const frameCaptureSeconds = Number(options.frameCaptureSeconds || 5);
+
+  for (let index = 0; index < items.length; index += 1) {
+    const video = items[index];
+    const transcript = transcriber && transcriber.transcribeVideoBasic
+      ? await transcriber.transcribeVideoBasic(video, { index, language: options.language || "es" })
+      : { videoId: video.id, videoName: video.name, text: "", summary: "Transcripción pendiente.", status: "PENDING_REAL_TRANSCRIPTION" };
+    transcriptsByVideo.push(transcript);
+
+    const frames = frameService && frameService.captureFramesForVideo
+      ? await frameService.captureFramesForVideo(video, { intervalSeconds: frameCaptureSeconds, index })
+      : { frames: [], status: "PENDING_FRAME_CAPTURE" };
+
+    const visual = visualService && visualService.describeVideoFrames
+      ? visualService.describeVideoFrames(video, frames.frames || [], { frameCaptureSeconds, index })
+      : { videoId: video.id, videoName: video.name, summary: "Descripción visual pendiente.", scenes: [], status: "PENDING_VISUAL_DESCRIPTION" };
+    visualDescriptions.push(visual);
+  }
+
+  return { transcriptsByVideo, visualDescriptions };
+}
+
 async function startAutomaticProcessing(options = {}) {
   const currentProject = projectService.getCurrentProject ? projectService.getCurrentProject().currentProject : null;
   const material = videoStore.loadMaterialSession ? videoStore.loadMaterialSession() : {};
@@ -162,19 +165,15 @@ async function startAutomaticProcessing(options = {}) {
   const theme = normalizeTheme(options.selectedTheme || options.theme || "generico");
   const themeMode = normalizeThemeMode(theme, options.selectedThemeMode || options.themeMode || "standard");
   const themeLabel = options.selectedThemeLabel || options.themeLabel || getThemeLabel(theme, themeMode);
-  const frameSeconds = Number(options.frameCaptureSeconds || 5);
   const themeService = optionalRequire("../13_organizacion_inteligente/YTThemeService");
-  const smartModel = optionalRequire("../13_organizacion_inteligente/YTSmartOrganizerModel");
-  const transcriptsByVideo = placeholderTranscripts(items);
-  const visualDescriptions = placeholderVisual(items, frameSeconds);
-  const proposal = smartModel && smartModel.createSmartProposal ? smartModel.createSmartProposal({ mediaItems: items, mediaMode: resolveMediaMode(items, options.mediaMode || material.mediaMode), selectedTheme: theme, selectedThemeMode: themeMode, selectedThemeLabel: themeLabel, transcriptsByVideo, visualDescriptions }) : { mainProposal: null, alternativeProposal: null, warnings: ["Smart model no disponible."] };
+  const organizerService = optionalRequire("../13_organizacion_inteligente/YTSmartOrganizerService");
   const resourcePlan = themeService && themeService.getThemeResourcePlan ? themeService.getThemeResourcePlan(theme, themeMode) : null;
 
   let session = patchWorkflowSession(loadSession(), {
     projectId: currentProject ? currentProject.id : options.projectId || "",
     projectName: currentProject ? currentProject.name : options.projectName || "",
-    currentStep: WORKFLOW_STEPS.REVIEW_LONG_VIDEO,
-    workflowStatus: WORKFLOW_STATUS.WAITING_REVIEW,
+    currentStep: WORKFLOW_STEPS.PROCESSING,
+    workflowStatus: WORKFLOW_STATUS.RUNNING,
     mediaMode: resolveMediaMode(items, options.mediaMode || material.mediaMode),
     mediaItems: items,
     primaryVideo: items[0] || null,
@@ -182,26 +181,45 @@ async function startAutomaticProcessing(options = {}) {
     selectedThemeMode: themeMode,
     selectedThemeLabel: themeLabel,
     themeResources: resourcePlan,
-    smartProcessing: { enabled: true, status: "WAITING_REVIEW", currentVideoIndex: items.length, totalVideos: items.length, percent: 100, message: "Organización preliminar lista para revisión." },
-    videoProgress: progressFor(items, TASK_STATUS.OK, "Procesado en modo preliminar."),
-    transcriptsByVideo,
-    visualDescriptions,
-    organizedTranscript: { status: "PENDING_REAL_TRANSCRIPTION", summary: "Transcripción final organizada pendiente de motor real.", text: "" },
-    smartProposal: proposal,
-    mainProposal: proposal.mainProposal,
-    alternativeProposal: proposal.alternativeProposal,
-    approvedOrder: proposal.mainProposal && Array.isArray(proposal.mainProposal.order) ? proposal.mainProposal.order : [],
-    warnings: proposal.warnings || [],
-    message: "Organización inteligente preliminar lista. Revisa y aprueba."
+    smartProcessing: { enabled: true, status: "RUNNING", currentVideoIndex: 0, totalVideos: items.length, percent: 0, message: "Procesando videos uno por uno." },
+    videoProgress: progressFor(items, TASK_STATUS.RUNNING, "En proceso."),
+    message: "Procesando videos uno por uno."
   });
   session.tasks = updateTask(session.tasks, "theme", { status: TASK_STATUS.OK, message: `Temática aplicada: ${themeLabel}.` });
-  session.tasks = updateTask(session.tasks, "transcript", { status: TASK_STATUS.WARNING, message: "Estructura de transcripción preparada. Falta motor real." });
-  session.tasks = updateTask(session.tasks, "visual_analysis", { status: TASK_STATUS.WARNING, message: "Estructura visual preparada. Falta captura real." });
-  session.tasks = updateTask(session.tasks, "gemini_organization", { status: TASK_STATUS.WARNING, message: "Gemini queda preparado para el siguiente bloque." });
+  session.tasks = updateTask(session.tasks, "transcript", { status: TASK_STATUS.RUNNING, message: "Procesando transcripción por video." });
+  session.tasks = updateTask(session.tasks, "visual_analysis", { status: TASK_STATUS.RUNNING, message: "Procesando descripciones visuales." });
+  session = saveSession(session);
+
+  const processed = await processVideosOneByOne(items, options);
+  session.tasks = updateTask(session.tasks, "transcript", { status: TASK_STATUS.WARNING, message: "Transcripción básica preparada. Motor real se conectará en el siguiente ajuste." });
+  session.tasks = updateTask(session.tasks, "visual_analysis", { status: TASK_STATUS.OK, message: "Descripciones visuales básicas preparadas." });
+  session.tasks = updateTask(session.tasks, "gemini_organization", { status: TASK_STATUS.RUNNING, message: "Organizando con Gemini o fallback local." });
+
+  const smartResult = organizerService && organizerService.organizeWithGemini
+    ? await organizerService.organizeWithGemini({ ...options, projectId: session.projectId, projectName: session.projectName, mediaItems: items, mediaMode: session.mediaMode, selectedTheme: theme, selectedThemeMode: themeMode, selectedThemeLabel: themeLabel, transcriptsByVideo: processed.transcriptsByVideo, visualDescriptions: processed.visualDescriptions, workflow: session })
+    : { status: "WARNING", message: "Organizador inteligente no disponible.", smartProposal: null, proposal: null, usedFallback: true };
+
+  const proposal = smartResult.smartProposal || smartResult.proposal || null;
+  session = patchWorkflowSession(session, {
+    currentStep: WORKFLOW_STEPS.REVIEW_LONG_VIDEO,
+    workflowStatus: WORKFLOW_STATUS.WAITING_REVIEW,
+    transcriptsByVideo: processed.transcriptsByVideo,
+    visualDescriptions: processed.visualDescriptions,
+    organizedTranscript: { status: "BASIC", summary: "Transcripción final organizada pendiente de edición avanzada.", text: processed.transcriptsByVideo.map((item) => item.text || item.summary || "").join("\n\n") },
+    smartProposal: proposal,
+    mainProposal: proposal ? proposal.mainProposal : null,
+    alternativeProposal: proposal ? proposal.alternativeProposal : null,
+    approvedOrder: proposal && proposal.mainProposal && Array.isArray(proposal.mainProposal.order) ? proposal.mainProposal.order : [],
+    smartProcessing: { enabled: true, status: "WAITING_REVIEW", currentVideoIndex: items.length, totalVideos: items.length, percent: 100, message: "Organización lista para revisión." },
+    videoProgress: progressFor(items, TASK_STATUS.OK, "Procesado."),
+    warnings: smartResult.usedFallback ? [smartResult.message || "Se usó fallback local."] : [],
+    message: "Organización inteligente lista. Revisa y aprueba."
+  });
+  session.tasks = updateTask(session.tasks, "gemini_organization", { status: smartResult.status === "OK" ? TASK_STATUS.OK : TASK_STATUS.WARNING, message: smartResult.message || "Organización completada." });
   session.tasks = updateTask(session.tasks, "proposal_review", { status: TASK_STATUS.OK, message: "Propuesta lista para revisión." });
   session = saveSession(session);
   if (projectService.saveCurrentProjectChanges) projectService.saveCurrentProjectChanges({ workflow: { id: session.id, currentStep: session.currentStep, workflowStatus: session.workflowStatus, updatedAt: session.updatedAt }, smartProposal: proposal });
-  return ok("Procesamiento preliminar completado.", { status: "WARNING", workflow: session, session, smartProposal: proposal, transcriptsByVideo, visualDescriptions, themeResources: resourcePlan });
+  return ok("Procesamiento inteligente completado.", { status: smartResult.status === "OK" ? "OK" : "WARNING", workflow: session, session, smartProposal: proposal, transcriptsByVideo: processed.transcriptsByVideo, visualDescriptions: processed.visualDescriptions, themeResources: resourcePlan });
 }
 
 function approveWorkflowReview(options = {}) {
