@@ -1,0 +1,11 @@
+{
+  "appName": "AutoEdit Studio",
+  "technicalName": "youtube-autoedit",
+  "version": "0.0.1",
+  "currentBlock": "00_base_app",
+  "window": {
+    "title": "AutoEdit Studio",
+    "width": 1100,
+    "height": 720
+  }
+}

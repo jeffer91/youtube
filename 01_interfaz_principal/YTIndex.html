@@ -1,0 +1,38 @@
+<!--
+Nombre completo: YTIndex.html
+Ruta: 01_interfaz_principal/YTIndex.html
+Función o funciones:
+  - Entrada visual principal de AutoEdit Studio.
+  - Cargar la interfaz por flujo maestro.
+  - Reemplazar la pantalla técnica inicial por router, estado, acciones y shell.
+Se conecta con:
+  - 01_interfaz_principal/YTStyle.css
+  - 01_interfaz_principal/YTState.js
+  - 01_interfaz_principal/YTMessages.js
+  - 01_interfaz_principal/YTLayout.js
+  - 01_interfaz_principal/YTScreenRouter.js
+  - 01_interfaz_principal/YTScreenActions.js
+  - 01_interfaz_principal/YTRenderer.js
+  - 00_base_app/YTPreload.js
+-->
+
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: file:; media-src 'self' file:; connect-src 'self';" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AutoEdit Studio</title>
+  <link rel="stylesheet" href="./YTStyle.css" />
+</head>
+<body>
+  <main id="yt-app-root"></main>
+
+  <script src="./YTState.js"></script>
+  <script src="./YTMessages.js"></script>
+  <script src="./YTLayout.js"></script>
+  <script src="./YTScreenRouter.js"></script>
+  <script src="./YTScreenActions.js"></script>
+  <script src="./YTRenderer.js"></script>
+</body>
+</html>
