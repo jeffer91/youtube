@@ -3,12 +3,12 @@ Nombre completo: YTIpc.js
 Ruta: 00_base_app/YTIpc.js
 Función o funciones:
   - Registrar canales IPC de AutoEdit Studio.
-  - Conectar módulos existentes y flujo maestro con Electron.
+  - Conectar módulos existentes, flujo maestro y organización inteligente con Electron.
   - Mantener alias compatibles para frontend.
 Se conecta con:
   - YTMain.js
   - YTPreload.js
-  - Módulos IPC de bloques 04 a 12
+  - Módulos IPC de bloques 04 a 13
 */
 
 const { ipcMain, app, shell } = require("electron");
@@ -120,6 +120,7 @@ function registerBaseIpc(context = {}) {
   registerExternalModule("10_biblioteca_y_recursos", "YTLibraryIpc", "registerLibraryIpc", context);
   registerExternalModule("11_exportacion_y_publicacion", "YTExportIpc", "registerExportIpc", context);
   registerExternalModule("12_flujo_maestro", "YTWorkflowIpc", "registerWorkflowIpc", context);
+  registerExternalModule("13_organizacion_inteligente", "YTSmartOrganizerIpc", "registerSmartOrganizerIpc", context);
   return { ok: true, status: "OK", message: "IPC registrado correctamente.", timestamp: new Date().toISOString() };
 }
 
