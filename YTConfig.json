@@ -1,11 +1,51 @@
 {
   "appName": "AutoEdit Studio",
   "technicalName": "youtube-autoedit",
-  "version": "0.0.1",
-  "currentBlock": "00_base_app",
+  "version": "0.1.0",
+  "currentBlock": "13_organizacion_inteligente",
   "window": {
     "title": "AutoEdit Studio",
     "width": 1100,
     "height": 720
+  },
+  "smartEdition": {
+    "enabled": true,
+    "defaultTheme": "generico",
+    "defaultThemeMode": "standard",
+    "frameCaptureSeconds": 5,
+    "processVideosMode": "one_by_one",
+    "fallbackMode": "basic_local",
+    "gemini": {
+      "enabled": true,
+      "configMode": "internal_local",
+      "model": "gemini-1.5-flash",
+      "sendFullVideo": false,
+      "sendTranscription": true,
+      "sendVisualDescriptions": true
+    }
+  },
+  "themes": {
+    "available": [
+      "11_contra_11",
+      "crece_aula",
+      "generico",
+      "institucional",
+      "boca_rosa"
+    ],
+    "bocaRosaModes": [
+      "musica",
+      "hablado"
+    ]
+  },
+  "export": {
+    "allNetworks": true,
+    "targets": [
+      "youtube_horizontal",
+      "youtube_shorts",
+      "tiktok",
+      "instagram_reels",
+      "facebook_reels",
+      "instagram_facebook_square"
+    ]
   }
 }
