@@ -2,23 +2,13 @@
 Nombre completo: YTIpc.js
 Ruta: 00_base_app/YTIpc.js
 Función o funciones:
-  - Registrar todos los canales IPC de AutoEdit Studio.
-  - Conectar el nuevo flujo maestro 12_flujo_maestro con Electron.
-  - Mantener compatibilidad con módulos existentes.
+  - Registrar canales IPC de AutoEdit Studio.
+  - Conectar módulos existentes y flujo maestro con Electron.
+  - Mantener alias compatibles para frontend.
 Se conecta con:
-  - 00_base_app/YTMain.js
-  - 00_base_app/YTPreload.js
-  - 02_archivos_y_datos/*
-  - 03_carga_y_preview_video/*
-  - 04_render_minimo/YTRenderIpc.js
-  - 05_diagnostico/YTDiagnosticIpc.js
-  - 06_proyectos/YTProjectIpc.js
-  - 07_transcripcion_y_analisis/YTTranscriptIpc.js
-  - 08_clips_y_timeline/YTClipIpc.js
-  - 09_subtitulos_capas_y_estilos/YTStyleIpc.js
-  - 10_biblioteca_y_recursos/YTLibraryIpc.js
-  - 11_exportacion_y_publicacion/YTExportIpc.js
-  - 12_flujo_maestro/YTWorkflowIpc.js
+  - YTMain.js
+  - YTPreload.js
+  - Módulos IPC de bloques 04 a 12
 */
 
 const { ipcMain, app, shell } = require("electron");
@@ -32,13 +22,7 @@ function safeInvoke(fn) {
   try {
     return fn();
   } catch (error) {
-    return {
-      ok: false,
-      status: "ERROR",
-      message: error && error.message ? error.message : String(error),
-      error: error && error.stack ? error.stack : String(error),
-      timestamp: new Date().toISOString()
-    };
+    return { ok: false, status: "ERROR", message: error && error.message ? error.message : String(error), error: error && error.stack ? error.stack : String(error), timestamp: new Date().toISOString() };
   }
 }
 
@@ -46,43 +30,23 @@ function safeHandle(channel, handler) {
   if (ipcMain.removeHandler) {
     try { ipcMain.removeHandler(channel); } catch (_error) {}
   }
-
   ipcMain.handle(channel, async (event, payload) => {
     try {
       return await handler(event, payload || {});
     } catch (error) {
-      return {
-        ok: false,
-        status: "ERROR",
-        channel,
-        message: error && error.message ? error.message : String(error),
-        error: error && error.stack ? error.stack : String(error),
-        timestamp: new Date().toISOString()
-      };
+      return { ok: false, status: "ERROR", channel, message: error && error.message ? error.message : String(error), error: error && error.stack ? error.stack : String(error), timestamp: new Date().toISOString() };
     }
   });
 }
 
 function registerBaseChannels(context = {}) {
-  safeHandle("YT_BASE_PING", async () => ({
-    ok: true,
-    status: "OK",
-    message: "AutoEdit Studio activo.",
-    timestamp: new Date().toISOString()
-  }));
+  const pingResult = () => ({ ok: true, status: "OK", message: "AutoEdit Studio activo.", timestamp: new Date().toISOString() });
+  const infoResult = () => ({ ok: true, status: "OK", name: app.getName(), version: app.getVersion(), platform: process.platform, electron: process.versions.electron, node: process.versions.node, chrome: process.versions.chrome, timestamp: new Date().toISOString() });
 
-  safeHandle("YT_BASE_APP_INFO", async () => ({
-    ok: true,
-    status: "OK",
-    name: app.getName(),
-    version: app.getVersion(),
-    platform: process.platform,
-    electron: process.versions.electron,
-    node: process.versions.node,
-    chrome: process.versions.chrome,
-    timestamp: new Date().toISOString()
-  }));
-
+  safeHandle("YT_BASE_PING", async () => pingResult());
+  safeHandle("YT_APP_PING", async () => pingResult());
+  safeHandle("YT_BASE_APP_INFO", async () => infoResult());
+  safeHandle("YT_APP_GET_INFO", async () => infoResult());
   safeHandle("YT_BASE_CHECK", async () => safeInvoke(() => require("./YTBaseCheck").runBaseCheck()));
 
   safeHandle("YT_BASE_OPEN_DEVTOOLS", async () => {
@@ -96,6 +60,13 @@ function registerBaseChannels(context = {}) {
 
   safeHandle("YT_BASE_OPEN_PATH", async (_event, payload = {}) => {
     const targetPath = String(payload.path || "").trim();
+    if (!targetPath) return { ok: false, status: "ERROR", message: "No se recibió ruta para abrir." };
+    const result = await shell.openPath(targetPath);
+    return { ok: !result, status: result ? "ERROR" : "OK", path: targetPath, message: result || "Ruta abierta correctamente." };
+  });
+
+  safeHandle("YT_OPEN_PATH", async (_event, payload = {}) => {
+    const targetPath = String(payload.path || payload.filePath || "").trim();
     if (!targetPath) return { ok: false, status: "ERROR", message: "No se recibió ruta para abrir." };
     const result = await shell.openPath(targetPath);
     return { ok: !result, status: result ? "ERROR" : "OK", path: targetPath, message: result || "Ruta abierta correctamente." };
@@ -140,7 +111,6 @@ function registerBaseIpc(context = {}) {
   registerBaseChannels(context);
   registerFileChannels();
   registerVideoChannels(context);
-
   registerExternalModule("04_render_minimo", "YTRenderIpc", "registerRenderIpc", context);
   registerExternalModule("05_diagnostico", "YTDiagnosticIpc", "registerDiagnosticIpc", context);
   registerExternalModule("06_proyectos", "YTProjectIpc", "registerProjectIpc", context);
@@ -150,8 +120,7 @@ function registerBaseIpc(context = {}) {
   registerExternalModule("10_biblioteca_y_recursos", "YTLibraryIpc", "registerLibraryIpc", context);
   registerExternalModule("11_exportacion_y_publicacion", "YTExportIpc", "registerExportIpc", context);
   registerExternalModule("12_flujo_maestro", "YTWorkflowIpc", "registerWorkflowIpc", context);
-
   return { ok: true, status: "OK", message: "IPC registrado correctamente.", timestamp: new Date().toISOString() };
 }
 
-module.exports = { registerBaseIpc };
+module.exports = { registerBaseIpc, safeHandle };
