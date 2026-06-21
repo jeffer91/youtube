@@ -1,0 +1,34 @@
+{
+  "nombre": "tiktok-simple",
+  "descripcion": "Preset básico para exportar video vertical 9:16 para TikTok.",
+  "plataforma": "tiktok",
+  "video": {
+    "width": 1080,
+    "height": 1920,
+    "fps": 30,
+    "formato": "9:16"
+  },
+  "exportacion": {
+    "contenedor": "mp4",
+    "codecVideo": "libx264",
+    "codecAudio": "aac",
+    "crf": 23,
+    "presetFfmpeg": "veryfast",
+    "audioBitrate": "160k"
+  },
+  "edicionInicial": {
+    "cortarSilencios": false,
+    "subtitulos": false,
+    "textos": false,
+    "transiciones": false,
+    "musica": false
+  },
+  "crecimientoFuturo": [
+    "cortes inteligentes",
+    "subtitulos automaticos",
+    "textos superiores",
+    "zoom a rostro",
+    "musica de biblioteca",
+    "exportacion por lotes"
+  ]
+}
