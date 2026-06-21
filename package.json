@@ -1,31 +1,28 @@
 {
-  "name": "youtube-autoedit",
-  "version": "0.0.1",
-  "description": "AutoEdit Studio / YouTube AutoEdit - editor automatico de video por bloques funcionales.",
-  "main": "00_base_app/YTMain.js",
+  "name": "auto-video-jeff",
+  "version": "0.1.0",
+  "description": "App modular para editar videos automaticamente, iniciando con salida simple para TikTok.",
+  "type": "module",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "keywords": [
+    "video",
+    "ffmpeg",
+    "tiktok",
+    "editor",
+    "modular"
+  ],
   "author": "Jefferson Villarreal",
   "license": "MIT",
-  "private": true,
-  "scripts": {
-    "start": "electron .",
-    "check:base": "node 00_base_app/YTBaseCheck.js",
-    "check:files": "node 02_archivos_y_datos/YTFilesCheck.js",
-    "check:video": "node 03_carga_y_preview_video/YTVideoCheck.js",
-    "check:render": "node 04_render_minimo/YTRenderCheck.js",
-    "check:diagnostic": "node 05_diagnostico/YTDiagnosticCheck.js",
-    "check:projects": "node 06_proyectos/YTProjectCheck.js",
-    "check:transcript": "node 07_transcripcion_y_analisis/YTTranscriptCheck.js",
-    "check:clips": "node 08_clips_y_timeline/YTClipCheck.js",
-    "check:styles": "node 09_subtitulos_capas_y_estilos/YTStyleCheck.js",
-    "check:library": "node 10_biblioteca_y_recursos/YTLibraryCheck.js",
-    "check:export": "node 11_exportacion_y_publicacion/YTExportCheck.js",
-    "diagnostic:all": "node 05_diagnostico/YTDiagnosticService.js",
-    "render:test": "node 04_render_minimo/YTRenderMini.js"
-  },
   "dependencies": {
-    "ffmpeg-static": "^5.2.0"
-  },
-  "devDependencies": {
-    "electron": "^31.7.7"
+    "cors": "^2.8.5",
+    "express": "^4.19.2",
+    "ffmpeg-static": "^5.2.0",
+    "ffprobe-static": "^3.1.0",
+    "fluent-ffmpeg": "^2.1.3",
+    "multer": "^1.4.5-lts.1"
   }
 }

@@ -1,0 +1,77 @@
+<!--
+  Nombre completo: index.html
+  Ruta o ubicación: AutoVideoJeff/app/index.html
+  Función o funciones:
+    - Mostrar la pantalla principal de AutoVideoJeff.
+    - Permitir seleccionar un video desde la computadora.
+    - Ejecutar el botón de edición automática simple.
+    - Mostrar estado, errores y resultado exportado cuando exista.
+  Con qué se conecta:
+    - app/styles.css
+    - app/app.js
+    - server.js mediante /api/estado y /api/procesar-video
+-->
+
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AutoVideoJeff</title>
+  <link rel="stylesheet" href="./styles.css" />
+</head>
+<body>
+  <main class="app-shell">
+    <section class="hero">
+      <div>
+        <p class="eyebrow">Editor automático modular</p>
+        <h1>AutoVideoJeff</h1>
+        <p class="hero-text">
+          Sube un video y genera una edición simple para TikTok. Esta base está pensada para crecer por módulos.
+        </p>
+      </div>
+
+      <div class="status-pill" id="serverStatus">Verificando servidor...</div>
+    </section>
+
+    <section class="panel">
+      <div class="panel-header">
+        <h2>Video de entrada</h2>
+        <p>Primera versión: edición vertical simple para TikTok.</p>
+      </div>
+
+      <form id="videoForm" class="upload-box">
+        <label for="videoInput" class="file-label">
+          <span class="file-title">Seleccionar video</span>
+          <span class="file-subtitle" id="fileName">Ningún archivo seleccionado</span>
+        </label>
+
+        <input id="videoInput" name="video" type="file" accept="video/*" />
+
+        <button type="submit" id="processButton">
+          Editar automáticamente
+        </button>
+      </form>
+
+      <div class="progress-area" id="progressArea" hidden>
+        <div class="loader"></div>
+        <p id="progressText">Preparando video...</p>
+      </div>
+
+      <div class="message" id="messageBox" hidden></div>
+    </section>
+
+    <section class="panel result-panel" id="resultPanel" hidden>
+      <div class="panel-header">
+        <h2>Resultado</h2>
+        <p>Cuando el flujo esté completo, aquí aparecerá el video exportado.</p>
+      </div>
+
+      <video id="resultVideo" controls hidden></video>
+      <a id="downloadLink" class="download-link" href="#" download hidden>Descargar video final</a>
+    </section>
+  </main>
+
+  <script src="./app.js" defer></script>
+</body>
+</html>
