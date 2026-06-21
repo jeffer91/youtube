@@ -5,6 +5,7 @@
     - Crear el plan de edición simple para TikTok.
     - Definir formato vertical 9:16.
     - Preparar filtros de video para centrar, escalar y rellenar fondo.
+    - Leer el preset desde biblioteca/tiktok-simple.json.
     - Guardar un archivo edicion-tiktok-simple.json dentro del proyecto.
   Con qué se conecta:
     - editar/editar.conexion.js
@@ -14,8 +15,25 @@
 */
 
 import path from 'path';
-import { leerPresetTikTokSimple } from '../../biblioteca/tiktok-simple.json' assert { type: 'json' };
-import { escribirJson } from '../../comun/archivos.js';
+import { fileURLToPath } from 'url';
+import { escribirJson, leerJsonSiExiste } from '../../comun/archivos.js';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+function obtenerRutaPreset() {
+  return path.resolve(__dirname, '../../biblioteca/tiktok-simple.json');
+}
+
+async function leerPreset() {
+  const preset = await leerJsonSiExiste(obtenerRutaPreset(), null);
+
+  if (!preset) {
+    throw new Error('No se encontró el preset biblioteca/tiktok-simple.json.');
+  }
+
+  return preset;
+}
 
 function obtenerFiltroVertical(preset) {
   const ancho = preset.video.width;
@@ -26,7 +44,7 @@ function obtenerFiltroVertical(preset) {
     `scale=${ancho}:${alto}:force_original_aspect_ratio=increase`,
     `crop=${ancho}:${alto}`,
     `fps=${fps}`,
-    `setsar=1`
+    'setsar=1'
   ].join(',');
 }
 
@@ -37,7 +55,7 @@ function crearNombreExportado(entrada) {
 }
 
 export async function crearEdicionTikTokSimple({ entrada, entendimiento }) {
-  const preset = leerPresetTikTokSimple;
+  const preset = await leerPreset();
   const filtroVideo = obtenerFiltroVertical(preset);
   const nombreExportado = crearNombreExportado(entrada);
   const rutaEdicion = path.join(entrada.rutas.carpetaProyecto, 'edicion-tiktok-simple.json');
