@@ -1,104 +1,232 @@
 /*
   Nombre completo: flujo-principal.js
   Ruta o ubicación: AutoVideoJeff/motor/flujo-principal.js
-  Función o funciones:
-    - Ejecutar el proceso principal de la app en orden.
-    - Conectar entrada, entender, editar y salida sin mezclar responsabilidades.
-    - Permitir que la app siga respondiendo aunque falten módulos de bloques futuros.
-    - Devolver un resultado claro para la pantalla principal.
+  Función:
+    - Ejecutar el proceso principal de AutoVideoJeff en orden.
+    - Conectar entrada, entender, audio, editar y salida.
+    - Validar cada etapa antes de continuar.
+    - Devolver una respuesta final clara para app/app.js.
   Con qué se conecta:
-    - motor/motor.conexion.js
     - entrada/entrada.conexion.js
     - entender/entender.conexion.js
+    - audio/audio.conexion.js
     - editar/editar.conexion.js
     - salida/salida.conexion.js
 */
 
 import { procesarEntrada } from '../entrada/entrada.conexion.js';
 import { entenderVideo } from '../entender/entender.conexion.js';
+import { mejorarAudioVideo } from '../audio/audio.conexion.js';
+import { editarVideo } from '../editar/editar.conexion.js';
+import { prepararSalida } from '../salida/salida.conexion.js';
 
-function crearRespuestaPendiente({ proyecto, entendimiento, pendientes }) {
+const PLATAFORMA_PREDETERMINADA = 'tiktok';
+const MODO_VIDEO_PREDETERMINADO = 'cuadrado-centro';
+const MODO_AUDIO_PREDETERMINADO = 'limpieza-simple';
+
+function validarResultadoEtapa(nombreEtapa, resultado) {
+  if (!resultado || typeof resultado !== 'object') {
+    throw new Error(`La etapa ${nombreEtapa} no devolvió un objeto válido.`);
+  }
+
+  if (resultado.ok !== true) {
+    throw new Error(
+      `La etapa ${nombreEtapa} no terminó correctamente: ${
+        resultado.mensaje || 'sin mensaje de error'
+      }`
+    );
+  }
+}
+
+function crearRegistroHistorial(etapa, mensaje, datos = {}) {
   return {
-    ok: false,
-    estado: 'FLUJO_PARCIAL_BLOQUES_PENDIENTES',
-    mensaje:
-      'El video ya fue recibido y entendido de forma simple. Falta crear los módulos de edición y salida para generar el video final.',
-    proyecto,
-    entendimiento,
-    pendientes
+    fecha: new Date().toISOString(),
+    etapa,
+    mensaje,
+    ...datos
   };
 }
 
-async function cargarModuloOpcional(ruta, nombreFuncion) {
-  try {
-    const modulo = await import(ruta);
+function convertirBooleano(valor, valorPorDefecto = true) {
+  if (typeof valor === 'boolean') return valor;
 
-    if (typeof modulo[nombreFuncion] !== 'function') {
-      return {
-        disponible: false,
-        error: `El módulo ${ruta} existe, pero no exporta ${nombreFuncion}.`
-      };
+  if (typeof valor === 'string') {
+    const limpio = valor.trim().toLowerCase();
+
+    if (['true', '1', 'si', 'sí', 'yes', 'on'].includes(limpio)) {
+      return true;
     }
 
-    return {
-      disponible: true,
-      funcion: modulo[nombreFuncion]
-    };
-  } catch (error) {
-    return {
-      disponible: false,
-      error: error.message
-    };
+    if (['false', '0', 'no', 'off'].includes(limpio)) {
+      return false;
+    }
   }
+
+  return valorPorDefecto;
+}
+
+function normalizarTexto(valor, valorPorDefecto) {
+  if (typeof valor !== 'string') {
+    return valorPorDefecto;
+  }
+
+  const limpio = valor.trim();
+
+  return limpio.length > 0 ? limpio : valorPorDefecto;
+}
+
+function normalizarModoVideo(valor) {
+  const modo = normalizarTexto(valor, MODO_VIDEO_PREDETERMINADO).toLowerCase();
+
+  if (['cuadrado-centro', 'tiktok-cuadrado-centro', 'square-center'].includes(modo)) {
+    return 'cuadrado-centro';
+  }
+
+  if (['simple', 'tiktok-simple'].includes(modo)) {
+    return 'simple';
+  }
+
+  return modo;
+}
+
+function normalizarOpciones(opciones = {}) {
+  return {
+    plataforma: normalizarTexto(opciones?.plataforma, PLATAFORMA_PREDETERMINADA).toLowerCase(),
+    modo: normalizarModoVideo(opciones?.modo),
+    mejorarAudio: convertirBooleano(opciones?.mejorarAudio, true),
+    modoAudio: normalizarTexto(opciones?.modoAudio, MODO_AUDIO_PREDETERMINADO).toLowerCase()
+  };
+}
+
+function crearMensajeFinal({ salida, audio, edicion }) {
+  const modo = edicion?.modo || salida?.modo || MODO_VIDEO_PREDETERMINADO;
+  const audioUsado = salida?.audio?.tipo || audio?.tipo || 'original';
+
+  if (audioUsado === 'mejorado') {
+    return `Video exportado correctamente en modo ${modo} con audio mejorado.`;
+  }
+
+  return `Video exportado correctamente en modo ${modo} con audio original.`;
 }
 
 export async function ejecutarFlujoPrincipal(solicitud) {
-  const entrada = await procesarEntrada(solicitud);
-  const entendimiento = await entenderVideo(entrada);
+  const opciones = normalizarOpciones(solicitud?.opciones || {});
+  const historial = [];
 
-  const moduloEditar = await cargarModuloOpcional('../editar/editar.conexion.js', 'editarVideo');
-  const moduloSalida = await cargarModuloOpcional('../salida/salida.conexion.js', 'prepararSalida');
+  try {
+    historial.push(
+      crearRegistroHistorial('inicio', 'Solicitud recibida por el motor principal.', {
+        nombreOriginal: solicitud.nombreOriginal,
+        plataforma: opciones.plataforma,
+        modo: opciones.modo,
+        mejorarAudio: opciones.mejorarAudio,
+        modoAudio: opciones.modoAudio
+      })
+    );
 
-  const pendientes = [];
-
-  if (!moduloEditar.disponible) {
-    pendientes.push('editar/editar.conexion.js');
-    pendientes.push('editar/tiktok-simple/tiktok.service.js');
-  }
-
-  if (!moduloSalida.disponible) {
-    pendientes.push('salida/salida.conexion.js');
-    pendientes.push('salida/exportar-simple/exportar.service.js');
-  }
-
-  if (pendientes.length > 0) {
-    return crearRespuestaPendiente({
-      proyecto: entrada.proyecto,
-      entendimiento,
-      pendientes
+    const entrada = await procesarEntrada({
+      archivoTemporal: solicitud.archivoTemporal,
+      nombreOriginal: solicitud.nombreOriginal,
+      nombreTemporal: solicitud.nombreTemporal || null,
+      opciones
     });
+
+    validarResultadoEtapa('entrada', entrada);
+
+    historial.push(
+      crearRegistroHistorial('entrada', 'Video recibido y copiado correctamente.', {
+        proyectoId: entrada.proyecto?.id || null,
+        modo: entrada.proyecto?.modo || opciones.modo
+      })
+    );
+
+    const entendimiento = await entenderVideo(entrada);
+
+    validarResultadoEtapa('entender', entendimiento);
+
+    historial.push(
+      crearRegistroHistorial('entender', 'Video analizado correctamente.', {
+        orientacion: entendimiento.analisis?.orientacion || 'desconocida',
+        duracionSegundos: entendimiento.analisis?.duracionSegundos || null,
+        tieneAudio: Boolean(entendimiento.analisis?.tieneAudio)
+      })
+    );
+
+    const audio = await mejorarAudioVideo({
+      entrada,
+      entendimiento,
+      opciones
+    });
+
+    validarResultadoEtapa('audio', audio);
+
+    historial.push(
+      crearRegistroHistorial('audio', audio.mensaje || 'Etapa de audio completada.', {
+        tipo: audio.tipo || null,
+        omitido: Boolean(audio.omitido),
+        usarAudioMejorado: Boolean(audio.usarAudioMejorado),
+        nombreAudioMejorado: audio.nombreAudioMejorado || null
+      })
+    );
+
+    const edicion = await editarVideo({
+      entrada,
+      entendimiento,
+      opciones
+    });
+
+    validarResultadoEtapa('editar', edicion);
+
+    historial.push(
+      crearRegistroHistorial('editar', 'Plan de edición generado correctamente.', {
+        tipo: edicion.tipo || null,
+        modo: edicion.modo || opciones.modo,
+        formato: edicion.salida?.formato || null,
+        filtroVideo: edicion.render?.filtroVideo || null
+      })
+    );
+
+    const salida = await prepararSalida({
+      entrada,
+      entendimiento,
+      audio,
+      edicion,
+      opciones
+    });
+
+    validarResultadoEtapa('salida', salida);
+
+    historial.push(
+      crearRegistroHistorial('salida', 'Video exportado correctamente.', {
+        nombreExportado: salida.nombreExportado || null,
+        urlPublica: salida.urlPublica || null,
+        modo: salida.modo || edicion.modo || opciones.modo,
+        audioUsado: salida.audio?.tipo || null
+      })
+    );
+
+    return {
+      ok: true,
+      estado: 'VIDEO_PROCESADO',
+      mensaje: crearMensajeFinal({ salida, audio, edicion }),
+      proyecto: entrada.proyecto,
+      video: entrada.video,
+      entendimiento,
+      audio,
+      edicion,
+      resultado: salida,
+      historial
+    };
+  } catch (error) {
+    const mensaje = error?.message || 'Error desconocido en el flujo principal.';
+
+    historial.push(
+      crearRegistroHistorial('error', 'El flujo principal se detuvo por un error.', {
+        detalle: mensaje,
+        modo: opciones.modo
+      })
+    );
+
+    throw new Error(`[flujo-principal] ${mensaje}`);
   }
-
-  const edicion = await moduloEditar.funcion({
-    entrada,
-    entendimiento,
-    opciones: solicitud.opciones || {}
-  });
-
-  const salida = await moduloSalida.funcion({
-    entrada,
-    entendimiento,
-    edicion,
-    opciones: solicitud.opciones || {}
-  });
-
-  return {
-    ok: true,
-    estado: 'VIDEO_PROCESADO',
-    mensaje: 'Video editado y exportado correctamente.',
-    proyecto: entrada.proyecto,
-    entendimiento,
-    edicion,
-    resultado: salida
-  };
 }

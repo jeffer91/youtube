@@ -1,33 +1,154 @@
 /*
   Nombre completo: editar.conexion.js
-  Ruta o ubicación: AutoVideoJeff/editar/editar.conexion.js
+  Ruta o ubicación: youtube/editar/editar.conexion.js
+
   Función o funciones:
-    - Ser la puerta de comunicación para todo lo relacionado con la edición del video.
-    - Tomar la entrada y el entendimiento del video.
-    - Llamar al editor simple de TikTok.
-    - Devolver un plan de edición estándar para que salida/ pueda exportar.
+    - Ser la puerta de comunicación del módulo editar/.
+    - Validar entrada y entendimiento antes de crear la edición.
+    - Decidir qué preset de edición usar según opciones.modo.
+    - Mantener compatible el preset anterior tiktok-simple.
+    - Activar el nuevo preset tiktok-cuadrado-centro.
+
   Con qué se conecta:
     - motor/flujo-principal.js
     - editar/tiktok-simple/tiktok.service.js
-    - biblioteca/tiktok-simple.json
+    - editar/tiktok-cuadrado-centro/tiktok-cuadrado-centro.service.js
+    - salida/salida.conexion.js
 */
 
+import fs from 'fs';
+
 import { crearEdicionTikTokSimple } from './tiktok-simple/tiktok.service.js';
+import { crearEdicionTikTokCuadradoCentro } from './tiktok-cuadrado-centro/tiktok-cuadrado-centro.service.js';
 
-export async function editarVideo({ entrada, entendimiento, opciones }) {
-  if (!entrada?.video?.rutaOriginal) {
-    throw new Error('No se puede editar porque falta el video original.');
+const MODOS_TIKTOK = Object.freeze({
+  SIMPLE: 'simple',
+  CUADRADO_CENTRO: 'cuadrado-centro'
+});
+
+const PLATAFORMA_PREDETERMINADA = 'tiktok';
+const MODO_VIDEO_PREDETERMINADO = MODOS_TIKTOK.CUADRADO_CENTRO;
+
+function validarEntradaParaEditar(entrada) {
+  if (!entrada || typeof entrada !== 'object') {
+    throw new Error('No se puede editar porque la entrada no es válida.');
   }
 
-  const plataforma = opciones?.plataforma || entrada.proyecto?.plataforma || 'tiktok';
-
-  if (plataforma !== 'tiktok') {
-    throw new Error(`La primera versión solo admite TikTok. Plataforma indicada: ${plataforma}`);
+  if (!entrada.video?.rutaOriginal) {
+    throw new Error('No se puede editar porque falta la ruta del video original.');
   }
 
-  return await crearEdicionTikTokSimple({
+  if (!fs.existsSync(entrada.video.rutaOriginal)) {
+    throw new Error(`No se puede editar porque no existe el video: ${entrada.video.rutaOriginal}`);
+  }
+
+  if (!entrada.proyecto?.id) {
+    throw new Error('No se puede editar porque falta el ID del proyecto.');
+  }
+
+  if (!entrada.rutas?.carpetaProyecto) {
+    throw new Error('No se puede editar porque falta la carpeta del proyecto.');
+  }
+}
+
+function validarEntendimiento(entendimiento) {
+  if (!entendimiento || typeof entendimiento !== 'object') {
+    throw new Error('No se puede editar porque falta el entendimiento del video.');
+  }
+
+  if (entendimiento.ok !== true) {
+    throw new Error('No se puede editar porque el análisis del video no terminó correctamente.');
+  }
+
+  if (!entendimiento.analisis || typeof entendimiento.analisis !== 'object') {
+    throw new Error('No se puede editar porque falta el análisis técnico del video.');
+  }
+}
+
+function normalizarTexto(valor, valorPorDefecto) {
+  if (typeof valor !== 'string') {
+    return valorPorDefecto;
+  }
+
+  const limpio = valor.trim();
+
+  return limpio.length > 0 ? limpio : valorPorDefecto;
+}
+
+function normalizarPlataforma(opciones, entrada) {
+  return normalizarTexto(
+    opciones?.plataforma || entrada?.proyecto?.plataforma,
+    PLATAFORMA_PREDETERMINADA
+  ).toLowerCase();
+}
+
+function normalizarModo(opciones, entrada) {
+  const modo = normalizarTexto(
+    opciones?.modo || entrada?.proyecto?.modo,
+    MODO_VIDEO_PREDETERMINADO
+  ).toLowerCase();
+
+  if (['cuadrado-centro', 'tiktok-cuadrado-centro', 'square-center'].includes(modo)) {
+    return MODOS_TIKTOK.CUADRADO_CENTRO;
+  }
+
+  if (['simple', 'tiktok-simple'].includes(modo)) {
+    return MODOS_TIKTOK.SIMPLE;
+  }
+
+  return modo;
+}
+
+function validarModoTikTok(modo) {
+  const modosDisponibles = Object.values(MODOS_TIKTOK);
+
+  if (!modosDisponibles.includes(modo)) {
+    throw new Error(
+      `Modo de edición TikTok no soportado: ${modo}. Modos disponibles: ${modosDisponibles.join(', ')}`
+    );
+  }
+}
+
+async function editarTikTok({ entrada, entendimiento, opciones, modo, plataforma }) {
+  validarModoTikTok(modo);
+
+  const opcionesFinales = {
+    ...opciones,
+    plataforma,
+    modo
+  };
+
+  if (modo === MODOS_TIKTOK.SIMPLE) {
+    return await crearEdicionTikTokSimple({
+      entrada,
+      entendimiento,
+      opciones: opcionesFinales
+    });
+  }
+
+  return await crearEdicionTikTokCuadradoCentro({
     entrada,
     entendimiento,
-    opciones
+    opciones: opcionesFinales
+  });
+}
+
+export async function editarVideo({ entrada, entendimiento, opciones = {} }) {
+  validarEntradaParaEditar(entrada);
+  validarEntendimiento(entendimiento);
+
+  const plataforma = normalizarPlataforma(opciones, entrada);
+  const modo = normalizarModo(opciones, entrada);
+
+  if (plataforma !== 'tiktok') {
+    throw new Error(`Esta versión solo admite TikTok. Plataforma indicada: ${plataforma}`);
+  }
+
+  return await editarTikTok({
+    entrada,
+    entendimiento,
+    opciones,
+    modo,
+    plataforma
   });
 }

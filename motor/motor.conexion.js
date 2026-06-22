@@ -1,25 +1,37 @@
 /*
   Nombre completo: motor.conexion.js
   Ruta o ubicación: AutoVideoJeff/motor/motor.conexion.js
-  Función o funciones:
-    - Ser la puerta de entrada entre el servidor y el flujo interno de la app.
-    - Validar que exista una solicitud mínima de procesamiento.
-    - Llamar al flujo principal cuando el archivo motor/flujo-principal.js exista.
-    - Evitar que la app se rompa mientras se crean los siguientes bloques.
+  Función:
+    - Ser la puerta de entrada entre server.js y el flujo interno.
+    - Validar la solicitud mínima del video.
+    - Normalizar opciones generales y opciones del módulo de audio.
+    - Ejecutar motor/flujo-principal.js.
+    - No ocultar errores reales de edición, audio, salida, FFmpeg, rutas o servicios.
   Con qué se conecta:
     - server.js
     - motor/flujo-principal.js
-    - entrada/entrada.conexion.js
-    - entender/entender.conexion.js
-    - editar/editar.conexion.js
-    - salida/salida.conexion.js
 */
 
-function esErrorDeModuloPendiente(error) {
+function esCadenaValida(valor) {
+  return typeof valor === 'string' && valor.trim().length > 0;
+}
+
+function convertirBooleano(valor, valorPorDefecto = true) {
+  if (typeof valor === 'boolean') return valor;
+  if (typeof valor === 'string') {
+    const limpio = valor.trim().toLowerCase();
+    if (['true', '1', 'si', 'sí', 'yes', 'on'].includes(limpio)) return true;
+    if (['false', '0', 'no', 'off'].includes(limpio)) return false;
+  }
+  return valorPorDefecto;
+}
+
+function esErrorDeFlujoPrincipalFaltante(error) {
+  const mensaje = String(error?.message || '');
+
   return (
-    error &&
-    (error.code === 'ERR_MODULE_NOT_FOUND' ||
-      String(error.message || '').includes('flujo-principal.js'))
+    error?.code === 'ERR_MODULE_NOT_FOUND' &&
+    mensaje.includes('flujo-principal.js')
   );
 }
 
@@ -28,49 +40,83 @@ function validarSolicitud(solicitud) {
     throw new Error('La solicitud del motor no es válida.');
   }
 
-  if (!solicitud.archivoTemporal) {
+  if (!esCadenaValida(solicitud.archivoTemporal)) {
     throw new Error('No se recibió la ruta temporal del video.');
   }
 
-  if (!solicitud.nombreOriginal) {
+  if (!esCadenaValida(solicitud.nombreOriginal)) {
     throw new Error('No se recibió el nombre original del video.');
   }
+
+  if (solicitud.opciones && typeof solicitud.opciones !== 'object') {
+    throw new Error('Las opciones del motor deben ser un objeto.');
+  }
+}
+
+function normalizarOpcionesMotor(opciones = {}) {
+  return {
+    plataforma: opciones.plataforma || 'tiktok',
+    modo: opciones.modo || 'simple',
+    mejorarAudio: convertirBooleano(opciones.mejorarAudio, true),
+    modoAudio: opciones.modoAudio || 'limpieza-simple'
+  };
+}
+
+function crearRespuestaFlujoPendiente(solicitud) {
+  const opciones = normalizarOpcionesMotor(solicitud.opciones || {});
+
+  return {
+    ok: false,
+    estado: 'FLUJO_PRINCIPAL_PENDIENTE',
+    mensaje:
+      'Base recibida correctamente, pero falta motor/flujo-principal.js para procesar el video.',
+    recibido: {
+      nombreOriginal: solicitud.nombreOriginal,
+      nombreTemporal: solicitud.nombreTemporal || null,
+      plataforma: opciones.plataforma,
+      modo: opciones.modo,
+      mejorarAudio: opciones.mejorarAudio,
+      modoAudio: opciones.modoAudio
+    },
+    pendientes: [
+      'motor/flujo-principal.js',
+      'entrada/entrada.conexion.js',
+      'entender/entender.conexion.js',
+      'audio/audio.conexion.js',
+      'editar/editar.conexion.js',
+      'salida/salida.conexion.js'
+    ]
+  };
 }
 
 export async function procesarVideoDesdeMotor(solicitud) {
   validarSolicitud(solicitud);
 
+  const opciones = normalizarOpcionesMotor(solicitud.opciones || {});
+
   try {
     const moduloFlujo = await import('./flujo-principal.js');
 
     if (typeof moduloFlujo.ejecutarFlujoPrincipal !== 'function') {
-      throw new Error('El flujo principal existe, pero no exporta ejecutarFlujoPrincipal.');
+      throw new Error(
+        'El flujo principal existe, pero no exporta ejecutarFlujoPrincipal.'
+      );
     }
 
-    return await moduloFlujo.ejecutarFlujoPrincipal(solicitud);
+    return await moduloFlujo.ejecutarFlujoPrincipal({
+      archivoTemporal: solicitud.archivoTemporal,
+      nombreOriginal: solicitud.nombreOriginal,
+      nombreTemporal: solicitud.nombreTemporal || null,
+      opciones
+    });
   } catch (error) {
-    if (!esErrorDeModuloPendiente(error)) {
-      throw error;
+    if (esErrorDeFlujoPrincipalFaltante(error)) {
+      return crearRespuestaFlujoPendiente({
+        ...solicitud,
+        opciones
+      });
     }
 
-    return {
-      ok: false,
-      estado: 'BLOQUE_1_LISTO_FLUJO_PENDIENTE',
-      mensaje:
-        'Base recibida correctamente. Falta crear el flujo principal y los módulos internos para editar el video.',
-      recibido: {
-        nombreOriginal: solicitud.nombreOriginal,
-        nombreTemporal: solicitud.nombreTemporal || null,
-        plataforma: solicitud.opciones?.plataforma || 'tiktok',
-        modo: solicitud.opciones?.modo || 'simple'
-      },
-      pendientes: [
-        'motor/flujo-principal.js',
-        'entrada/entrada.conexion.js',
-        'entender/entender.conexion.js',
-        'editar/editar.conexion.js',
-        'salida/salida.conexion.js'
-      ]
-    };
+    throw error;
   }
 }

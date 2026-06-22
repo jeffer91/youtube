@@ -1,22 +1,29 @@
 /*
   Nombre completo: analisis.service.js
   Ruta o ubicación: AutoVideoJeff/entender/analisis-simple/analisis.service.js
-  Función o funciones:
+  Función:
     - Leer información técnica básica del video.
-    - Detectar duración, ancho, alto, fps aproximado y orientación.
-    - Usar ffprobe cuando esté disponible.
-    - Devolver datos simples para que el editor decida cómo preparar el formato TikTok.
-  Con qué se conecta:
-    - entender/entender.conexion.js
-    - entrada/subir-simple/subir.service.js
-    - datos/proyectos/
+    - Usar FFprobe cuando esté disponible.
+    - Detectar duración, ancho, alto, fps, orientación, codecs y audio.
+    - Guardar analisis-simple.json dentro del proyecto.
+    - Si FFprobe falla, devolver análisis básico con advertencia explícita.
 */
 
 import fs from 'fs';
+import path from 'path';
 import ffmpeg from 'fluent-ffmpeg';
 import ffprobeStatic from 'ffprobe-static';
+import { escribirJson } from '../../comun/archivos.js';
 
-ffmpeg.setFfprobePath(ffprobeStatic.path);
+function resolverRutaFfprobe() {
+  return typeof ffprobeStatic === 'string' ? ffprobeStatic : ffprobeStatic?.path;
+}
+
+const rutaFfprobe = resolverRutaFfprobe();
+
+if (rutaFfprobe) {
+  ffmpeg.setFfprobePath(rutaFfprobe);
+}
 
 function calcularOrientacion(ancho, alto) {
   if (!ancho || !alto) return 'desconocida';
@@ -30,15 +37,25 @@ function obtenerFps(stream) {
 
   if (!ratio || ratio === '0/0') return null;
 
-  const [numerador, denominador] = ratio.split('/').map(Number);
+  const [numerador, denominador] = String(ratio).split('/').map(Number);
 
   if (!numerador || !denominador) return null;
 
   return Number((numerador / denominador).toFixed(2));
 }
 
+function normalizarNumero(valor) {
+  const numero = Number(valor);
+  return Number.isFinite(numero) ? numero : null;
+}
+
 function leerMetadataConFfprobe(rutaVideo) {
   return new Promise((resolve, reject) => {
+    if (!rutaFfprobe) {
+      reject(new Error('No se encontró la ruta del binario FFprobe.'));
+      return;
+    }
+
     ffmpeg.ffprobe(rutaVideo, (error, metadata) => {
       if (error) {
         reject(error);
@@ -50,10 +67,12 @@ function leerMetadataConFfprobe(rutaVideo) {
   });
 }
 
-function crearAnalisisBasicoDesdeArchivo(rutaVideo) {
+function crearAnalisisBasicoDesdeArchivo(rutaVideo, advertencia = null) {
   const stats = fs.statSync(rutaVideo);
 
   return {
+    ok: true,
+    etapa: 'entender',
     metodo: 'archivo-basico',
     duracionSegundos: null,
     ancho: null,
@@ -61,41 +80,91 @@ function crearAnalisisBasicoDesdeArchivo(rutaVideo) {
     fps: null,
     orientacion: 'desconocida',
     pesoBytes: stats.size,
-    formato: null,
-    tieneAudio: null,
+    formato: path.extname(rutaVideo).replace('.', '').toLowerCase() || null,
+    codecVideo: null,
+    codecAudio: null,
+    tieneAudio: false,
     tieneVideo: true,
-    advertencias: [
-      'No se pudo leer metadata avanzada con ffprobe. Se guardó análisis básico del archivo.'
-    ]
+    advertencias: advertencia ? [advertencia] : []
   };
 }
 
+function extraerAnalisisDesdeMetadata(rutaVideo, metadata) {
+  const streamVideo = metadata?.streams?.find((stream) => stream.codec_type === 'video') || null;
+  const streamAudio = metadata?.streams?.find((stream) => stream.codec_type === 'audio') || null;
+
+  const ancho = normalizarNumero(streamVideo?.width || streamVideo?.coded_width);
+  const alto = normalizarNumero(streamVideo?.height || streamVideo?.coded_height);
+  const duracion =
+    normalizarNumero(metadata?.format?.duration) ||
+    normalizarNumero(streamVideo?.duration) ||
+    null;
+
+  const stats = fs.statSync(rutaVideo);
+
+  return {
+    ok: true,
+    etapa: 'entender',
+    metodo: 'ffprobe',
+    duracionSegundos: duracion !== null ? Number(duracion.toFixed(2)) : null,
+    ancho,
+    alto,
+    fps: obtenerFps(streamVideo),
+    orientacion: calcularOrientacion(ancho, alto),
+    pesoBytes: normalizarNumero(metadata?.format?.size) || stats.size,
+    formato: metadata?.format?.format_name || null,
+    codecVideo: streamVideo?.codec_name || null,
+    codecAudio: streamAudio?.codec_name || null,
+    tieneAudio: Boolean(streamAudio),
+    tieneVideo: Boolean(streamVideo),
+    advertencias: streamVideo ? [] : ['FFprobe no encontró stream de video.']
+  };
+}
+
+async function guardarAnalisisSiEsPosible(entrada, analisis) {
+  const carpetaProyecto = entrada?.rutas?.carpetaProyecto;
+
+  if (!carpetaProyecto) {
+    return null;
+  }
+
+  const rutaAnalisis = path.join(carpetaProyecto, 'analisis-simple.json');
+
+  await escribirJson(rutaAnalisis, {
+    ...analisis,
+    guardadoEn: new Date().toISOString()
+  });
+
+  return rutaAnalisis;
+}
+
 export async function analizarVideoSimple(entrada) {
-  const rutaVideo = entrada.video.rutaOriginal;
+  const rutaVideo = entrada?.video?.rutaOriginal;
+
+  if (!rutaVideo) {
+    throw new Error('No se puede analizar el video porque falta la ruta original.');
+  }
+
+  if (!fs.existsSync(rutaVideo)) {
+    throw new Error(`No se puede analizar el video porque no existe: ${rutaVideo}`);
+  }
+
+  let analisis;
 
   try {
     const metadata = await leerMetadataConFfprobe(rutaVideo);
-    const streamVideo = metadata.streams?.find((stream) => stream.codec_type === 'video');
-    const streamAudio = metadata.streams?.find((stream) => stream.codec_type === 'audio');
-    const ancho = streamVideo?.width || null;
-    const alto = streamVideo?.height || null;
-
-    return {
-      metodo: 'ffprobe',
-      duracionSegundos: metadata.format?.duration ? Number(metadata.format.duration.toFixed(2)) : null,
-      ancho,
-      alto,
-      fps: obtenerFps(streamVideo),
-      orientacion: calcularOrientacion(ancho, alto),
-      pesoBytes: metadata.format?.size ? Number(metadata.format.size) : fs.statSync(rutaVideo).size,
-      formato: metadata.format?.format_name || null,
-      codecVideo: streamVideo?.codec_name || null,
-      codecAudio: streamAudio?.codec_name || null,
-      tieneAudio: Boolean(streamAudio),
-      tieneVideo: Boolean(streamVideo),
-      advertencias: []
-    };
-  } catch (_error) {
-    return crearAnalisisBasicoDesdeArchivo(rutaVideo);
+    analisis = extraerAnalisisDesdeMetadata(rutaVideo, metadata);
+  } catch (error) {
+    analisis = crearAnalisisBasicoDesdeArchivo(
+      rutaVideo,
+      `FFprobe no pudo leer metadata completa: ${error.message}`
+    );
   }
+
+  const rutaAnalisis = await guardarAnalisisSiEsPosible(entrada, analisis);
+
+  return {
+    ...analisis,
+    rutaAnalisis
+  };
 }

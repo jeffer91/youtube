@@ -1,0 +1,60 @@
+{
+  "nombre": "tiktok-cuadrado-centro",
+  "version": "1.0.0",
+  "plataforma": "tiktok",
+  "modo": "cuadrado-centro",
+  "descripcion": "Preset para convertir videos a TikTok 9:16 usando recorte cuadrado centrado, escalado a 1080x1080 y franjas negras arriba y abajo.",
+  "video": {
+    "formato": "9:16",
+    "width": 1080,
+    "height": 1920,
+    "contenidoWidth": 1080,
+    "contenidoHeight": 1080,
+    "fps": 30,
+    "colorFondo": "black",
+    "sar": 1
+  },
+  "recorte": {
+    "tipo": "cuadrado-centrado",
+    "estrategia": "usar-el-lado-menor",
+    "mantenerCentro": true
+  },
+  "exportacion": {
+    "contenedor": "mp4",
+    "codecVideo": "libx264",
+    "codecAudio": "aac",
+    "crf": 20,
+    "presetFfmpeg": "veryfast",
+    "audioBitrate": "128k",
+    "pixFmt": "yuv420p"
+  },
+  "salida": {
+    "extension": ".mp4",
+    "nombreArchivoEdicion": "edicion-tiktok-cuadrado-centro.json",
+    "prefijoExportado": "tiktok-cuadrado-centro"
+  },
+  "edicionInicial": {
+    "cortarSilencios": false,
+    "subtitulos": false,
+    "textos": false,
+    "transiciones": false,
+    "musica": false,
+    "seguimientoRostro": false
+  },
+  "crecimientoFuturo": [
+    "cortes inteligentes por silencio",
+    "subtitulos automaticos",
+    "textos superiores e inferiores",
+    "seguimiento de rostro",
+    "zoom inteligente",
+    "plantillas para Reels y Shorts",
+    "exportacion por lotes"
+  ],
+  "notas": [
+    "Este preset no estira el video.",
+    "Este preset no recorta agresivamente a 9:16.",
+    "Primero crea un cuadrado centrado desde el video original.",
+    "Despues coloca ese cuadrado en el centro de un lienzo vertical 1080x1920.",
+    "Las franjas negras arriba y abajo compensan el espacio sobrante."
+  ]
+}

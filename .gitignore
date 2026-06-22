@@ -1,0 +1,17 @@
+node_modules/
+dist/
+build/
+out/
+release/
+
+.env
+.env.local
+*.log
+
+datos/temporales/
+datos/videos-originales/
+datos/videos-exportados/
+datos/proyectos/
+
+.DS_Store
+Thumbs.db

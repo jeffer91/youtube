@@ -4,74 +4,155 @@
   Función o funciones:
     - Mostrar la pantalla principal de AutoVideoJeff.
     - Permitir seleccionar un video desde la computadora.
-    - Ejecutar el botón de edición automática simple.
+    - Activar o desactivar la mejora de audio.
+    - Ejecutar edición TikTok cuadrado centro.
     - Mostrar estado, errores y resultado exportado cuando exista.
   Con qué se conecta:
-    - app/styles.css
     - app/app.js
-    - server.js mediante /api/estado y /api/procesar-video
+    - app/styles.css
+    - server.js
+    - /api/procesar-video
 -->
 
-<!DOCTYPE html>
+<!doctype html>
 <html lang="es">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>AutoVideoJeff</title>
   <link rel="stylesheet" href="./styles.css" />
 </head>
+
 <body>
   <main class="app-shell">
-    <section class="hero">
-      <div>
-        <p class="eyebrow">Editor automático modular</p>
-        <h1>AutoVideoJeff</h1>
-        <p class="hero-text">
-          Sube un video y genera una edición simple para TikTok. Esta base está pensada para crecer por módulos.
-        </p>
+    <section class="hero-card">
+      <div class="hero-top">
+        <div>
+          <p class="eyebrow">Editor automático modular</p>
+          <h1>AutoVideoJeff</h1>
+          <p class="hero-description">
+            Sube un video, limpia el audio y genera una versión TikTok 9:16 con contenido cuadrado centrado.
+          </p>
+        </div>
+
+        <div id="serverStatus" class="server-status server-status--checking">
+          Verificando servidor
+        </div>
       </div>
 
-      <div class="status-pill" id="serverStatus">Verificando servidor...</div>
-    </section>
+      <form id="videoForm" class="video-form">
+        <section class="form-section">
+          <label class="file-picker" for="videoInput">
+            <span class="file-picker__icon">🎬</span>
+            <span class="file-picker__title">Seleccionar video</span>
+            <span class="file-picker__hint">MP4, MOV, WEBM, MKV o AVI</span>
+          </label>
 
-    <section class="panel">
-      <div class="panel-header">
-        <h2>Video de entrada</h2>
-        <p>Primera versión: edición vertical simple para TikTok.</p>
-      </div>
+          <input
+            id="videoInput"
+            class="file-input"
+            name="video"
+            type="file"
+            accept="video/*,.mp4,.mov,.m4v,.avi,.mkv,.webm"
+            required
+          />
 
-      <form id="videoForm" class="upload-box">
-        <label for="videoInput" class="file-label">
-          <span class="file-title">Seleccionar video</span>
-          <span class="file-subtitle" id="fileName">Ningún archivo seleccionado</span>
-        </label>
+          <p id="fileName" class="file-name">
+            Ningún video seleccionado.
+          </p>
+        </section>
 
-        <input id="videoInput" name="video" type="file" accept="video/*" />
+        <section class="form-section options-card">
+          <div class="options-header">
+            <div>
+              <h2>Audio</h2>
+              <p>Función independiente para limpiar ruido y mejorar nitidez de voz.</p>
+            </div>
+          </div>
 
-        <button type="submit" id="processButton">
-          Editar automáticamente
+          <label class="toggle-row" for="improveAudio">
+            <input
+              id="improveAudio"
+              name="mejorarAudio"
+              type="checkbox"
+              checked
+            />
+            <span>
+              <strong>Mejorar audio automáticamente</strong>
+              <small>Reduce ruido de fondo, normaliza volumen y mejora claridad.</small>
+            </span>
+          </label>
+
+          <label class="select-row" for="audioMode">
+            <span>Modo de audio</span>
+            <select id="audioMode" name="modoAudio">
+              <option value="limpieza-simple" selected>Limpieza simple</option>
+            </select>
+          </label>
+        </section>
+
+        <section class="form-section options-card">
+          <div class="options-header">
+            <div>
+              <h2>Video</h2>
+              <p>
+                Módulo activo: TikTok cuadrado centro. Recorta el centro, escala a 1080x1080
+                y agrega bandas negras arriba y abajo dentro de un lienzo 1080x1920.
+              </p>
+            </div>
+          </div>
+
+          <input type="hidden" id="platformInput" name="plataforma" value="tiktok" />
+          <input type="hidden" id="modeInput" name="modo" value="cuadrado-centro" />
+
+          <div class="static-option">
+            <span>Formato</span>
+            <strong>TikTok cuadrado centro</strong>
+          </div>
+
+          <div class="static-option">
+            <span>Modo interno</span>
+            <strong>cuadrado-centro</strong>
+          </div>
+        </section>
+
+        <button id="processButton" class="primary-button" type="submit">
+          Procesar video
         </button>
       </form>
 
-      <div class="progress-area" id="progressArea" hidden>
-        <div class="loader"></div>
-        <p id="progressText">Preparando video...</p>
-      </div>
+      <section id="progressArea" class="progress-area" hidden>
+        <div class="progress-loader"></div>
+        <p id="progressText">Esperando video.</p>
+      </section>
 
-      <div class="message" id="messageBox" hidden></div>
-    </section>
+      <section id="messageBox" class="message-box" hidden></section>
 
-    <section class="panel result-panel" id="resultPanel" hidden>
-      <div class="panel-header">
-        <h2>Resultado</h2>
-        <p>Cuando el flujo esté completo, aquí aparecerá el video exportado.</p>
-      </div>
+      <section id="resultPanel" class="result-panel" hidden>
+        <div class="result-header">
+          <div>
+            <p class="eyebrow">Resultado</p>
+            <h2>Video exportado</h2>
+          </div>
 
-      <video id="resultVideo" controls hidden></video>
-      <a id="downloadLink" class="download-link" href="#" download hidden>Descargar video final</a>
+          <a id="downloadLink" class="download-link" href="#" download hidden>
+            Descargar video
+          </a>
+        </div>
+
+        <p id="audioSummary" class="audio-summary" hidden></p>
+
+        <video
+          id="resultVideo"
+          class="result-video"
+          controls
+          playsinline
+          hidden
+        ></video>
+      </section>
     </section>
   </main>
 
-  <script src="./app.js" defer></script>
+  <script type="module" src="./app.js"></script>
 </body>
 </html>

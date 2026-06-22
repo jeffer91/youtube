@@ -1,0 +1,49 @@
+{
+  "nombre": "audio-limpio-simple",
+  "descripcion": "Preset simple para reducir ruido de fondo, mejorar claridad de voz y normalizar volumen.",
+  "tipo": "limpieza-audio",
+  "version": "1.0.0",
+  "activoPorDefecto": true,
+  "audio": {
+    "codecAudio": "aac",
+    "audioBitrate": "192k",
+    "frecuenciaMuestreo": 48000,
+    "canales": 2,
+    "extension": ".m4a"
+  },
+  "filtros": {
+    "highpassHz": 80,
+    "lowpassHz": 12000,
+    "reduccionRuido": {
+      "activo": true,
+      "noiseFloor": -25,
+      "noiseType": "w"
+    },
+    "compresor": {
+      "activo": true,
+      "threshold": -18,
+      "ratio": 3,
+      "attack": 8,
+      "release": 250,
+      "makeup": 2
+    },
+    "normalizacionDinamica": {
+      "activo": true,
+      "frameLen": 150,
+      "gaussianSize": 15,
+      "peak": 0.95,
+      "maxGain": 8
+    },
+    "normalizacionFinal": {
+      "activo": true,
+      "integratedLoudness": -16,
+      "truePeak": -1.5,
+      "loudnessRange": 11
+    }
+  },
+  "notas": [
+    "Este preset usa filtros nativos de FFmpeg; no necesita IA externa ni conexión a internet.",
+    "Está pensado para voz hablada en videos de redes sociales.",
+    "Si un video no tiene pista de audio, el módulo se omite sin romper el flujo."
+  ]
+}
