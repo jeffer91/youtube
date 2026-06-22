@@ -1,0 +1,77 @@
+{
+  "nombre": "audio-inteligente-pro",
+  "nombreVisible": "Audio Inteligente Pro",
+  "descripcion": "Preset profesional para analizar, limpiar, ecualizar, comprimir, normalizar y limitar voz hablada en videos de AutoVideoJeff.",
+  "tipo": "audio-inteligente",
+  "version": "1.0.0",
+  "activoPorDefecto": true,
+  "modoAudio": "audio-inteligente",
+  "calidadPorDefecto": "inteligente",
+  "objetivo": "Voz clara, estable, cómoda y lista para escuchar aunque el usuario no mire el video.",
+  "audio": {
+    "codecAudio": "aac",
+    "audioBitrate": "192k",
+    "frecuenciaMuestreo": 48000,
+    "canales": 2,
+    "extension": ".m4a"
+  },
+  "analisis": {
+    "usarFfprobe": true,
+    "usarVolumedetect": true,
+    "usarSilencedetect": true,
+    "silencioNoiseDb": -35,
+    "silencioDuracionMinimaSeg": 0.35,
+    "volumenMedioBajoDb": -27,
+    "volumenMedioMuyBajoDb": -34,
+    "volumenMaximoSeguroDb": -1.2,
+    "volumenMaximoSaturadoDb": -0.4,
+    "rangoDinamicoIrregularDb": 24,
+    "porcentajeSilencioAlto": 32,
+    "porcentajeSilencioExcesivo": 45
+  },
+  "perfilesDisponibles": [
+    "seguro",
+    "voz-estandar",
+    "voz-muy-baja",
+    "ruido-fuerte",
+    "voz-saturada",
+    "volumen-irregular",
+    "voz-opaca",
+    "voz-chillona",
+    "voz-con-silencios"
+  ],
+  "perfilFallback": "seguro",
+  "cadenaBase": [
+    "highpass",
+    "lowpass",
+    "afftdn",
+    "volume",
+    "equalizer",
+    "acompressor",
+    "loudnorm",
+    "alimiter",
+    "aresample",
+    "aformat"
+  ],
+  "reglasCalidad": {
+    "evitarDistorsion": true,
+    "evitarVozRobotica": true,
+    "evitarSobreReduccionRuido": true,
+    "mantenerNaturalidad": true,
+    "normalizarVolumenFinal": true,
+    "limitarPicosFinales": true
+  },
+  "fallback": {
+    "permitirLimpiezaSimple": true,
+    "usarAudioOriginalSiFallaTodo": true,
+    "guardarReporteDeError": true
+  },
+  "reporte": {
+    "guardar": true,
+    "incluirAnalisisInicial": true,
+    "incluirClasificacion": true,
+    "incluirCadenaFfmpeg": true,
+    "incluirValidacionFinal": true
+  },
+  "notaTecnica": "Este preset no reemplaza una grabación profesional de origen. Su función es obtener el mejor resultado automático posible con FFmpeg, priorizando voz hablada clara y estable."
+}
