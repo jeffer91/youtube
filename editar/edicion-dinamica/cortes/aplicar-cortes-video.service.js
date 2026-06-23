@@ -20,7 +20,7 @@ function validarSegmentos(segmentosConservados = []) {
   }
 }
 
-function crearFiltroConcat(segmentosConservados = []) {
+function crearFiltroConcatConAudio(segmentosConservados = []) {
   const filtros = [];
   segmentosConservados.forEach((segmento, index) => {
     filtros.push(`[0:v]trim=start=${segmento.inicio}:end=${segmento.fin},setpts=PTS-STARTPTS[v${index}]`);
@@ -31,14 +31,32 @@ function crearFiltroConcat(segmentosConservados = []) {
   return filtros.join(';');
 }
 
-function ejecutarFfmpeg({ rutaVideoOriginal, rutaSalida, filtroComplex }) {
+function crearFiltroConcatSinAudio(segmentosConservados = []) {
+  const filtros = [];
+  segmentosConservados.forEach((segmento, index) => {
+    filtros.push(`[0:v]trim=start=${segmento.inicio}:end=${segmento.fin},setpts=PTS-STARTPTS[v${index}]`);
+  });
+  const entradas = segmentosConservados.map((_segmento, index) => `[v${index}]`).join('');
+  filtros.push(`${entradas}concat=n=${segmentosConservados.length}:v=1:a=0[vout]`);
+  return filtros.join(';');
+}
+
+function ejecutarFfmpeg({ rutaVideoOriginal, rutaSalida, filtroComplex, tieneAudio = true }) {
   return new Promise((resolve, reject) => {
     const rutaFfmpeg = resolverRutaFfmpeg();
     if (!rutaFfmpeg || !fs.existsSync(rutaFfmpeg)) {
       reject(new Error('No se encontró FFmpeg para aplicar cortes.'));
       return;
     }
-    const args = ['-y', '-hide_banner', '-i', rutaVideoOriginal, '-filter_complex', filtroComplex, '-map', '[vout]', '-map', '[aout]', '-c:v', 'libx264', '-preset', 'veryfast', '-crf', '20', '-c:a', 'aac', '-b:a', '192k', '-movflags', '+faststart', rutaSalida];
+
+    const args = ['-y', '-hide_banner', '-i', rutaVideoOriginal, '-filter_complex', filtroComplex, '-map', '[vout]'];
+
+    if (tieneAudio) {
+      args.push('-map', '[aout]', '-c:a', 'aac', '-b:a', '192k');
+    }
+
+    args.push('-c:v', 'libx264', '-preset', 'veryfast', '-crf', '20', '-movflags', '+faststart', rutaSalida);
+
     const proceso = spawn(rutaFfmpeg, args, { windowsHide: true });
     let stdout = '';
     let stderr = '';
@@ -46,24 +64,24 @@ function ejecutarFfmpeg({ rutaVideoOriginal, rutaSalida, filtroComplex }) {
     proceso.stderr.on('data', (data) => { stderr += data.toString(); });
     proceso.on('error', (error) => reject(new Error(`FFmpeg no pudo aplicar cortes: ${error.message}`)));
     proceso.on('close', (code) => {
-      if (code === 0) resolve({ ok: true, code, stdout, stderr });
+      if (code === 0) resolve({ ok: true, code, stdout, stderr, tieneAudio });
       else reject(new Error(`FFmpeg no pudo aplicar cortes. Código ${code}. ${stderr || stdout}`));
     });
   });
 }
 
-export async function aplicarCortesVideo({ rutaVideoOriginal, segmentosConservados = [], carpetaCortes, nombreSalida = 'video-sin-silencios.mp4' } = {}) {
+export async function aplicarCortesVideo({ rutaVideoOriginal, segmentosConservados = [], carpetaCortes, nombreSalida = 'video-sin-silencios.mp4', tieneAudio = true } = {}) {
   validarArchivoEntrada(rutaVideoOriginal);
   validarSegmentos(segmentosConservados);
   const carpetaVideos = path.join(carpetaCortes, 'videos');
   asegurarCarpeta(carpetaVideos);
   const rutaSalida = path.join(carpetaVideos, nombreSalida);
-  const filtroComplex = crearFiltroConcat(segmentosConservados);
+  const filtroComplex = tieneAudio ? crearFiltroConcatConAudio(segmentosConservados) : crearFiltroConcatSinAudio(segmentosConservados);
   const inicio = Date.now();
-  const ffmpeg = await ejecutarFfmpeg({ rutaVideoOriginal, rutaSalida, filtroComplex });
+  const ffmpeg = await ejecutarFfmpeg({ rutaVideoOriginal, rutaSalida, filtroComplex, tieneAudio });
   const stats = await fs.promises.stat(rutaSalida);
   if (!stats.isFile() || stats.size <= 0) throw new Error(`El video sin silencios está vacío o no se generó correctamente: ${rutaSalida}`);
-  return { ok: true, rutaSalida, nombreSalida, pesoBytes: stats.size, segmentosProcesados: segmentosConservados.length, ffmpeg: { ...ffmpeg, filtroComplex, duracionMs: Date.now() - inicio } };
+  return { ok: true, rutaSalida, nombreSalida, pesoBytes: stats.size, segmentosProcesados: segmentosConservados.length, tieneAudio, ffmpeg: { ...ffmpeg, filtroComplex, duracionMs: Date.now() - inicio } };
 }
 
 export default aplicarCortesVideo;
