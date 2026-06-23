@@ -40,22 +40,22 @@ export function redondearTiempo(valor, decimales = 3) {
 }
 
 export function normalizarIntensidadEdicion(valor) {
-  const intensidad = normalizarTexto(valor, INTENSIDADES_EDICION_DINAMICA.NORMAL).toLowerCase();
+  const intensidad = normalizarTexto(valor, INTENSIDADES_EDICION_DINAMICA.AUTOMATICA).toLowerCase();
   if (CONFIG_INTENSIDADES[intensidad]) return intensidad;
-  return INTENSIDADES_EDICION_DINAMICA.NORMAL;
+  return INTENSIDADES_EDICION_DINAMICA.AUTOMATICA;
 }
 
 function obtenerConfigBasePorIntensidad(intensidad) {
-  return { ...CONFIG_INTENSIDADES.normal, ...(CONFIG_INTENSIDADES[intensidad] || {}) };
+  return { ...CONFIG_INTENSIDADES.automatica, ...(CONFIG_INTENSIDADES[intensidad] || {}) };
 }
 
 export function obtenerConfigEdicionDinamica(opciones = {}) {
   const intensidad = normalizarIntensidadEdicion(opciones.intensidadEdicion || opciones.intensidadEdicionDinamica || opciones.modoEdicionDinamica || opciones.modoRitmoVisual);
   const base = obtenerConfigBasePorIntensidad(intensidad);
-  const edicionDinamicaActiva = normalizarBooleano(opciones.edicionDinamica ?? opciones.activarEdicionDinamica ?? opciones.usarEdicionDinamica, false);
+  const edicionDinamicaActiva = normalizarBooleano(opciones.edicionDinamica ?? opciones.activarEdicionDinamica ?? opciones.usarEdicionDinamica, true);
 
   return {
-    version: '1.0.0',
+    version: '1.1.0',
     activo: edicionDinamicaActiva,
     intensidad,
     modoSeguro: normalizarBooleano(opciones.modoSeguroEdicionDinamica, true),
