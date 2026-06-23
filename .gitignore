@@ -6,12 +6,20 @@ release/
 
 .env
 .env.local
+.env.*
 *.log
 
 datos/temporales/
 datos/videos-originales/
 datos/videos-exportados/
 datos/proyectos/
+datos/audios-mejorados/
+
+gemini-credencial*
+gemini-config-local*
+*.key
+*.pem
+*.secret
 
 .DS_Store
 Thumbs.db
