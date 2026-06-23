@@ -23,8 +23,8 @@ function convertirBooleano(valor, valorPorDefecto = true) {
   if (typeof valor === 'boolean') return valor;
   if (typeof valor === 'string') {
     const limpio = valor.trim().toLowerCase();
-    if (['true', '1', 'si', 'sí', 'yes', 'on'].includes(limpio)) return true;
-    if (['false', '0', 'no', 'off'].includes(limpio)) return false;
+    if (['true', '1', 'si', 'sí', 'yes', 'on', 'activo', 'activado'].includes(limpio)) return true;
+    if (['false', '0', 'no', 'off', 'inactivo', 'desactivado'].includes(limpio)) return false;
   }
   return valorPorDefecto;
 }
@@ -53,11 +53,23 @@ function normalizarOpciones(opciones = {}) {
     agregarSubtitulos: convertirBooleano(opciones?.agregarSubtitulos, true),
     agregarTextosFlotantes: convertirBooleano(opciones?.agregarTextosFlotantes, true),
     usarGemini: convertirBooleano(opciones?.usarGemini, false),
-    edicionDinamica: convertirBooleano(opciones?.edicionDinamica ?? opciones?.activarEdicionDinamica ?? opciones?.usarEdicionDinamica, false),
+    edicionDinamica: convertirBooleano(opciones?.edicionDinamica ?? opciones?.activarEdicionDinamica ?? opciones?.usarEdicionDinamica, true),
+    activarEdicionDinamica: true,
+    usarEdicionDinamica: true,
     cortarSilencios: convertirBooleano(opciones?.cortarSilencios, true),
-    intensidadEdicion: normalizarTexto(opciones?.intensidadEdicion || opciones?.modoEdicionDinamica, 'normal'),
+    modoSeguroEdicionDinamica: convertirBooleano(opciones?.modoSeguroEdicionDinamica, true),
+    intensidadEdicion: normalizarTexto(opciones?.intensidadEdicion || opciones?.modoEdicionDinamica, 'automatica'),
+    modoEdicionDinamica: normalizarTexto(opciones?.modoEdicionDinamica || opciones?.intensidadEdicion, 'automatica'),
     agregarEfectosVisualesDinamicos: convertirBooleano(opciones?.agregarEfectosVisualesDinamicos, true),
-    agregarSonidosEdicion: convertirBooleano(opciones?.agregarSonidosEdicion, true)
+    agregarZooms: convertirBooleano(opciones?.agregarZooms, true),
+    agregarPunchIn: convertirBooleano(opciones?.agregarPunchIn, true),
+    agregarBarraProgreso: convertirBooleano(opciones?.agregarBarraProgreso, true),
+    agregarEtiquetasVisuales: convertirBooleano(opciones?.agregarEtiquetasVisuales, true),
+    agregarSonidosEdicion: convertirBooleano(opciones?.agregarSonidosEdicion, true),
+    modoSonidosEdicion: normalizarTexto(opciones?.modoSonidosEdicion, 'normal'),
+    volumenSonidosEdicion: opciones?.volumenSonidosEdicion ?? 0.24,
+    separacionMinimaSonidos: opciones?.separacionMinimaSonidos ?? 1.2,
+    cantidadMaximaSonidos: opciones?.cantidadMaximaSonidos ?? 16
   };
 }
 
@@ -66,10 +78,9 @@ function crearMensajeFinal({ salida, audio, edicion, transcripcion, edicionDinam
   const audioUsado = salida?.audio?.tipo || audio?.tipo || 'original';
   const capas = transcripcion?.capasVideo;
   const partes = [`Video exportado correctamente en modo ${modo}`];
-  partes.push(audioUsado === 'mejorado' ? 'con audio mejorado' : 'con audio original');
-  if (capas?.usarSubtitulos) partes.push('subtítulos');
-  if (capas?.usarTextosFlotantes) partes.push('textos flotantes');
-  if (edicionDinamica?.activo && !edicionDinamica?.omitido) partes.push('edición dinámica preparada');
+  if (edicionDinamica?.activo && !edicionDinamica?.omitido) partes.push('con edición automática');
+  partes.push(audioUsado === 'sonidos-edicion' ? 'con efectos de sonido' : audioUsado === 'mejorado' ? 'con audio mejorado' : 'con audio procesado');
+  if (capas?.usarSubtitulos || edicion?.transcripcion?.capasAplicadas) partes.push('subtítulos/textos');
   return `${partes.join(', ')}.`;
 }
 
@@ -78,7 +89,7 @@ export async function ejecutarFlujoPrincipal(solicitud) {
   const historial = [];
 
   try {
-    historial.push(crearRegistroHistorial('inicio', 'Solicitud recibida por el motor principal.', { nombreOriginal: solicitud.nombreOriginal, plataforma: opciones.plataforma, modo: opciones.modo, mejorarAudio: opciones.mejorarAudio, modoAudio: opciones.modoAudio, crearTranscripcion: opciones.crearTranscripcion, edicionDinamica: opciones.edicionDinamica }));
+    historial.push(crearRegistroHistorial('inicio', 'Solicitud recibida por el motor principal.', { nombreOriginal: solicitud.nombreOriginal, plataforma: opciones.plataforma, modo: opciones.modo, mejorarAudio: opciones.mejorarAudio, modoAudio: opciones.modoAudio, crearTranscripcion: opciones.crearTranscripcion, edicionDinamica: opciones.edicionDinamica, intensidadEdicion: opciones.intensidadEdicion }));
 
     const entrada = await procesarEntrada({ archivoTemporal: solicitud.archivoTemporal, nombreOriginal: solicitud.nombreOriginal, nombreTemporal: solicitud.nombreTemporal || null, opciones });
     validarResultadoEtapa('entrada', entrada);
@@ -98,11 +109,11 @@ export async function ejecutarFlujoPrincipal(solicitud) {
 
     const edicionDinamica = await procesarEdicionDinamica({ entrada, entendimiento, audio, transcripcion, opciones });
     validarResultadoEtapa('edicion-dinamica', edicionDinamica);
-    historial.push(crearRegistroHistorial('edicion-dinamica', edicionDinamica.diagnostico?.mensaje || edicionDinamica.motivo || 'Etapa de edición dinámica completada.', { activo: Boolean(edicionDinamica.activo), omitido: Boolean(edicionDinamica.omitido), videoDinamico: edicionDinamica.videoDinamico || null, cortesAplicados: edicionDinamica.diagnostico?.resumen?.cortesAplicados || edicionDinamica.diagnostico?.cortesAplicados || 0, tieneMapaTiempo: Boolean(edicionDinamica.mapaTiempo) }));
+    historial.push(crearRegistroHistorial('edicion-dinamica', edicionDinamica.diagnostico?.mensaje || edicionDinamica.motivo || 'Etapa de edición dinámica completada.', { activo: Boolean(edicionDinamica.activo), omitido: Boolean(edicionDinamica.omitido), videoDinamico: edicionDinamica.videoDinamico || null, cortesAplicados: edicionDinamica.cortes?.resumen?.cantidadCortesAplicados || 0, segundosEliminados: edicionDinamica.cortes?.resumen?.segundosEliminados || 0, tieneMapaTiempo: Boolean(edicionDinamica.mapaTiempo) }));
 
     const edicion = await editarVideo({ entrada, entendimiento, audio, transcripcion, edicionDinamica, opciones });
     validarResultadoEtapa('editar', edicion);
-    historial.push(crearRegistroHistorial('editar', 'Plan de edición generado correctamente.', { tipo: edicion.tipo || null, modo: edicion.modo || opciones.modo, formato: edicion.salida?.formato || null, filtroVideo: edicion.render?.filtroVideo || null, capasTranscripcionAplicadas: Boolean(edicion.transcripcion?.capasAplicadas), edicionDinamicaRecibida: Boolean(edicion.edicionDinamica?.recibida) }));
+    historial.push(crearRegistroHistorial('editar', 'Plan de edición generado correctamente.', { tipo: edicion.tipo || null, modo: edicion.modo || opciones.modo, formato: edicion.salida?.formato || null, filtroVideo: edicion.render?.filtroVideo || null, capasTranscripcionAplicadas: Boolean(edicion.transcripcion?.capasAplicadas), visualDinamicoAplicado: Boolean(edicion.visualDinamico && !edicion.visualDinamico.omitido), sonidosAplicados: Boolean(edicion.sonidos && !edicion.sonidos.omitido) }));
 
     const salida = await prepararSalida({ entrada, entendimiento, audio, edicion, opciones });
     validarResultadoEtapa('salida', salida);
