@@ -1,8 +1,10 @@
 import { inicializarGeminiPopup, obtenerConfiguracionGemini, bloquearControlesGemini } from './gemini-popup.js';
 import { inicializarTranscripcionUI, obtenerOpcionesTranscripcion, bloquearControlesTranscripcion } from './transcripcion-ui.js';
 import { obtenerResumenAudio, obtenerResumenTranscripcion } from './resultado-resumen.js';
+import { obtenerResumenEdicionDinamica } from './resultado-edicion-dinamica.js';
 import { crearMensajesProceso } from './progreso-mensajes.js';
 import { validarVideoSeleccionado } from './validar-formulario.js';
+import { obtenerOpcionesEdicionAutomatica, aplicarModoAutomaticoVisual } from './edicion-automatica-ui.js';
 
 const elementos = {
   serverStatus: document.getElementById('serverStatus'),
@@ -20,6 +22,7 @@ const elementos = {
   audioMode: document.getElementById('audioMode'),
   platformInput: document.getElementById('platformInput'),
   modeInput: document.getElementById('modeInput'),
+  editingSummary: document.getElementById('editingSummary'),
   audioSummary: document.getElementById('audioSummary'),
   transcriptionSummary: document.getElementById('transcriptionSummary')
 };
@@ -73,6 +76,8 @@ function reiniciarResultado() {
   elementos.resultVideo.load();
   elementos.downloadLink.hidden = true;
   elementos.downloadLink.removeAttribute('href');
+  elementos.editingSummary.hidden = true;
+  elementos.editingSummary.textContent = '';
   elementos.audioSummary.hidden = true;
   elementos.audioSummary.textContent = '';
   elementos.transcriptionSummary.hidden = true;
@@ -86,7 +91,7 @@ function bloquearFormulario(bloquear) {
   elementos.audioMode.disabled = bloquear;
   bloquearControlesTranscripcion(bloquear);
   bloquearControlesGemini(bloquear);
-  elementos.processButton.textContent = bloquear ? 'Procesando...' : 'Procesar video';
+  elementos.processButton.textContent = bloquear ? 'Editando automáticamente...' : 'Procesar automáticamente';
 }
 
 async function obtenerBaseApi() {
@@ -158,7 +163,7 @@ function registrarCambioDeArchivo() {
   }
   const pesoMb = archivo.size / (1024 * 1024);
   elementos.fileName.textContent = `${archivo.name} · ${pesoMb.toFixed(1)} MB`;
-  mostrarMensaje('Video seleccionado. Puedes procesarlo cuando quieras.', 'normal');
+  mostrarMensaje('Video seleccionado. Presiona Procesar automáticamente.', 'normal');
 }
 
 function agregarOpcionesAFormulario(formulario, opciones) {
@@ -176,13 +181,23 @@ function crearFormularioProcesamiento() {
   formulario.append('modoAudio', elementos.audioMode.value || 'limpieza-simple');
   agregarOpcionesAFormulario(formulario, obtenerOpcionesTranscripcion());
   agregarOpcionesAFormulario(formulario, obtenerConfiguracionGemini());
+  agregarOpcionesAFormulario(formulario, obtenerOpcionesEdicionAutomatica());
   return formulario;
 }
 
 function iniciarMensajesDeProceso() {
   const opcionesTranscripcion = obtenerOpcionesTranscripcion();
   const opcionesGemini = obtenerConfiguracionGemini();
-  const mensajes = crearMensajesProceso({ mejorarAudio: elementos.improveAudio.checked, crearTranscripcion: opcionesTranscripcion.crearTranscripcion === 'true', agregarSubtitulos: opcionesTranscripcion.agregarSubtitulos === 'true', agregarTextosFlotantes: opcionesTranscripcion.agregarTextosFlotantes === 'true', usarGemini: Boolean(opcionesGemini.usarGemini) });
+  const opcionesAuto = obtenerOpcionesEdicionAutomatica();
+  const mensajes = crearMensajesProceso({
+    mejorarAudio: elementos.improveAudio.checked,
+    crearTranscripcion: opcionesTranscripcion.crearTranscripcion === 'true',
+    agregarSubtitulos: opcionesTranscripcion.agregarSubtitulos === 'true',
+    agregarTextosFlotantes: opcionesTranscripcion.agregarTextosFlotantes === 'true',
+    usarGemini: Boolean(opcionesGemini.usarGemini),
+    edicionDinamica: opcionesAuto.edicionDinamica === 'true',
+    agregarSonidosEdicion: opcionesAuto.agregarSonidosEdicion === 'true'
+  });
   let indice = 0;
   mostrarProgreso(mensajes[indice]);
   limpiarTemporizadorEstado();
@@ -196,6 +211,8 @@ function iniciarMensajesDeProceso() {
 async function mostrarResultado(datos) {
   const urlExportada = await crearUrlPublica(datos.resultado?.urlPublica || datos.resultado?.exportUrl || '');
   elementos.resultPanel.hidden = false;
+  elementos.editingSummary.hidden = false;
+  elementos.editingSummary.textContent = obtenerResumenEdicionDinamica(datos);
   elementos.audioSummary.hidden = false;
   elementos.audioSummary.textContent = obtenerResumenAudio(datos, elementos.improveAudio.checked);
   elementos.transcriptionSummary.hidden = false;
@@ -235,8 +252,6 @@ async function procesarFormulario(evento) {
 
 function sincronizarModoAudio() {
   elementos.audioMode.disabled = !elementos.improveAudio.checked;
-  if (!elementos.improveAudio.checked) mostrarMensaje('Mejora de audio desactivada. Se usará el audio original.', 'normal');
-  else mostrarMensaje('Mejora de audio activada. Se limpiará el ruido de fondo.', 'normal');
 }
 
 function iniciarInterfaz() {
@@ -246,6 +261,7 @@ function iniciarInterfaz() {
   reiniciarResultado();
   inicializarGeminiPopup();
   inicializarTranscripcionUI();
+  aplicarModoAutomaticoVisual();
   elementos.videoInput.addEventListener('change', registrarCambioDeArchivo);
   elementos.videoForm.addEventListener('submit', procesarFormulario);
   elementos.improveAudio.addEventListener('change', sincronizarModoAudio);
