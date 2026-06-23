@@ -66,7 +66,7 @@ function normalizarNombreTemporal(nombreOriginal) {
 
 function crearConfiguracionMulter(rutasBase) {
   const almacenamiento = multer.diskStorage({ destination(_req, _file, callback) { asegurarCarpeta(rutasBase.subidas); callback(null, rutasBase.subidas); }, filename(_req, file, callback) { callback(null, normalizarNombreTemporal(file.originalname)); } });
-  return multer({ storage: almacenamiento, limits: { fileSize: 2 * 1024 * 1024 * 1024 }, fileFilter(_req, file, callback) { const tipo = file.mimetype || ''; const extension = path.extname(file.originalname || '').toLowerCase(); const permitidas = new Set(['.mp4', '.mov', '.m4v', '.avi', '.mkv', '.webm']); if (tipo.startsWith('video/') || permitidas.has(extension)) { callback(null, true); return; } callback(new Error('Solo se permiten archivos de video.')); } });
+  return multer({ storage: almacenamiento, limits: { fileSize: 2 * 1024 * 1024 * 1024, fieldSize: 20 * 1024 * 1024, fields: 80, fieldNameSize: 200 }, fileFilter(_req, file, callback) { const tipo = file.mimetype || ''; const extension = path.extname(file.originalname || '').toLowerCase(); const permitidas = new Set(['.mp4', '.mov', '.m4v', '.avi', '.mkv', '.webm']); if (tipo.startsWith('video/') || permitidas.has(extension)) { callback(null, true); return; } callback(new Error('Solo se permiten archivos de video.')); } });
 }
 
 function crearErrorHttp(res, codigo, mensaje, detalle = null) { return res.status(codigo).json({ ok: false, mensaje, detalle, fecha: new Date().toISOString() }); }
@@ -86,7 +86,7 @@ function crearAplicacionExpress({ modoElectron = false } = {}) {
   app.disable('x-powered-by');
   app.use(cors());
   app.use(express.json({ limit: '20mb' }));
-  app.use(express.urlencoded({ extended: true }));
+  app.use(express.urlencoded({ extended: true, limit: '20mb' }));
   app.use(express.static(rutasBase.app, { extensions: ['html'], maxAge: 0, etag: false, lastModified: false, setHeaders: aplicarCabecerasSinCache }));
   app.use('/exports', express.static(rutasBase.videosExportados, { fallthrough: false, maxAge: 0, etag: false, lastModified: false, setHeaders: aplicarCabecerasSinCache }));
   app.get('/api/estado', (_req, res) => { aplicarCabecerasSinCache(res); res.json({ ok: true, app: 'AutoVideoJeff', estado: 'SERVIDOR_ACTIVO', modo: modoElectron ? 'electron' : 'web', predeterminados: { plataforma: PLATAFORMA_PREDETERMINADA, modoVideo: MODO_VIDEO_PREDETERMINADO, modoAudio: MODO_AUDIO_PREDETERMINADO, crearTranscripcion: true, agregarSubtitulos: true, agregarTextosFlotantes: true }, rutas: { raizDatos: rutasBase.raizDatos, videosExportados: rutasBase.videosExportados, audiosMejorados: rutasBase.audiosMejorados }, fecha: new Date().toISOString() }); });
