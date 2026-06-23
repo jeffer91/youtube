@@ -1,5 +1,5 @@
 import fs from 'fs';
-
+import { reportarModulo } from '../progreso/progreso-modulo.js';
 import { crearEdicionTikTokSimple } from './tiktok-simple/tiktok.service.js';
 import { crearEdicionTikTokCuadradoCentro } from './tiktok-cuadrado-centro/tiktok-cuadrado-centro.service.js';
 
@@ -44,36 +44,30 @@ function validarModoTikTok(modo) {
 }
 
 function crearResumenEdicionDinamica(edicionDinamica) {
-  return {
-    recibida: Boolean(edicionDinamica),
-    activa: Boolean(edicionDinamica?.activo),
-    omitida: Boolean(edicionDinamica?.omitido),
-    videoDinamico: edicionDinamica?.videoDinamico || null,
-    tieneMapaTiempo: Boolean(edicionDinamica?.mapaTiempo),
-    tieneTranscripcionAjustada: Boolean(edicionDinamica?.transcripcionAjustada),
-    mensaje: edicionDinamica?.diagnostico?.mensaje || edicionDinamica?.motivo || null
-  };
+  return { recibida: Boolean(edicionDinamica), activa: Boolean(edicionDinamica?.activo), omitida: Boolean(edicionDinamica?.omitido), videoDinamico: edicionDinamica?.videoDinamico || null, tieneMapaTiempo: Boolean(edicionDinamica?.mapaTiempo), tieneTranscripcionAjustada: Boolean(edicionDinamica?.transcripcionAjustada), mensaje: edicionDinamica?.diagnostico?.mensaje || edicionDinamica?.motivo || null };
 }
 
-async function editarTikTok({ entrada, entendimiento, audio = null, transcripcion = null, edicionDinamica = null, opciones, modo, plataforma }) {
+async function editarTikTok({ entrada, entendimiento, audio = null, transcripcion = null, edicionDinamica = null, opciones, modo, plataforma, progreso = null }) {
   validarModoTikTok(modo);
   const opcionesFinales = { ...opciones, plataforma, modo, edicionDinamicaActiva: Boolean(edicionDinamica?.activo && !edicionDinamica?.omitido) };
-  const parametros = { entrada, entendimiento, audio, transcripcion, edicionDinamica, opciones: opcionesFinales };
+  const parametros = { entrada, entendimiento, audio, transcripcion, edicionDinamica, opciones: opcionesFinales, progreso };
+
+  await reportarModulo(progreso, { etapa: 'editar', porcentaje: 76, titulo: 'Preparando edición TikTok', detalle: `Modo seleccionado: ${modo}.`, datos: { modo, plataforma }, archivo: 'editar/editar.conexion.js' });
+
   const resultado = modo === MODOS_TIKTOK.SIMPLE
     ? await crearEdicionTikTokSimple(parametros)
     : await crearEdicionTikTokCuadradoCentro(parametros);
 
-  return {
-    ...resultado,
-    edicionDinamica: crearResumenEdicionDinamica(edicionDinamica)
-  };
+  await reportarModulo(progreso, { etapa: 'editar', porcentaje: 91, titulo: 'Plan de edición generado', detalle: `${resultado.tipo || 'edición'} lista para exportar.`, datos: { tipo: resultado.tipo, modo: resultado.modo, sonidos: Boolean(resultado.sonidos && !resultado.sonidos.omitido), visual: Boolean(resultado.visualDinamico && !resultado.visualDinamico.omitido) }, archivo: 'editar/editar.conexion.js' });
+
+  return { ...resultado, edicionDinamica: crearResumenEdicionDinamica(edicionDinamica) };
 }
 
-export async function editarVideo({ entrada, entendimiento, audio = null, transcripcion = null, edicionDinamica = null, opciones = {} }) {
+export async function editarVideo({ entrada, entendimiento, audio = null, transcripcion = null, edicionDinamica = null, opciones = {}, progreso = null }) {
   validarEntradaParaEditar(entrada);
   validarEntendimiento(entendimiento);
   const plataforma = normalizarPlataforma(opciones, entrada);
   const modo = normalizarModo(opciones, entrada);
   if (plataforma !== 'tiktok') throw new Error(`Esta versión solo admite TikTok. Plataforma indicada: ${plataforma}`);
-  return await editarTikTok({ entrada, entendimiento, audio, transcripcion, edicionDinamica, opciones, modo, plataforma });
+  return await editarTikTok({ entrada, entendimiento, audio, transcripcion, edicionDinamica, opciones, modo, plataforma, progreso });
 }
