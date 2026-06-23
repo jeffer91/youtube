@@ -215,22 +215,10 @@ async function mostrarResultado(datos) {
 
 function construirErrorParaModal(datos, respaldoMensaje) {
   if (datos?.diagnostico) {
-    return {
-      titulo: 'Fallo en diagnóstico',
-      etapa: 'diagnostico',
-      detalle: datos.mensaje || datos.diagnostico.mensaje || respaldoMensaje,
-      archivo: 'diagnostico/diagnostico-automatico.service.js',
-      recomendacion: 'Revisar diagnóstico automático antes de procesar el video.'
-    };
+    return { titulo: 'Fallo en diagnóstico', etapa: 'diagnostico', detalle: datos.mensaje || datos.diagnostico.mensaje || respaldoMensaje, archivo: 'diagnostico/diagnostico-automatico.service.js', recomendacion: 'Revisar diagnóstico automático antes de procesar el video.' };
   }
 
-  return {
-    titulo: 'Fallo de edición',
-    etapa: 'servidor',
-    detalle: datos?.mensaje || respaldoMensaje || 'No se pudo procesar el video.',
-    archivo: 'server.js',
-    recomendacion: 'Revisar el historial de progreso y el error del servidor.'
-  };
+  return { titulo: 'Fallo de edición', etapa: 'servidor', detalle: datos?.mensaje || respaldoMensaje || 'No se pudo procesar el video.', archivo: 'server.js', recomendacion: 'Revisar el historial de progreso y el error del servidor.' };
 }
 
 async function procesarFormulario(evento) {
@@ -240,6 +228,7 @@ async function procesarFormulario(evento) {
   cerrarProgresoActual();
 
   const jobId = crearJobIdFrontend();
+  let modalErrorMostrado = false;
 
   try {
     const formulario = crearFormularioProcesamiento(jobId);
@@ -252,6 +241,7 @@ async function procesarFormulario(evento) {
       const resumenDiagnostico = datos?.diagnostico ? ` ${obtenerResumenDiagnostico(datos)}` : '';
       const mensaje = `${datos.mensaje || 'No se pudo procesar el video.'}${resumenDiagnostico}`.trim();
       mostrarModalErrorEdicion(construirErrorParaModal(datos, mensaje));
+      modalErrorMostrado = true;
       throw new Error(mensaje);
     }
 
@@ -260,7 +250,7 @@ async function procesarFormulario(evento) {
     mostrarMensaje(datos.mensaje || 'Proceso completado correctamente.', 'ok');
   } catch (error) {
     mostrarMensaje(error.message || 'Ocurrió un error al procesar el video.', 'error');
-    if (!String(error.message || '').includes('Diagnóstico')) {
+    if (!modalErrorMostrado) {
       mostrarModalErrorEdicion({ titulo: 'Fallo de edición', etapa: 'app', detalle: error.message || 'Ocurrió un error al procesar el video.', archivo: 'app/app.js', recomendacion: 'Revisar la conexión con el servidor y el historial de progreso.' });
     }
     console.error('Error al procesar video:', error);
