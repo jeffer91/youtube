@@ -2,6 +2,7 @@ import { inicializarGeminiPopup, obtenerConfiguracionGemini, bloquearControlesGe
 import { inicializarTranscripcionUI, obtenerOpcionesTranscripcion, bloquearControlesTranscripcion } from './transcripcion-ui.js';
 import { obtenerResumenAudio, obtenerResumenTranscripcion } from './resultado-resumen.js';
 import { obtenerResumenEdicionDinamica } from './resultado-edicion-dinamica.js';
+import { obtenerResumenDiagnostico, actualizarEstadoDiagnosticoEnServidor } from './diagnostico-ui.js';
 import { crearMensajesProceso } from './progreso-mensajes.js';
 import { validarVideoSeleccionado } from './validar-formulario.js';
 import { obtenerOpcionesEdicionAutomatica, aplicarModoAutomaticoVisual } from './edicion-automatica-ui.js';
@@ -145,7 +146,7 @@ async function verificarServidor() {
     const respuesta = await fetch(await crearUrlApi('/api/estado'), { method: 'GET' });
     const datos = await leerRespuestaJsonSegura(respuesta);
     if (!respuesta.ok || !datos.ok) throw new Error(datos.mensaje || 'Servidor no disponible.');
-    actualizarEstadoServidor(true, 'Servidor activo');
+    actualizarEstadoDiagnosticoEnServidor(elementos.serverStatus, datos);
   } catch (error) {
     actualizarEstadoServidor(false, 'Servidor no disponible');
     mostrarMensaje(`No se pudo conectar con el servidor local: ${error.message}`, 'error');
@@ -236,7 +237,10 @@ async function procesarFormulario(evento) {
     iniciarMensajesDeProceso();
     const respuesta = await fetch(await crearUrlApi('/api/procesar-video'), { method: 'POST', body: formulario });
     const datos = await leerRespuestaJsonSegura(respuesta);
-    if (!respuesta.ok || !datos.ok) throw new Error(datos.mensaje || 'No se pudo procesar el video.');
+    if (!respuesta.ok || !datos.ok) {
+      const resumenDiagnostico = datos?.diagnostico ? ` ${obtenerResumenDiagnostico(datos)}` : '';
+      throw new Error(`${datos.mensaje || 'No se pudo procesar el video.'}${resumenDiagnostico}`.trim());
+    }
     limpiarTemporizadorEstado();
     mostrarProgreso('Video listo.');
     await mostrarResultado(datos);
