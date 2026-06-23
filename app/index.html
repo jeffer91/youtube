@@ -74,7 +74,24 @@
         <button id="processButton" class="primary-button" type="submit">Procesar automáticamente</button>
       </form>
 
-      <section id="progressArea" class="progress-area" hidden><div class="progress-loader"></div><p id="progressText">Esperando video.</p></section>
+      <section id="progressArea" class="progress-area" hidden>
+        <div class="progress-topline">
+          <div>
+            <p class="eyebrow">Progreso real</p>
+            <h2 id="progressTitle">Esperando video</h2>
+          </div>
+          <strong id="progressPercent">0%</strong>
+        </div>
+        <div class="progress-track" aria-label="Barra de progreso de edición">
+          <div id="progressBar" class="progress-bar" style="width: 0%;"></div>
+        </div>
+        <div class="progress-status-row">
+          <div class="progress-loader"></div>
+          <p id="progressText">Esperando video.</p>
+        </div>
+        <ol id="progressHistory" class="progress-history"></ol>
+      </section>
+
       <section id="messageBox" class="message-box" hidden></section>
 
       <section id="resultPanel" class="result-panel" hidden>
@@ -86,6 +103,18 @@
       </section>
     </section>
   </main>
+
+  <section id="errorModal" class="modal-backdrop" hidden>
+    <div class="modal-card error-modal-card" role="dialog" aria-modal="true" aria-labelledby="errorModalTitle">
+      <div class="modal-header"><div><p class="eyebrow">Error de edición</p><h2 id="errorModalTitle">Fallo de edición</h2></div><button id="closeErrorModal" class="icon-button" type="button" aria-label="Cerrar">×</button></div>
+      <div class="error-detail-box">
+        <p id="errorModalStage">Etapa: no identificada</p>
+        <p id="errorModalDetail">No se recibió detalle del error.</p>
+        <p id="errorModalFile">Archivo sugerido: no identificado</p>
+        <p id="errorModalRecommendation">Revisa el historial de edición para ubicar el problema.</p>
+      </div>
+    </div>
+  </section>
 
   <section id="geminiModal" class="modal-backdrop" hidden>
     <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="geminiModalTitle">
