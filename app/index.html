@@ -1,19 +1,3 @@
-<!--
-  Nombre completo: index.html
-  Ruta o ubicación: AutoVideoJeff/app/index.html
-  Función o funciones:
-    - Mostrar la pantalla principal de AutoVideoJeff.
-    - Permitir seleccionar un video desde la computadora.
-    - Activar o desactivar la mejora de audio.
-    - Ejecutar edición TikTok cuadrado centro.
-    - Mostrar estado, errores y resultado exportado cuando exista.
-  Con qué se conecta:
-    - app/app.js
-    - app/styles.css
-    - server.js
-    - /api/procesar-video
--->
-
 <!doctype html>
 <html lang="es">
 <head>
@@ -22,7 +6,6 @@
   <title>AutoVideoJeff</title>
   <link rel="stylesheet" href="./styles.css" />
 </head>
-
 <body>
   <main class="app-shell">
     <section class="hero-card">
@@ -30,129 +13,64 @@
         <div>
           <p class="eyebrow">Editor automático modular</p>
           <h1>AutoVideoJeff</h1>
-          <p class="hero-description">
-            Sube un video, limpia el audio y genera una versión TikTok 9:16 con contenido cuadrado centrado.
-          </p>
+          <p class="hero-description">Sube un video, limpia el audio, genera subtítulos y crea textos flotantes con ayuda de Gemini o fallback local.</p>
         </div>
-
-        <div id="serverStatus" class="server-status server-status--checking">
-          Verificando servidor
-        </div>
+        <div id="serverStatus" class="server-status server-status--checking">Verificando servidor</div>
       </div>
-
       <form id="videoForm" class="video-form">
         <section class="form-section">
-          <label class="file-picker" for="videoInput">
-            <span class="file-picker__icon">🎬</span>
-            <span class="file-picker__title">Seleccionar video</span>
-            <span class="file-picker__hint">MP4, MOV, WEBM, MKV o AVI</span>
-          </label>
-
-          <input
-            id="videoInput"
-            class="file-input"
-            name="video"
-            type="file"
-            accept="video/*,.mp4,.mov,.m4v,.avi,.mkv,.webm"
-            required
-          />
-
-          <p id="fileName" class="file-name">
-            Ningún video seleccionado.
-          </p>
+          <label class="file-picker" for="videoInput"><span class="file-picker__icon">🎬</span><span class="file-picker__title">Seleccionar video</span><span class="file-picker__hint">MP4, MOV, WEBM, MKV o AVI</span></label>
+          <input id="videoInput" class="file-input" name="video" type="file" accept="video/*,.mp4,.mov,.m4v,.avi,.mkv,.webm" required />
+          <p id="fileName" class="file-name">Ningún video seleccionado.</p>
         </section>
-
         <section class="form-section options-card">
-          <div class="options-header">
-            <div>
-              <h2>Audio</h2>
-              <p>Función independiente para limpiar ruido y mejorar nitidez de voz.</p>
-            </div>
-          </div>
-
-          <label class="toggle-row" for="improveAudio">
-            <input
-              id="improveAudio"
-              name="mejorarAudio"
-              type="checkbox"
-              checked
-            />
-            <span>
-              <strong>Mejorar audio automáticamente</strong>
-              <small>Reduce ruido de fondo, normaliza volumen y mejora claridad.</small>
-            </span>
-          </label>
-
-          <label class="select-row" for="audioMode">
-            <span>Modo de audio</span>
-            <select id="audioMode" name="modoAudio">
-              <option value="limpieza-simple" selected>Limpieza simple</option>
-            </select>
-          </label>
+          <div class="options-header"><div><h2>Audio</h2><p>Función independiente para limpiar ruido y mejorar nitidez de voz.</p></div></div>
+          <label class="toggle-row" for="improveAudio"><input id="improveAudio" name="mejorarAudio" type="checkbox" checked /><span><strong>Mejorar audio automáticamente</strong><small>Reduce ruido de fondo, normaliza volumen y mejora claridad.</small></span></label>
+          <label class="select-row" for="audioMode"><span>Modo de audio</span><select id="audioMode" name="modoAudio"><option value="limpieza-simple" selected>Limpieza simple</option></select></label>
         </section>
-
         <section class="form-section options-card">
-          <div class="options-header">
-            <div>
-              <h2>Video</h2>
-              <p>
-                Módulo activo: TikTok cuadrado centro. Recorta el centro, escala a 1080x1080
-                y agrega bandas negras arriba y abajo dentro de un lienzo 1080x1920.
-              </p>
-            </div>
-          </div>
-
+          <div class="options-header"><div><h2>Transcripción, subtítulos y textos</h2><p>Genera subtítulos y textos flotantes desde una transcripción manual o futura transcripción automática.</p></div><button id="openGeminiButton" class="secondary-button" type="button">Configurar Gemini</button></div>
+          <label class="toggle-row" for="createTranscription"><input id="createTranscription" name="crearTranscripcion" type="checkbox" checked /><span><strong>Crear transcripción</strong><small>En esta fase puedes pegar la transcripción manual. Luego se conectará motor automático.</small></span></label>
+          <label class="toggle-row" for="addSubtitles"><input id="addSubtitles" name="agregarSubtitulos" type="checkbox" checked /><span><strong>Agregar subtítulos bonitos</strong><small>Genera subtítulos ASS para quemarlos en el video final.</small></span></label>
+          <label class="toggle-row" for="addFloatingTexts"><input id="addFloatingTexts" name="agregarTextosFlotantes" type="checkbox" checked /><span><strong>Agregar textos flotantes</strong><small>Gemini o fallback local detecta los momentos más importantes.</small></span></label>
+          <label class="select-row" for="transcriptionLanguage"><span>Idioma</span><select id="transcriptionLanguage" name="idiomaTranscripcion"><option value="es" selected>Español</option><option value="auto">Automático</option><option value="en">Inglés</option></select></label>
+          <label class="select-row" for="subtitleStyle"><span>Estilo subtítulos</span><select id="subtitleStyle" name="estiloSubtitulos"><option value="tiktok-profesional" selected>TikTok profesional</option><option value="elegante">Elegante</option><option value="minimalista">Minimalista</option><option value="alto-contraste">Alto contraste</option></select></label>
+          <label class="select-row" for="floatingTextStyle"><span>Estilo textos flotantes</span><select id="floatingTextStyle" name="estiloTextosFlotantes"><option value="badge" selected>Badge</option><option value="impacto">Impacto</option><option value="elegante">Elegante</option><option value="alerta">Alerta</option></select></label>
+          <label class="select-row" for="maxFloatingTexts"><span>Máximo textos flotantes</span><input id="maxFloatingTexts" name="maxTextosFlotantes" type="number" min="1" max="12" value="6" /></label>
+          <label class="textarea-row" for="manualTranscriptText"><span>Transcripción manual</span><textarea id="manualTranscriptText" name="textoTranscripcionManual" rows="6" placeholder="Pega aquí la transcripción del video. Si la dejas vacía, el módulo se omitirá hasta conectar motor automático."></textarea></label>
+          <p id="geminiSettingsSummary" class="mini-summary">Gemini desactivado · Se usará fallback local</p>
+        </section>
+        <section class="form-section options-card">
+          <div class="options-header"><div><h2>Video</h2><p>Módulo activo: TikTok cuadrado centro. Recorta el centro, escala a 1080x1080 y agrega bandas negras arriba y abajo dentro de un lienzo 1080x1920.</p></div></div>
           <input type="hidden" id="platformInput" name="plataforma" value="tiktok" />
           <input type="hidden" id="modeInput" name="modo" value="cuadrado-centro" />
-
-          <div class="static-option">
-            <span>Formato</span>
-            <strong>TikTok cuadrado centro</strong>
-          </div>
-
-          <div class="static-option">
-            <span>Modo interno</span>
-            <strong>cuadrado-centro</strong>
-          </div>
+          <div class="static-option"><span>Formato</span><strong>TikTok cuadrado centro</strong></div>
+          <div class="static-option"><span>Modo interno</span><strong>cuadrado-centro</strong></div>
         </section>
-
-        <button id="processButton" class="primary-button" type="submit">
-          Procesar video
-        </button>
+        <button id="processButton" class="primary-button" type="submit">Procesar video</button>
       </form>
-
-      <section id="progressArea" class="progress-area" hidden>
-        <div class="progress-loader"></div>
-        <p id="progressText">Esperando video.</p>
-      </section>
-
+      <section id="progressArea" class="progress-area" hidden><div class="progress-loader"></div><p id="progressText">Esperando video.</p></section>
       <section id="messageBox" class="message-box" hidden></section>
-
       <section id="resultPanel" class="result-panel" hidden>
-        <div class="result-header">
-          <div>
-            <p class="eyebrow">Resultado</p>
-            <h2>Video exportado</h2>
-          </div>
-
-          <a id="downloadLink" class="download-link" href="#" download hidden>
-            Descargar video
-          </a>
-        </div>
-
+        <div class="result-header"><div><p class="eyebrow">Resultado</p><h2>Video exportado</h2></div><a id="downloadLink" class="download-link" href="#" download hidden>Descargar video</a></div>
         <p id="audioSummary" class="audio-summary" hidden></p>
-
-        <video
-          id="resultVideo"
-          class="result-video"
-          controls
-          playsinline
-          hidden
-        ></video>
+        <p id="transcriptionSummary" class="transcription-summary" hidden></p>
+        <video id="resultVideo" class="result-video" controls playsinline hidden></video>
       </section>
     </section>
   </main>
-
+  <section id="geminiModal" class="modal-backdrop" hidden>
+    <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="geminiModalTitle">
+      <div class="modal-header"><div><p class="eyebrow">Configuración</p><h2 id="geminiModalTitle">Gemini para textos flotantes</h2></div><button id="closeGeminiModal" class="icon-button" type="button" aria-label="Cerrar">×</button></div>
+      <label class="toggle-row" for="useGemini"><input id="useGemini" type="checkbox" /><span><strong>Usar Gemini</strong><small>Analiza la transcripción y decide los textos flotantes importantes.</small></span></label>
+      <label class="toggle-row" for="useFallbackGemini"><input id="useFallbackGemini" type="checkbox" checked /><span><strong>Usar fallback local si Gemini falla</strong><small>El video no se detiene si no hay conexión o respuesta válida.</small></span></label>
+      <label class="textarea-row" for="geminiCredencial"><span>Credencial Gemini</span><input id="geminiCredencial" type="password" autocomplete="off" placeholder="Pega aquí tu credencial" /></label>
+      <label class="select-row" for="geminiModelo"><span>Modelo</span><input id="geminiModelo" type="text" value="gemini-1.5-flash" /></label>
+      <label class="textarea-row" for="geminiGuia"><span>Guía para Gemini</span><textarea id="geminiGuia" rows="5"></textarea></label>
+      <div class="modal-grid"><label class="select-row" for="geminiTemperatura"><span>Temperatura</span><input id="geminiTemperatura" type="number" min="0" max="1" step="0.05" value="0.35" /></label><label class="select-row" for="geminiTimeoutMs"><span>Tiempo espera ms</span><input id="geminiTimeoutMs" type="number" min="10000" max="180000" step="1000" value="60000" /></label></div>
+      <button id="saveGeminiSettings" class="primary-button" type="button">Guardar configuración</button>
+    </div>
+  </section>
   <script type="module" src="./app.js"></script>
 </body>
 </html>
