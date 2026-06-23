@@ -19,8 +19,8 @@ function convertirBooleano(valor, valorPorDefecto = true) {
   if (typeof valor === 'boolean') return valor;
   if (typeof valor === 'string') {
     const limpio = valor.trim().toLowerCase();
-    if (['true', '1', 'si', 'sí', 'yes', 'on'].includes(limpio)) return true;
-    if (['false', '0', 'no', 'off'].includes(limpio)) return false;
+    if (['true', '1', 'si', 'sí', 'yes', 'on', 'activo', 'activado'].includes(limpio)) return true;
+    if (['false', '0', 'no', 'off', 'inactivo', 'desactivado'].includes(limpio)) return false;
   }
   return valorPorDefecto;
 }
@@ -66,13 +66,53 @@ function normalizarNombreTemporal(nombreOriginal) {
 
 function crearConfiguracionMulter(rutasBase) {
   const almacenamiento = multer.diskStorage({ destination(_req, _file, callback) { asegurarCarpeta(rutasBase.subidas); callback(null, rutasBase.subidas); }, filename(_req, file, callback) { callback(null, normalizarNombreTemporal(file.originalname)); } });
-  return multer({ storage: almacenamiento, limits: { fileSize: 2 * 1024 * 1024 * 1024, fieldSize: 20 * 1024 * 1024, fields: 80, fieldNameSize: 200 }, fileFilter(_req, file, callback) { const tipo = file.mimetype || ''; const extension = path.extname(file.originalname || '').toLowerCase(); const permitidas = new Set(['.mp4', '.mov', '.m4v', '.avi', '.mkv', '.webm']); if (tipo.startsWith('video/') || permitidas.has(extension)) { callback(null, true); return; } callback(new Error('Solo se permiten archivos de video.')); } });
+  return multer({ storage: almacenamiento, limits: { fileSize: 2 * 1024 * 1024 * 1024, fieldSize: 20 * 1024 * 1024, fields: 120, fieldNameSize: 220 }, fileFilter(_req, file, callback) { const tipo = file.mimetype || ''; const extension = path.extname(file.originalname || '').toLowerCase(); const permitidas = new Set(['.mp4', '.mov', '.m4v', '.avi', '.mkv', '.webm']); if (tipo.startsWith('video/') || permitidas.has(extension)) { callback(null, true); return; } callback(new Error('Solo se permiten archivos de video.')); } });
 }
 
 function crearErrorHttp(res, codigo, mensaje, detalle = null) { return res.status(codigo).json({ ok: false, mensaje, detalle, fecha: new Date().toISOString() }); }
 
 function normalizarOpcionesDesdeBody(body = {}) {
-  return { plataforma: normalizarPlataforma(body.plataforma), modo: normalizarModoVideo(body.modo), mejorarAudio: convertirBooleano(body.mejorarAudio, true), modoAudio: normalizarModoAudio(body.modoAudio), crearTranscripcion: convertirBooleano(body.crearTranscripcion, true), modoTranscripcion: normalizarTexto(body.modoTranscripcion, 'manual'), idiomaTranscripcion: normalizarTexto(body.idiomaTranscripcion, 'es'), textoTranscripcionManual: normalizarTexto(body.textoTranscripcionManual, ''), agregarSubtitulos: convertirBooleano(body.agregarSubtitulos, true), estiloSubtitulos: normalizarTexto(body.estiloSubtitulos, 'tiktok-profesional'), agregarTextosFlotantes: convertirBooleano(body.agregarTextosFlotantes, true), estiloTextosFlotantes: normalizarTexto(body.estiloTextosFlotantes, 'badge'), maxTextosFlotantes: normalizarNumero(body.maxTextosFlotantes, 6, 1, 12), usarGemini: convertirBooleano(body.usarGemini, false), usarFallbackGemini: convertirBooleano(body.usarFallbackGemini, true), geminiCredencial: normalizarTexto(body.geminiCredencial, ''), geminiModelo: normalizarTexto(body.geminiModelo, 'gemini-1.5-flash'), geminiGuia: normalizarTexto(body.geminiGuia, ''), geminiTemperatura: normalizarNumero(body.geminiTemperatura, 0.35, 0, 1), geminiTimeoutMs: normalizarNumero(body.geminiTimeoutMs, 60000, 10000, 180000) };
+  const opciones = {
+    plataforma: normalizarPlataforma(body.plataforma),
+    modo: normalizarModoVideo(body.modo),
+    mejorarAudio: convertirBooleano(body.mejorarAudio, true),
+    modoAudio: normalizarModoAudio(body.modoAudio),
+    crearTranscripcion: convertirBooleano(body.crearTranscripcion, true),
+    modoTranscripcion: normalizarTexto(body.modoTranscripcion, 'manual'),
+    idiomaTranscripcion: normalizarTexto(body.idiomaTranscripcion, 'es'),
+    textoTranscripcionManual: normalizarTexto(body.textoTranscripcionManual, ''),
+    agregarSubtitulos: convertirBooleano(body.agregarSubtitulos, true),
+    estiloSubtitulos: normalizarTexto(body.estiloSubtitulos, 'tiktok-profesional'),
+    agregarTextosFlotantes: convertirBooleano(body.agregarTextosFlotantes, true),
+    estiloTextosFlotantes: normalizarTexto(body.estiloTextosFlotantes, 'badge'),
+    maxTextosFlotantes: normalizarNumero(body.maxTextosFlotantes, 6, 1, 12),
+    usarGemini: convertirBooleano(body.usarGemini, false),
+    usarFallbackGemini: convertirBooleano(body.usarFallbackGemini, true),
+    geminiCredencial: normalizarTexto(body.geminiCredencial, ''),
+    geminiModelo: normalizarTexto(body.geminiModelo, 'gemini-1.5-flash'),
+    geminiGuia: normalizarTexto(body.geminiGuia, ''),
+    geminiTemperatura: normalizarNumero(body.geminiTemperatura, 0.35, 0, 1),
+    geminiTimeoutMs: normalizarNumero(body.geminiTimeoutMs, 60000, 10000, 180000),
+    edicionDinamica: convertirBooleano(body.edicionDinamica ?? body.activarEdicionDinamica ?? body.usarEdicionDinamica, true),
+    activarEdicionDinamica: true,
+    usarEdicionDinamica: true,
+    cortarSilencios: convertirBooleano(body.cortarSilencios, true),
+    modoSeguroEdicionDinamica: convertirBooleano(body.modoSeguroEdicionDinamica, true),
+    intensidadEdicion: normalizarTexto(body.intensidadEdicion || body.modoEdicionDinamica, 'automatica'),
+    modoEdicionDinamica: normalizarTexto(body.modoEdicionDinamica || body.intensidadEdicion, 'automatica'),
+    agregarEfectosVisualesDinamicos: convertirBooleano(body.agregarEfectosVisualesDinamicos, true),
+    agregarZooms: convertirBooleano(body.agregarZooms, true),
+    agregarPunchIn: convertirBooleano(body.agregarPunchIn, true),
+    agregarBarraProgreso: convertirBooleano(body.agregarBarraProgreso, true),
+    agregarEtiquetasVisuales: convertirBooleano(body.agregarEtiquetasVisuales, true),
+    agregarSonidosEdicion: convertirBooleano(body.agregarSonidosEdicion, true),
+    modoSonidosEdicion: normalizarTexto(body.modoSonidosEdicion, 'normal'),
+    volumenSonidosEdicion: normalizarNumero(body.volumenSonidosEdicion, 0.24, 0.04, 0.48),
+    separacionMinimaSonidos: normalizarNumero(body.separacionMinimaSonidos, 1.2, 0.5, 4),
+    cantidadMaximaSonidos: Math.round(normalizarNumero(body.cantidadMaximaSonidos, 16, 1, 32))
+  };
+
+  return opciones;
 }
 
 async function eliminarTemporalSiExiste(rutaTemporal) { if (!rutaTemporal) return; try { if (fs.existsSync(rutaTemporal)) await fs.promises.unlink(rutaTemporal); } catch (error) { console.warn('[Servidor] No se pudo eliminar temporal:', error.message); } }
@@ -89,7 +129,7 @@ function crearAplicacionExpress({ modoElectron = false } = {}) {
   app.use(express.urlencoded({ extended: true, limit: '20mb' }));
   app.use(express.static(rutasBase.app, { extensions: ['html'], maxAge: 0, etag: false, lastModified: false, setHeaders: aplicarCabecerasSinCache }));
   app.use('/exports', express.static(rutasBase.videosExportados, { fallthrough: false, maxAge: 0, etag: false, lastModified: false, setHeaders: aplicarCabecerasSinCache }));
-  app.get('/api/estado', (_req, res) => { aplicarCabecerasSinCache(res); res.json({ ok: true, app: 'AutoVideoJeff', estado: 'SERVIDOR_ACTIVO', modo: modoElectron ? 'electron' : 'web', predeterminados: { plataforma: PLATAFORMA_PREDETERMINADA, modoVideo: MODO_VIDEO_PREDETERMINADO, modoAudio: MODO_AUDIO_PREDETERMINADO, crearTranscripcion: true, agregarSubtitulos: true, agregarTextosFlotantes: true }, rutas: { raizDatos: rutasBase.raizDatos, videosExportados: rutasBase.videosExportados, audiosMejorados: rutasBase.audiosMejorados }, fecha: new Date().toISOString() }); });
+  app.get('/api/estado', (_req, res) => { aplicarCabecerasSinCache(res); res.json({ ok: true, app: 'AutoVideoJeff', estado: 'SERVIDOR_ACTIVO', modo: modoElectron ? 'electron' : 'web', predeterminados: { plataforma: PLATAFORMA_PREDETERMINADA, modoVideo: MODO_VIDEO_PREDETERMINADO, modoAudio: MODO_AUDIO_PREDETERMINADO, crearTranscripcion: true, agregarSubtitulos: true, agregarTextosFlotantes: true, edicionDinamica: true, cortarSilencios: true, visualDinamico: true, sonidosEdicion: true, intensidadEdicion: 'automatica' }, rutas: { raizDatos: rutasBase.raizDatos, videosExportados: rutasBase.videosExportados, audiosMejorados: rutasBase.audiosMejorados }, fecha: new Date().toISOString() }); });
   app.post('/api/procesar-video', upload.single('video'), async (req, res) => {
     const archivo = req.file || null;
     try {
@@ -97,7 +137,7 @@ function crearAplicacionExpress({ modoElectron = false } = {}) {
       const opciones = normalizarOpcionesDesdeBody(req.body || {});
       const resultado = await procesarVideoDesdeMotor({ archivoTemporal: archivo.path, nombreOriginal: archivo.originalname, nombreTemporal: archivo.filename, opciones });
       if (!resultado?.ok) return res.status(422).json({ ok: false, mensaje: resultado?.mensaje || 'El video no se pudo procesar.', resultado, fecha: new Date().toISOString() });
-      return res.json({ ok: true, mensaje: resultado.mensaje || 'Video procesado correctamente.', resultado: resultado.resultado, proyecto: resultado.proyecto, video: resultado.video, entendimiento: resultado.entendimiento, audio: resultado.audio, transcripcion: resultado.transcripcion, edicion: resultado.edicion, historial: resultado.historial || [], fecha: new Date().toISOString() });
+      return res.json({ ok: true, mensaje: resultado.mensaje || 'Video procesado correctamente.', resultado: resultado.resultado, proyecto: resultado.proyecto, video: resultado.video, entendimiento: resultado.entendimiento, audio: resultado.audio, transcripcion: resultado.transcripcion, edicionDinamica: resultado.edicionDinamica, edicion: resultado.edicion, historial: resultado.historial || [], fecha: new Date().toISOString() });
     } catch (error) {
       console.error('[Servidor] Error procesando video:', error);
       return crearErrorHttp(res, 500, error?.message || 'Error interno procesando el video.', process.env.NODE_ENV === 'production' ? null : error?.stack || null);
