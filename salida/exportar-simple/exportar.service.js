@@ -14,7 +14,12 @@ function obtenerRutaAudioConSonidos(edicion) {
   return edicion?.render?.rutaAudioConSonidos || edicion?.sonidos?.audioConSonidos || null;
 }
 
-function validarEntradaExportacion({ entrada, edicion, audio }) {
+function obtenerRutaAudioMejoradoSeguro(audio) {
+  if (!audio?.usarAudioMejorado || !audio?.rutaAudioMejorado) return null;
+  return fs.existsSync(audio.rutaAudioMejorado) ? audio.rutaAudioMejorado : null;
+}
+
+function validarEntradaExportacion({ entrada, edicion }) {
   const rutaVideoRender = obtenerRutaVideoRender({ entrada, edicion });
   const rutaAudioConSonidos = obtenerRutaAudioConSonidos(edicion);
 
@@ -27,11 +32,6 @@ function validarEntradaExportacion({ entrada, edicion, audio }) {
 
   if (rutaAudioConSonidos && !fs.existsSync(rutaAudioConSonidos)) {
     throw new Error(`No se puede exportar: no existe el audio con sonidos ${rutaAudioConSonidos}`);
-  }
-
-  if (audio?.usarAudioMejorado && !edicion?.render?.usarAudioDelVideoRender && !rutaAudioConSonidos) {
-    if (!audio.rutaAudioMejorado) throw new Error('No se puede exportar: falta ruta del audio mejorado.');
-    if (!fs.existsSync(audio.rutaAudioMejorado)) throw new Error(`No se puede exportar: no existe el audio mejorado ${audio.rutaAudioMejorado}`);
   }
 }
 
@@ -67,9 +67,7 @@ function obtenerRutaAudioParaExportar({ audio, edicion }) {
   const rutaAudioConSonidos = obtenerRutaAudioConSonidos(edicion);
   if (rutaAudioConSonidos) return rutaAudioConSonidos;
   if (edicion?.render?.usarAudioDelVideoRender) return null;
-  if (!audio || audio.ok !== true) return null;
-  if (audio.usarAudioMejorado && audio.rutaAudioMejorado) return audio.rutaAudioMejorado;
-  return null;
+  return obtenerRutaAudioMejoradoSeguro(audio);
 }
 
 function crearResumenAudioExportado({ audio, rutaAudioExterno, edicion }) {
@@ -87,6 +85,10 @@ function crearResumenAudioExportado({ audio, rutaAudioExterno, edicion }) {
     return { tipo: 'mejorado', modulo: audio?.tipo || 'limpieza-simple', omitido: false, rutaAudioMejorado: rutaAudioExterno, nombreAudioMejorado: audio?.nombreAudioMejorado || path.basename(rutaAudioExterno), mensaje: audio?.mensaje || 'Se usó audio mejorado.' };
   }
 
+  if (audio?.usarAudioMejorado && audio?.rutaAudioMejorado && !fs.existsSync(audio.rutaAudioMejorado)) {
+    return { tipo: 'original', modulo: audio?.tipo || null, omitido: true, rutaAudioMejorado: null, nombreAudioMejorado: null, mensaje: 'Se usó audio original porque el audio mejorado no existe o no está disponible.' };
+  }
+
   return { tipo: 'original', modulo: audio?.tipo || null, omitido: Boolean(audio?.omitido), rutaAudioMejorado: null, nombreAudioMejorado: null, mensaje: audio?.mensaje || 'Se usó el audio original del video.' };
 }
 
@@ -100,7 +102,7 @@ function crearResumenEdicion(edicion) {
 }
 
 export async function exportarVideoSimple({ entrada, entendimiento, audio = null, edicion, opciones = {} }) {
-  validarEntradaExportacion({ entrada, edicion, audio });
+  validarEntradaExportacion({ entrada, edicion });
 
   const raiz = obtenerRutaRaiz();
   const carpetaExportados = path.join(raiz, 'datos', 'videos-exportados');
