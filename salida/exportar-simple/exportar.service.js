@@ -10,8 +10,13 @@ function obtenerRutaVideoRender({ entrada, edicion }) {
   return edicion?.render?.rutaVideoEntrada || edicion?.entrada?.rutaVideoRender || entrada?.video?.rutaOriginal || null;
 }
 
+function obtenerRutaAudioConSonidos(edicion) {
+  return edicion?.render?.rutaAudioConSonidos || edicion?.sonidos?.audioConSonidos || null;
+}
+
 function validarEntradaExportacion({ entrada, edicion, audio }) {
   const rutaVideoRender = obtenerRutaVideoRender({ entrada, edicion });
+  const rutaAudioConSonidos = obtenerRutaAudioConSonidos(edicion);
 
   if (!entrada?.video?.rutaOriginal) throw new Error('No se puede exportar: falta ruta del video original.');
   if (!rutaVideoRender) throw new Error('No se puede exportar: falta ruta del video que se debe renderizar.');
@@ -20,7 +25,11 @@ function validarEntradaExportacion({ entrada, edicion, audio }) {
   if (!edicion?.render?.filtroVideo) throw new Error('No se puede exportar: falta filtro FFmpeg de video.');
   if (!edicion?.salida?.nombreExportado) throw new Error('No se puede exportar: falta nombre del archivo exportado.');
 
-  if (audio?.usarAudioMejorado && !edicion?.render?.usarAudioDelVideoRender) {
+  if (rutaAudioConSonidos && !fs.existsSync(rutaAudioConSonidos)) {
+    throw new Error(`No se puede exportar: no existe el audio con sonidos ${rutaAudioConSonidos}`);
+  }
+
+  if (audio?.usarAudioMejorado && !edicion?.render?.usarAudioDelVideoRender && !rutaAudioConSonidos) {
     if (!audio.rutaAudioMejorado) throw new Error('No se puede exportar: falta ruta del audio mejorado.');
     if (!fs.existsSync(audio.rutaAudioMejorado)) throw new Error(`No se puede exportar: no existe el audio mejorado ${audio.rutaAudioMejorado}`);
   }
@@ -55,6 +64,8 @@ async function validarArchivoExportado(rutaExportada) {
 }
 
 function obtenerRutaAudioParaExportar({ audio, edicion }) {
+  const rutaAudioConSonidos = obtenerRutaAudioConSonidos(edicion);
+  if (rutaAudioConSonidos) return rutaAudioConSonidos;
   if (edicion?.render?.usarAudioDelVideoRender) return null;
   if (!audio || audio.ok !== true) return null;
   if (audio.usarAudioMejorado && audio.rutaAudioMejorado) return audio.rutaAudioMejorado;
@@ -62,8 +73,14 @@ function obtenerRutaAudioParaExportar({ audio, edicion }) {
 }
 
 function crearResumenAudioExportado({ audio, rutaAudioExterno, edicion }) {
+  const rutaAudioConSonidos = obtenerRutaAudioConSonidos(edicion);
+
+  if (rutaAudioConSonidos && rutaAudioExterno === rutaAudioConSonidos) {
+    return { tipo: 'sonidos-edicion', modulo: 'edicion-dinamica-sonidos', omitido: false, rutaAudioMejorado: rutaAudioExterno, nombreAudioMejorado: path.basename(rutaAudioExterno), mensaje: 'Se usó audio mezclado con efectos de sonido.' };
+  }
+
   if (edicion?.render?.usarAudioDelVideoRender) {
-    return { tipo: 'video-render', modulo: 'edicion-dinamica', omitido: false, rutaAudioMejorado: null, nombreAudioMejorado: null, mensaje: 'Se usó el audio integrado en el video dinámico sin silencios.' };
+    return { tipo: 'video-render', modulo: 'edicion-dinamica', omitido: false, rutaAudioMejorado: null, nombreAudioMejorado: null, mensaje: 'Se usó el audio integrado en el video dinámico.' };
   }
 
   if (rutaAudioExterno) {
@@ -79,7 +96,7 @@ function crearNombreResumenSalida(modo) {
 }
 
 function crearResumenEdicion(edicion) {
-  return { tipo: edicion?.tipo || null, plataforma: edicion?.plataforma || null, modo: edicion?.modo || null, preset: edicion?.preset?.nombre || edicion?.presetUsado?.nombre || null, rutaEdicion: edicion?.rutaEdicion || edicion?.salida?.rutaEdicion || null, filtroVideo: edicion?.render?.filtroVideo || null, salida: edicion?.salida || null, composicion: edicion?.composicion || null, videoRender: { rutaVideoEntrada: edicion?.render?.rutaVideoEntrada || edicion?.entrada?.rutaVideoRender || null, origenVideoEntrada: edicion?.render?.origenVideoEntrada || edicion?.entrada?.origenVideoRender || 'original', usarAudioDelVideoRender: Boolean(edicion?.render?.usarAudioDelVideoRender) }, visualDinamico: edicion?.visualDinamico || null, edicionDinamica: edicion?.edicionDinamica || null };
+  return { tipo: edicion?.tipo || null, plataforma: edicion?.plataforma || null, modo: edicion?.modo || null, preset: edicion?.preset?.nombre || edicion?.presetUsado?.nombre || null, rutaEdicion: edicion?.rutaEdicion || edicion?.salida?.rutaEdicion || null, filtroVideo: edicion?.render?.filtroVideo || null, salida: edicion?.salida || null, composicion: edicion?.composicion || null, videoRender: { rutaVideoEntrada: edicion?.render?.rutaVideoEntrada || edicion?.entrada?.rutaVideoRender || null, origenVideoEntrada: edicion?.render?.origenVideoEntrada || edicion?.entrada?.origenVideoRender || 'original', usarAudioDelVideoRender: Boolean(edicion?.render?.usarAudioDelVideoRender) }, visualDinamico: edicion?.visualDinamico || null, sonidos: edicion?.sonidos || null, edicionDinamica: edicion?.edicionDinamica || null };
 }
 
 export async function exportarVideoSimple({ entrada, entendimiento, audio = null, edicion, opciones = {} }) {
