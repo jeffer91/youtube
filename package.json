@@ -1,7 +1,7 @@
 {
   "name": "auto-video-jeff",
-  "version": "0.2.0",
-  "description": "App modular para editar videos automaticamente, con audio, transcripción, subtítulos y textos flotantes.",
+  "version": "0.3.0",
+  "description": "App modular para editar videos automaticamente, con audio, transcripción, subtítulos, textos flotantes, edición dinámica, visuales y sonidos automáticos.",
   "type": "module",
   "main": "main.js",
   "scripts": {
@@ -10,6 +10,7 @@
     "dev": "electron .",
     "server": "node server.js",
     "web": "node server.js",
+    "check:diagnostico": "node scripts/verificar-diagnostico-automatico.js",
     "check:transcripcion": "node scripts/verificar-integracion-transcripcion.js",
     "test:transcripcion-manual": "node scripts/probar-transcripcion-manual.js",
     "test:gemini-fallback": "node scripts/probar-fallback-gemini.js",
@@ -24,7 +25,9 @@
     "electron",
     "transcripcion",
     "subtitulos",
-    "gemini"
+    "gemini",
+    "edicion-dinamica",
+    "automatizacion"
   ],
   "author": "Jefferson Villarreal",
   "license": "MIT",
