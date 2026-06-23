@@ -60,7 +60,7 @@ export function crearEventoError({ jobId, etapa = null, error, detalle = null, a
 
   return {
     jobId,
-    tipo: 'error',
+    tipo: 'fallo',
     estado: 'error',
     etapa: etapaDetectada,
     porcentaje: 100,
