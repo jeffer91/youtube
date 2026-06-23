@@ -2,6 +2,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import { escribirJson, leerJsonSiExiste, normalizarNombreArchivo } from '../../comun/archivos.js';
 import { aplicarCapasTranscripcion } from '../comun/aplicar-capas-transcripcion.js';
+import { procesarVisualDinamico } from '../edicion-dinamica/visual/visual.conexion.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -44,13 +45,28 @@ function crearNombreExportado(entrada) {
   return `${nombreSeguro}-tiktok-${fecha}-${idProyecto}.mp4`;
 }
 
-export async function crearEdicionTikTokSimple({ entrada, entendimiento, audio = null, transcripcion = null, opciones = {} }) {
+function seleccionarVideoRender(entrada, edicionDinamica) {
+  if (edicionDinamica?.activo && !edicionDinamica?.omitido && edicionDinamica?.videoDinamico) {
+    return { ruta: edicionDinamica.videoDinamico, origen: 'edicion-dinamica', usarAudioDelVideoRender: true };
+  }
+  return { ruta: entrada.video.rutaOriginal, origen: 'original', usarAudioDelVideoRender: false };
+}
+
+function seleccionarTranscripcionRender(transcripcion, edicionDinamica) {
+  if (edicionDinamica?.transcripcionAjustada) return edicionDinamica.transcripcionAjustada;
+  return transcripcion;
+}
+
+export async function crearEdicionTikTokSimple({ entrada, entendimiento, audio = null, transcripcion = null, edicionDinamica = null, opciones = {} }) {
   const preset = await leerPresetTikTok();
+  const videoRender = seleccionarVideoRender(entrada, edicionDinamica);
+  const transcripcionRender = seleccionarTranscripcionRender(transcripcion, edicionDinamica);
   const filtroVideoBase = crearFiltroVertical(preset);
-  const capasTranscripcion = aplicarCapasTranscripcion({ filtroBase: filtroVideoBase, transcripcion });
+  const capasTranscripcion = aplicarCapasTranscripcion({ filtroBase: filtroVideoBase, transcripcion: transcripcionRender });
+  const visualDinamico = await procesarVisualDinamico({ filtroBase: capasTranscripcion.filtroVideo, edicionDinamica, transcripcion: transcripcionRender, entendimiento, salida: { width: preset.video.width, height: preset.video.height, fps: preset.video.fps }, opciones });
   const nombreExportado = crearNombreExportado(entrada);
   const rutaEdicion = path.join(entrada.rutas.carpetaProyecto, 'edicion-tiktok-simple.json');
-  const edicion = { ok: true, etapa: 'editar', tipo: 'tiktok-simple', plataforma: 'tiktok', modo: 'simple', presetUsado: { nombre: preset.nombre || 'tiktok-simple', descripcion: preset.descripcion || '', plataforma: preset.plataforma || 'tiktok' }, entrada: { rutaVideoOriginal: entrada.video.rutaOriginal, nombreOriginal: entrada.video.nombreOriginal || null, orientacionDetectada: entendimiento?.analisis?.orientacion || 'desconocida', duracionSegundos: entendimiento?.analisis?.duracionSegundos || null, tieneAudio: Boolean(entendimiento?.analisis?.tieneAudio) }, salida: { nombreExportado, extension: '.mp4', formato: preset.video.formato, width: preset.video.width, height: preset.video.height, fps: preset.video.fps }, render: { filtroVideo: capasTranscripcion.filtroVideo, filtroVideoBase, codecVideo: preset.exportacion.codecVideo, codecAudio: preset.exportacion.codecAudio, crf: preset.exportacion.crf, presetFfmpeg: preset.exportacion.presetFfmpeg, audioBitrate: preset.exportacion.audioBitrate }, transcripcion: { capasAplicadas: Boolean(capasTranscripcion.aplicadas), mensaje: capasTranscripcion.mensaje, capasVideo: capasTranscripcion.capasVideo }, opciones: { ...opciones, audioRecibido: Boolean(audio) }, notas: ['Edición simple: convierte el video a formato vertical 9:16.', capasTranscripcion.aplicadas ? 'Se aplicaron subtítulos y/o textos flotantes desde transcripcion/.' : 'No se aplicaron capas de transcripción.'], creadoEn: new Date().toISOString() };
+  const edicion = { ok: true, etapa: 'editar', tipo: 'tiktok-simple', plataforma: 'tiktok', modo: 'simple', presetUsado: { nombre: preset.nombre || 'tiktok-simple', descripcion: preset.descripcion || '', plataforma: preset.plataforma || 'tiktok' }, entrada: { rutaVideoOriginal: entrada.video.rutaOriginal, rutaVideoRender: videoRender.ruta, origenVideoRender: videoRender.origen, nombreOriginal: entrada.video.nombreOriginal || null, orientacionDetectada: entendimiento?.analisis?.orientacion || 'desconocida', duracionSegundos: entendimiento?.analisis?.duracionSegundos || null, tieneAudio: Boolean(entendimiento?.analisis?.tieneAudio) }, salida: { nombreExportado, extension: '.mp4', formato: preset.video.formato, width: preset.video.width, height: preset.video.height, fps: preset.video.fps }, render: { rutaVideoEntrada: videoRender.ruta, origenVideoEntrada: videoRender.origen, usarAudioDelVideoRender: videoRender.usarAudioDelVideoRender, filtroVideo: visualDinamico.filtroVideo, filtroVideoBase, codecVideo: preset.exportacion.codecVideo, codecAudio: preset.exportacion.codecAudio, crf: preset.exportacion.crf, presetFfmpeg: preset.exportacion.presetFfmpeg, audioBitrate: preset.exportacion.audioBitrate }, transcripcion: { capasAplicadas: Boolean(capasTranscripcion.aplicadas), mensaje: capasTranscripcion.mensaje, capasVideo: capasTranscripcion.capasVideo, ajustadaPorEdicionDinamica: Boolean(edicionDinamica?.transcripcionAjustada) }, visualDinamico, opciones: { ...opciones, audioRecibido: Boolean(audio) }, notas: ['Edición simple: convierte el video a formato vertical 9:16.', videoRender.origen === 'edicion-dinamica' ? 'Se usa el video sin silencios generado por edición dinámica.' : 'Se usa el video original.', capasTranscripcion.aplicadas ? 'Se aplicaron subtítulos y/o textos flotantes.' : 'No se aplicaron capas de transcripción.', visualDinamico.omitido ? 'Visual dinámico omitido.' : 'Visual dinámico aplicado.'], creadoEn: new Date().toISOString() };
   await escribirJson(rutaEdicion, edicion);
   return { ...edicion, rutaEdicion };
 }
