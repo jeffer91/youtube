@@ -16,24 +16,7 @@ function construirFiltroDrawtext(textoFlotante) {
   const texto = escaparTextoFfmpeg(textoFlotante.texto);
   const y = obtenerYPorPosicion(estilo, textoFlotante.posicion);
   const enable = construirEnable(textoFlotante.inicio, textoFlotante.fin);
-  const partes = [
-    'drawtext',
-    `text='${texto}'`,
-    `x=${estilo.x}`,
-    `y=${y}`,
-    `fontsize=${estilo.fontSize}`,
-    `fontcolor=${estilo.fontColor}`,
-    `borderw=${estilo.borderW}`,
-    `bordercolor=${estilo.borderColor}`,
-    `shadowcolor=${estilo.shadowColor}`,
-    `shadowx=${estilo.shadowX}`,
-    `shadowy=${estilo.shadowY}`,
-    `box=${estilo.box}`,
-    `boxcolor=${estilo.boxColor}`,
-    `boxborderw=${estilo.boxBorderW}`,
-    `enable='${enable}'`
-  ];
-  return partes.join(':');
+  return ['drawtext', `text='${texto}'`, `x=${estilo.x}`, `y=${y}`, `fontsize=${estilo.fontSize}`, `fontcolor=${estilo.fontColor}`, `borderw=${estilo.borderW}`, `bordercolor=${estilo.borderColor}`, `shadowcolor=${estilo.shadowColor}`, `shadowx=${estilo.shadowX}`, `shadowy=${estilo.shadowY}`, `box=${estilo.box}`, `boxcolor=${estilo.boxColor}`, `boxborderw=${estilo.boxBorderW}`, `enable='${enable}'`].join(':');
 }
 
 export function construirDrawtextsFfmpeg(textos = [], opciones = {}) {
