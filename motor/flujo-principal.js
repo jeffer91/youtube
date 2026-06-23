@@ -43,44 +43,12 @@ function normalizarModoVideo(valor) {
 }
 
 function normalizarOpciones(opciones = {}) {
-  return {
-    ...opciones,
-    plataforma: normalizarTexto(opciones?.plataforma, PLATAFORMA_PREDETERMINADA).toLowerCase(),
-    modo: normalizarModoVideo(opciones?.modo),
-    mejorarAudio: convertirBooleano(opciones?.mejorarAudio, true),
-    modoAudio: normalizarTexto(opciones?.modoAudio, MODO_AUDIO_PREDETERMINADO).toLowerCase(),
-    crearTranscripcion: convertirBooleano(opciones?.crearTranscripcion, true),
-    agregarSubtitulos: convertirBooleano(opciones?.agregarSubtitulos, true),
-    agregarTextosFlotantes: convertirBooleano(opciones?.agregarTextosFlotantes, true),
-    usarGemini: convertirBooleano(opciones?.usarGemini, false),
-    edicionDinamica: convertirBooleano(opciones?.edicionDinamica ?? opciones?.activarEdicionDinamica ?? opciones?.usarEdicionDinamica, true),
-    activarEdicionDinamica: true,
-    usarEdicionDinamica: true,
-    cortarSilencios: convertirBooleano(opciones?.cortarSilencios, true),
-    modoSeguroEdicionDinamica: convertirBooleano(opciones?.modoSeguroEdicionDinamica, true),
-    intensidadEdicion: normalizarTexto(opciones?.intensidadEdicion || opciones?.modoEdicionDinamica, 'automatica'),
-    modoEdicionDinamica: normalizarTexto(opciones?.modoEdicionDinamica || opciones?.intensidadEdicion, 'automatica'),
-    agregarEfectosVisualesDinamicos: convertirBooleano(opciones?.agregarEfectosVisualesDinamicos, true),
-    agregarZooms: convertirBooleano(opciones?.agregarZooms, true),
-    agregarPunchIn: convertirBooleano(opciones?.agregarPunchIn, true),
-    agregarBarraProgreso: convertirBooleano(opciones?.agregarBarraProgreso, true),
-    agregarEtiquetasVisuales: convertirBooleano(opciones?.agregarEtiquetasVisuales, true),
-    agregarSonidosEdicion: convertirBooleano(opciones?.agregarSonidosEdicion, true),
-    modoSonidosEdicion: normalizarTexto(opciones?.modoSonidosEdicion, 'normal'),
-    volumenSonidosEdicion: opciones?.volumenSonidosEdicion ?? 0.24,
-    separacionMinimaSonidos: opciones?.separacionMinimaSonidos ?? 1.2,
-    cantidadMaximaSonidos: opciones?.cantidadMaximaSonidos ?? 16
-  };
+  return { ...opciones, plataforma: normalizarTexto(opciones?.plataforma, PLATAFORMA_PREDETERMINADA).toLowerCase(), modo: normalizarModoVideo(opciones?.modo), mejorarAudio: convertirBooleano(opciones?.mejorarAudio, true), modoAudio: normalizarTexto(opciones?.modoAudio, MODO_AUDIO_PREDETERMINADO).toLowerCase(), crearTranscripcion: convertirBooleano(opciones?.crearTranscripcion, true), agregarSubtitulos: convertirBooleano(opciones?.agregarSubtitulos, true), agregarTextosFlotantes: convertirBooleano(opciones?.agregarTextosFlotantes, true), usarGemini: convertirBooleano(opciones?.usarGemini, false), edicionDinamica: convertirBooleano(opciones?.edicionDinamica ?? opciones?.activarEdicionDinamica ?? opciones?.usarEdicionDinamica, true), activarEdicionDinamica: true, usarEdicionDinamica: true, cortarSilencios: convertirBooleano(opciones?.cortarSilencios, true), modoSeguroEdicionDinamica: convertirBooleano(opciones?.modoSeguroEdicionDinamica, true), intensidadEdicion: normalizarTexto(opciones?.intensidadEdicion || opciones?.modoEdicionDinamica, 'automatica'), modoEdicionDinamica: normalizarTexto(opciones?.modoEdicionDinamica || opciones?.intensidadEdicion, 'automatica'), agregarEfectosVisualesDinamicos: convertirBooleano(opciones?.agregarEfectosVisualesDinamicos, true), agregarZooms: convertirBooleano(opciones?.agregarZooms, true), agregarPunchIn: convertirBooleano(opciones?.agregarPunchIn, true), agregarBarraProgreso: convertirBooleano(opciones?.agregarBarraProgreso, true), agregarEtiquetasVisuales: convertirBooleano(opciones?.agregarEtiquetasVisuales, true), agregarSonidosEdicion: convertirBooleano(opciones?.agregarSonidosEdicion, true), modoSonidosEdicion: normalizarTexto(opciones?.modoSonidosEdicion, 'normal'), volumenSonidosEdicion: opciones?.volumenSonidosEdicion ?? 0.24, separacionMinimaSonidos: opciones?.separacionMinimaSonidos ?? 1.2, cantidadMaximaSonidos: opciones?.cantidadMaximaSonidos ?? 16 };
 }
 
 async function reportarProgreso(progreso, evento) {
   if (typeof progreso !== 'function') return null;
-  try {
-    return await progreso(evento);
-  } catch (error) {
-    console.warn('[progreso] No se pudo reportar evento:', error.message);
-    return null;
-  }
+  try { return await progreso(evento); } catch (error) { console.warn('[progreso] No se pudo reportar evento:', error.message); return null; }
 }
 
 function crearMensajeFinal({ salida, audio, edicion, transcripcion, edicionDinamica }) {
@@ -133,25 +101,22 @@ export async function ejecutarFlujoPrincipal(solicitud) {
     await reportarProgreso(progreso, { etapa: 'transcripcion', porcentaje: 50, titulo: 'Textos preparados', detalle: `${transcripcion.transcripcion?.cantidadSegmentos || 0} segmentos · ${transcripcion.textosFlotantes?.cantidad || 0} textos flotantes.`, datos: { segmentos: transcripcion.transcripcion?.cantidadSegmentos || 0, textosFlotantes: transcripcion.textosFlotantes?.cantidad || 0 } });
 
     etapaActual = 'edicion-dinamica';
-    await reportarProgreso(progreso, { etapa: 'edicion-dinamica', porcentaje: 56, titulo: 'Cortando silencios', detalle: 'Detectando pausas y preparando video dinámico.' });
-    const edicionDinamica = await procesarEdicionDinamica({ entrada, entendimiento, audio, transcripcion, opciones });
+    await reportarProgreso(progreso, { etapa: 'edicion-dinamica', porcentaje: 55, titulo: 'Edición dinámica', detalle: 'Detectando pausas, cortando silencios y ajustando tiempos.' });
+    const edicionDinamica = await procesarEdicionDinamica({ entrada, entendimiento, audio, transcripcion, opciones, progreso });
     validarResultadoEtapa('edicion-dinamica', edicionDinamica);
     historial.push(crearRegistroHistorial('edicion-dinamica', edicionDinamica.diagnostico?.mensaje || edicionDinamica.motivo || 'Etapa de edición dinámica completada.', { activo: Boolean(edicionDinamica.activo), omitido: Boolean(edicionDinamica.omitido), videoDinamico: edicionDinamica.videoDinamico || null, cortesAplicados: edicionDinamica.cortes?.resumen?.cantidadCortesAplicados || 0, segundosEliminados: edicionDinamica.cortes?.resumen?.segundosEliminados || 0, tieneMapaTiempo: Boolean(edicionDinamica.mapaTiempo) }));
-    await reportarProgreso(progreso, { etapa: 'edicion-dinamica', porcentaje: 68, titulo: 'Silencios procesados', detalle: `${edicionDinamica.cortes?.resumen?.cantidadCortesAplicados || 0} cortes · ${edicionDinamica.cortes?.resumen?.segundosEliminados || 0}s reducidos.`, datos: edicionDinamica.cortes?.resumen || {} });
 
     etapaActual = 'editar';
-    await reportarProgreso(progreso, { etapa: 'editar', porcentaje: 74, titulo: 'Agregando visuales y sonidos', detalle: 'Aplicando textos, barra, zooms y sonidos sincronizados.' });
-    const edicion = await editarVideo({ entrada, entendimiento, audio, transcripcion, edicionDinamica, opciones });
+    await reportarProgreso(progreso, { etapa: 'editar', porcentaje: 76, titulo: 'Agregando visuales y sonidos', detalle: 'Aplicando textos, barra, zooms y sonidos sincronizados.' });
+    const edicion = await editarVideo({ entrada, entendimiento, audio, transcripcion, edicionDinamica, opciones, progreso });
     validarResultadoEtapa('editar', edicion);
     historial.push(crearRegistroHistorial('editar', 'Plan de edición generado correctamente.', { tipo: edicion.tipo || null, modo: edicion.modo || opciones.modo, formato: edicion.salida?.formato || null, filtroVideo: edicion.render?.filtroVideo || null, capasTranscripcionAplicadas: Boolean(edicion.transcripcion?.capasAplicadas), visualDinamicoAplicado: Boolean(edicion.visualDinamico && !edicion.visualDinamico.omitido), sonidosAplicados: Boolean(edicion.sonidos && !edicion.sonidos.omitido) }));
-    await reportarProgreso(progreso, { etapa: 'editar', porcentaje: 86, titulo: 'Edición visual lista', detalle: `Visuales: ${edicion.visualDinamico && !edicion.visualDinamico.omitido ? 'aplicados' : 'omitidos'} · Sonidos: ${edicion.sonidos && !edicion.sonidos.omitido ? 'aplicados' : 'omitidos'}.`, datos: { visualDinamico: Boolean(edicion.visualDinamico && !edicion.visualDinamico.omitido), sonidos: Boolean(edicion.sonidos && !edicion.sonidos.omitido) } });
 
     etapaActual = 'salida';
     await reportarProgreso(progreso, { etapa: 'salida', porcentaje: 90, titulo: 'Exportando video final', detalle: 'Generando MP4 final.' });
-    const salida = await prepararSalida({ entrada, entendimiento, audio, edicion, opciones });
+    const salida = await prepararSalida({ entrada, entendimiento, audio, edicion, opciones, progreso });
     validarResultadoEtapa('salida', salida);
     historial.push(crearRegistroHistorial('salida', 'Video exportado correctamente.', { nombreExportado: salida.nombreExportado || null, urlPublica: salida.urlPublica || null, modo: salida.modo || edicion.modo || opciones.modo, audioUsado: salida.audio?.tipo || null }));
-    await reportarProgreso(progreso, { etapa: 'salida', porcentaje: 98, titulo: 'Exportación terminada', detalle: salida.nombreExportado || 'Video exportado correctamente.', datos: { urlPublica: salida.urlPublica || null, audioUsado: salida.audio?.tipo || null } });
 
     return { ok: true, estado: 'VIDEO_PROCESADO', mensaje: crearMensajeFinal({ salida, audio, edicion, transcripcion, edicionDinamica }), proyecto: entrada.proyecto, video: entrada.video, entendimiento, audio, transcripcion, edicionDinamica, edicion, resultado: salida, historial };
   } catch (error) {
