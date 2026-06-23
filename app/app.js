@@ -3,9 +3,10 @@ import { inicializarTranscripcionUI, obtenerOpcionesTranscripcion, bloquearContr
 import { obtenerResumenAudio, obtenerResumenTranscripcion } from './resultado-resumen.js';
 import { obtenerResumenEdicionDinamica } from './resultado-edicion-dinamica.js';
 import { obtenerResumenDiagnostico, actualizarEstadoDiagnosticoEnServidor } from './diagnostico-ui.js';
-import { crearMensajesProceso } from './progreso-mensajes.js';
 import { validarVideoSeleccionado } from './validar-formulario.js';
 import { obtenerOpcionesEdicionAutomatica, aplicarModoAutomaticoVisual } from './edicion-automatica-ui.js';
+import { inicializarModalErrorEdicion, mostrarModalErrorEdicion } from './error-modal.js';
+import { crearJobIdFrontend, prepararProgresoReal, conectarProgresoReal, actualizarProgresoReal } from './progreso-real-ui.js';
 
 const elementos = {
   serverStatus: document.getElementById('serverStatus'),
@@ -15,6 +16,10 @@ const elementos = {
   processButton: document.getElementById('processButton'),
   progressArea: document.getElementById('progressArea'),
   progressText: document.getElementById('progressText'),
+  progressTitle: document.getElementById('progressTitle'),
+  progressPercent: document.getElementById('progressPercent'),
+  progressBar: document.getElementById('progressBar'),
+  progressHistory: document.getElementById('progressHistory'),
   messageBox: document.getElementById('messageBox'),
   resultPanel: document.getElementById('resultPanel'),
   resultVideo: document.getElementById('resultVideo'),
@@ -29,7 +34,7 @@ const elementos = {
 };
 
 let apiBaseCache = null;
-let temporizadorEstado = null;
+let controladorProgreso = null;
 
 function validarElementosRequeridos() {
   const faltantes = Object.entries(elementos).filter(([, valor]) => !valor).map(([nombre]) => nombre);
@@ -40,11 +45,9 @@ function validarElementosRequeridos() {
   return true;
 }
 
-function limpiarTemporizadorEstado() {
-  if (temporizadorEstado) {
-    window.clearInterval(temporizadorEstado);
-    temporizadorEstado = null;
-  }
+function cerrarProgresoActual() {
+  if (controladorProgreso?.cerrar) controladorProgreso.cerrar();
+  controladorProgreso = null;
 }
 
 function mostrarMensaje(mensaje, tipo = 'normal') {
@@ -59,13 +62,8 @@ function ocultarMensaje() {
   elementos.messageBox.className = 'message-box';
 }
 
-function mostrarProgreso(mensaje) {
-  elementos.progressArea.hidden = false;
-  elementos.progressText.textContent = mensaje;
-}
-
 function ocultarProgreso() {
-  limpiarTemporizadorEstado();
+  cerrarProgresoActual();
   elementos.progressArea.hidden = true;
   elementos.progressText.textContent = '';
 }
@@ -171,11 +169,12 @@ function agregarOpcionesAFormulario(formulario, opciones) {
   Object.entries(opciones).forEach(([clave, valor]) => formulario.append(clave, valor ?? ''));
 }
 
-function crearFormularioProcesamiento() {
+function crearFormularioProcesamiento(jobId) {
   const archivo = elementos.videoInput.files?.[0];
   validarVideoSeleccionado(archivo);
   const formulario = new FormData();
   formulario.append('video', archivo);
+  formulario.append('jobId', jobId);
   formulario.append('plataforma', elementos.platformInput.value || 'tiktok');
   formulario.append('modo', elementos.modeInput.value || 'cuadrado-centro');
   formulario.append('mejorarAudio', elementos.improveAudio.checked ? 'true' : 'false');
@@ -186,27 +185,15 @@ function crearFormularioProcesamiento() {
   return formulario;
 }
 
-function iniciarMensajesDeProceso() {
-  const opcionesTranscripcion = obtenerOpcionesTranscripcion();
-  const opcionesGemini = obtenerConfiguracionGemini();
-  const opcionesAuto = obtenerOpcionesEdicionAutomatica();
-  const mensajes = crearMensajesProceso({
-    mejorarAudio: elementos.improveAudio.checked,
-    crearTranscripcion: opcionesTranscripcion.crearTranscripcion === 'true',
-    agregarSubtitulos: opcionesTranscripcion.agregarSubtitulos === 'true',
-    agregarTextosFlotantes: opcionesTranscripcion.agregarTextosFlotantes === 'true',
-    usarGemini: Boolean(opcionesGemini.usarGemini),
-    edicionDinamica: opcionesAuto.edicionDinamica === 'true',
-    agregarSonidosEdicion: opcionesAuto.agregarSonidosEdicion === 'true'
+async function iniciarProgresoReal(jobId) {
+  prepararProgresoReal();
+  const url = await crearUrlApi(`/api/progreso/${encodeURIComponent(jobId)}`);
+  controladorProgreso = conectarProgresoReal({
+    url,
+    onError: (evento) => mostrarModalErrorEdicion(evento),
+    onFinalizado: () => cerrarProgresoActual()
   });
-  let indice = 0;
-  mostrarProgreso(mensajes[indice]);
-  limpiarTemporizadorEstado();
-  temporizadorEstado = window.setInterval(() => {
-    indice = Math.min(indice + 1, mensajes.length - 1);
-    mostrarProgreso(mensajes[indice]);
-    if (indice >= mensajes.length - 1) limpiarTemporizadorEstado();
-  }, 1800);
+  actualizarProgresoReal({ titulo: 'Trabajo creado', detalle: 'Conectando barra de progreso real.', porcentaje: 1, estado: 'procesando', etapa: 'inicio' });
 }
 
 async function mostrarResultado(datos) {
@@ -226,28 +213,56 @@ async function mostrarResultado(datos) {
   }
 }
 
+function construirErrorParaModal(datos, respaldoMensaje) {
+  if (datos?.diagnostico) {
+    return {
+      titulo: 'Fallo en diagnóstico',
+      etapa: 'diagnostico',
+      detalle: datos.mensaje || datos.diagnostico.mensaje || respaldoMensaje,
+      archivo: 'diagnostico/diagnostico-automatico.service.js',
+      recomendacion: 'Revisar diagnóstico automático antes de procesar el video.'
+    };
+  }
+
+  return {
+    titulo: 'Fallo de edición',
+    etapa: 'servidor',
+    detalle: datos?.mensaje || respaldoMensaje || 'No se pudo procesar el video.',
+    archivo: 'server.js',
+    recomendacion: 'Revisar el historial de progreso y el error del servidor.'
+  };
+}
+
 async function procesarFormulario(evento) {
   evento.preventDefault();
   ocultarMensaje();
-  ocultarProgreso();
   reiniciarResultado();
+  cerrarProgresoActual();
+
+  const jobId = crearJobIdFrontend();
+
   try {
-    const formulario = crearFormularioProcesamiento();
+    const formulario = crearFormularioProcesamiento(jobId);
     bloquearFormulario(true);
-    iniciarMensajesDeProceso();
+    await iniciarProgresoReal(jobId);
     const respuesta = await fetch(await crearUrlApi('/api/procesar-video'), { method: 'POST', body: formulario });
     const datos = await leerRespuestaJsonSegura(respuesta);
+
     if (!respuesta.ok || !datos.ok) {
       const resumenDiagnostico = datos?.diagnostico ? ` ${obtenerResumenDiagnostico(datos)}` : '';
-      throw new Error(`${datos.mensaje || 'No se pudo procesar el video.'}${resumenDiagnostico}`.trim());
+      const mensaje = `${datos.mensaje || 'No se pudo procesar el video.'}${resumenDiagnostico}`.trim();
+      mostrarModalErrorEdicion(construirErrorParaModal(datos, mensaje));
+      throw new Error(mensaje);
     }
-    limpiarTemporizadorEstado();
-    mostrarProgreso('Video listo.');
+
+    actualizarProgresoReal({ titulo: 'Video listo', detalle: datos.mensaje || 'Proceso completado correctamente.', porcentaje: 100, estado: 'finalizado', etapa: 'finalizado' });
     await mostrarResultado(datos);
     mostrarMensaje(datos.mensaje || 'Proceso completado correctamente.', 'ok');
   } catch (error) {
-    ocultarProgreso();
     mostrarMensaje(error.message || 'Ocurrió un error al procesar el video.', 'error');
+    if (!String(error.message || '').includes('Diagnóstico')) {
+      mostrarModalErrorEdicion({ titulo: 'Fallo de edición', etapa: 'app', detalle: error.message || 'Ocurrió un error al procesar el video.', archivo: 'app/app.js', recomendacion: 'Revisar la conexión con el servidor y el historial de progreso.' });
+    }
     console.error('Error al procesar video:', error);
   } finally {
     bloquearFormulario(false);
@@ -265,6 +280,7 @@ function iniciarInterfaz() {
   reiniciarResultado();
   inicializarGeminiPopup();
   inicializarTranscripcionUI();
+  inicializarModalErrorEdicion();
   aplicarModoAutomaticoVisual();
   elementos.videoInput.addEventListener('change', registrarCambioDeArchivo);
   elementos.videoForm.addEventListener('submit', procesarFormulario);
