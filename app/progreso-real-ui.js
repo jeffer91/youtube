@@ -50,16 +50,11 @@ export function conectarProgresoReal({ url, onEvento, onError, onFinalizado } = 
     if (typeof onEvento === 'function') onEvento(evento);
   });
 
-  source.addEventListener('error', (mensaje) => {
-    try {
-      if (mensaje.data) {
-        const evento = JSON.parse(mensaje.data);
-        actualizarProgresoReal(evento);
-        if (typeof onError === 'function') onError(evento);
-      }
-    } catch (_error) {
-      // Error de conexión SSE sin datos JSON.
-    }
+  source.addEventListener('fallo', (mensaje) => {
+    const evento = JSON.parse(mensaje.data);
+    actualizarProgresoReal(evento);
+    if (typeof onError === 'function') onError(evento);
+    source.close();
   });
 
   source.addEventListener('finalizado', (mensaje) => {
