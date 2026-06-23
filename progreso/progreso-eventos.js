@@ -12,7 +12,8 @@ const ARCHIVOS_POR_ERROR = Object.freeze({
   sonidos: 'editar/edicion-dinamica/sonidos/sonidos.conexion.js',
   editar: 'editar/editar.conexion.js',
   salida: 'salida/exportar-simple/exportar.service.js',
-  servidor: 'server.js'
+  servidor: 'server.js',
+  app: 'app/app.js'
 });
 
 function limitarPorcentaje(valor, respaldo = 0) {
@@ -47,6 +48,7 @@ export function detectarEtapaDesdeError(error) {
   if (mensaje.includes('silencio') || mensaje.includes('corte')) return 'cortes';
   if (mensaje.includes('visual') || mensaje.includes('drawtext') || mensaje.includes('filtro')) return 'visual';
   if (mensaje.includes('export') || mensaje.includes('salida') || mensaje.includes('ffmpeg')) return 'salida';
+  if (mensaje.includes('app') || mensaje.includes('interfaz')) return 'app';
   return 'servidor';
 }
 
@@ -76,7 +78,10 @@ export function crearEventoError({ jobId, etapa = null, error, detalle = null, a
 }
 
 export function crearEventoFinalizado({ jobId, detalle = 'Video listo.', datos = {} } = {}) {
-  return crearEventoProgreso({ jobId, etapa: 'finalizado', porcentaje: 100, titulo: 'Video listo', detalle, estado: 'finalizado', datos });
+  return {
+    ...crearEventoProgreso({ jobId, etapa: 'finalizado', porcentaje: 100, titulo: 'Video listo', detalle, estado: 'finalizado', datos }),
+    tipo: 'finalizado'
+  };
 }
 
 export default { crearEventoProgreso, crearEventoError, crearEventoFinalizado, detectarEtapaDesdeError };
