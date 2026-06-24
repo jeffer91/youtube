@@ -1,12 +1,69 @@
-import { inicializarGeminiPopup, obtenerConfiguracionGemini, bloquearControlesGemini } from './gemini-popup.js';
-import { inicializarTranscripcionUI, obtenerOpcionesTranscripcion, bloquearControlesTranscripcion } from './transcripcion-ui.js';
-import { obtenerResumenAudio, obtenerResumenTranscripcion } from './resultado-resumen.js';
+/*
+  Nombre completo: app.js
+  Ruta: /app/app.js
+
+  Función:
+  - Inicializar la interfaz principal de AutoVideoJeff.
+  - Abrir checklist antes de procesar.
+  - Enviar opciones seleccionadas al backend.
+  - Abrir comparativa original vs editado cuando exista exportación.
+*/
+
+import {
+  inicializarGeminiPopup,
+  obtenerConfiguracionGemini,
+  bloquearControlesGemini
+} from './gemini-popup.js';
+
+import {
+  inicializarTranscripcionUI,
+  obtenerOpcionesTranscripcion,
+  bloquearControlesTranscripcion
+} from './transcripcion-ui.js';
+
+import {
+  obtenerResumenAudio,
+  obtenerResumenTranscripcion
+} from './resultado-resumen.js';
+
 import { obtenerResumenEdicionDinamica } from './resultado-edicion-dinamica.js';
-import { obtenerResumenDiagnostico, actualizarEstadoDiagnosticoEnServidor } from './diagnostico-ui.js';
+
+import {
+  obtenerResumenDiagnostico,
+  actualizarEstadoDiagnosticoEnServidor
+} from './diagnostico-ui.js';
+
 import { validarVideoSeleccionado } from './validar-formulario.js';
-import { obtenerOpcionesEdicionAutomatica, aplicarModoAutomaticoVisual } from './edicion-automatica-ui.js';
-import { inicializarModalErrorEdicion, mostrarModalErrorEdicion } from './error-modal.js';
-import { crearJobIdFrontend, prepararProgresoReal, conectarProgresoReal, actualizarProgresoReal } from './progreso-real-ui.js';
+
+import {
+  obtenerOpcionesEdicionAutomatica,
+  aplicarModoAutomaticoVisual
+} from './edicion-automatica-ui.js';
+
+import {
+  inicializarModalErrorEdicion,
+  mostrarModalErrorEdicion
+} from './error-modal.js';
+
+import {
+  crearJobIdFrontend,
+  prepararProgresoReal,
+  conectarProgresoReal,
+  actualizarProgresoReal
+} from './progreso-real-ui.js';
+
+import { inicializarFuncionesPopup } from './funciones-popup-ui.js';
+
+import {
+  inicializarChecklistProcesamiento,
+  abrirChecklistProcesamiento
+} from './procesamiento-checklist-ui.js';
+
+import {
+  agregarOpcionesProcesamientoAFormData,
+  construirUrlComparativa,
+  guardarUltimoProcesamientoParaReprocesar
+} from './procesamiento-checklist-api.js';
 
 const elementos = {
   serverStatus: document.getElementById('serverStatus'),
@@ -37,11 +94,15 @@ let apiBaseCache = null;
 let controladorProgreso = null;
 
 function validarElementosRequeridos() {
-  const faltantes = Object.entries(elementos).filter(([, valor]) => !valor).map(([nombre]) => nombre);
+  const faltantes = Object.entries(elementos)
+    .filter(([, valor]) => !valor)
+    .map(([nombre]) => nombre);
+
   if (faltantes.length > 0) {
     console.error('Faltan elementos de la interfaz:', faltantes);
     return false;
   }
+
   return true;
 }
 
@@ -90,12 +151,14 @@ function bloquearFormulario(bloquear) {
   elementos.audioMode.disabled = bloquear;
   bloquearControlesTranscripcion(bloquear);
   bloquearControlesGemini(bloquear);
-  elementos.processButton.textContent = bloquear ? 'Editando automáticamente...' : 'Procesar automáticamente';
+  elementos.processButton.textContent = bloquear ? 'Editando automáticamente...' : 'Procesar';
 }
 
 async function obtenerBaseApi() {
   if (apiBaseCache) return apiBaseCache;
+
   const apiElectron = window.AutoVideoJeff?.servidor?.obtenerEstado;
+
   if (typeof apiElectron === 'function') {
     try {
       const estado = await apiElectron();
@@ -107,6 +170,7 @@ async function obtenerBaseApi() {
       console.warn('No se pudo leer estado desde Electron:', error);
     }
   }
+
   apiBaseCache = window.location.origin;
   return apiBaseCache;
 }
@@ -119,6 +183,7 @@ async function crearUrlApi(ruta) {
 async function crearUrlPublica(ruta) {
   if (!ruta) return '';
   if (/^https?:\/\//i.test(ruta)) return ruta;
+
   const base = await obtenerBaseApi();
   const rutaNormalizada = ruta.startsWith('/') ? ruta : `/${ruta}`;
   return `${base}${rutaNormalizada}`;
@@ -127,26 +192,25 @@ async function crearUrlPublica(ruta) {
 async function leerRespuestaJsonSegura(respuesta) {
   const texto = await respuesta.text();
   if (!texto) return {};
+
   try {
     return JSON.parse(texto);
-  } catch (_error) {
+  } catch {
     return { ok: false, mensaje: texto };
   }
-}
-
-function actualizarEstadoServidor(ok, mensaje) {
-  elementos.serverStatus.textContent = mensaje;
-  elementos.serverStatus.className = ok ? 'server-status server-status--ok' : 'server-status server-status--error';
 }
 
 async function verificarServidor() {
   try {
     const respuesta = await fetch(await crearUrlApi('/api/estado'), { method: 'GET' });
     const datos = await leerRespuestaJsonSegura(respuesta);
+
     if (!respuesta.ok || !datos.ok) throw new Error(datos.mensaje || 'Servidor no disponible.');
+
     actualizarEstadoDiagnosticoEnServidor(elementos.serverStatus, datos);
   } catch (error) {
-    actualizarEstadoServidor(false, 'Servidor no disponible');
+    elementos.serverStatus.textContent = 'Servidor no disponible';
+    elementos.serverStatus.className = 'server-status server-status--error';
     mostrarMensaje(`No se pudo conectar con el servidor local: ${error.message}`, 'error');
   }
 }
@@ -155,23 +219,63 @@ function registrarCambioDeArchivo() {
   ocultarMensaje();
   ocultarProgreso();
   reiniciarResultado();
+
   const archivo = elementos.videoInput.files?.[0];
+
   if (!archivo) {
     elementos.fileName.textContent = 'Ningún video seleccionado.';
     return;
   }
+
   const pesoMb = archivo.size / (1024 * 1024);
   elementos.fileName.textContent = `${archivo.name} · ${pesoMb.toFixed(1)} MB`;
-  mostrarMensaje('Video seleccionado. Presiona Procesar automáticamente.', 'normal');
+  mostrarMensaje('Video seleccionado. Presiona Procesar.', 'normal');
 }
 
 function agregarOpcionesAFormulario(formulario, opciones) {
-  Object.entries(opciones).forEach(([clave, valor]) => formulario.append(clave, valor ?? ''));
+  Object.entries(opciones).forEach(([clave, valor]) => {
+    formulario.set(clave, valor ?? '');
+  });
 }
 
-function crearFormularioProcesamiento(jobId) {
+function aplicarChecklistAFormulario(formulario, opcionesProcesamiento = {}) {
+  const opciones = {
+    mejorarAudio: opcionesProcesamiento.mejorarAudio === true,
+    transcripcion: opcionesProcesamiento.transcripcion === true,
+    subtitulos: opcionesProcesamiento.subtitulos === true,
+    textosFlotantes: opcionesProcesamiento.textosFlotantes === true,
+    cortes: opcionesProcesamiento.cortes === true,
+    zooms: opcionesProcesamiento.zooms === true,
+    barraProgreso: opcionesProcesamiento.barraProgreso === true,
+    etiquetasVisuales: opcionesProcesamiento.etiquetasVisuales === true,
+    sonidos: opcionesProcesamiento.sonidos === true,
+    exportacion: opcionesProcesamiento.exportacion === true
+  };
+
+  formulario.set('mejorarAudio', opciones.mejorarAudio ? 'true' : 'false');
+  formulario.set('crearTranscripcion', opciones.transcripcion ? 'true' : 'false');
+  formulario.set('agregarSubtitulos', opciones.subtitulos ? 'true' : 'false');
+  formulario.set('agregarTextosFlotantes', opciones.textosFlotantes ? 'true' : 'false');
+  formulario.set('edicionDinamica', opciones.cortes ? 'true' : 'false');
+  formulario.set('activarEdicionDinamica', opciones.cortes ? 'true' : 'false');
+  formulario.set('usarEdicionDinamica', opciones.cortes ? 'true' : 'false');
+  formulario.set('cortarSilencios', opciones.cortes ? 'true' : 'false');
+  formulario.set('agregarZooms', opciones.zooms ? 'true' : 'false');
+  formulario.set('agregarPunchIn', opciones.zooms ? 'true' : 'false');
+  formulario.set('agregarBarraProgreso', opciones.barraProgreso ? 'true' : 'false');
+  formulario.set('agregarEtiquetasVisuales', opciones.etiquetasVisuales ? 'true' : 'false');
+  formulario.set('agregarEfectosVisualesDinamicos', opciones.zooms || opciones.barraProgreso || opciones.etiquetasVisuales ? 'true' : 'false');
+  formulario.set('agregarSonidosEdicion', opciones.sonidos ? 'true' : 'false');
+  formulario.set('exportacion', opciones.exportacion ? 'true' : 'false');
+
+  agregarOpcionesProcesamientoAFormData(formulario, opciones);
+  return formulario;
+}
+
+function crearFormularioProcesamiento(jobId, opcionesProcesamiento) {
   const archivo = elementos.videoInput.files?.[0];
   validarVideoSeleccionado(archivo);
+
   const formulario = new FormData();
   formulario.append('video', archivo);
   formulario.append('jobId', jobId);
@@ -179,32 +283,46 @@ function crearFormularioProcesamiento(jobId) {
   formulario.append('modo', elementos.modeInput.value || 'cuadrado-centro');
   formulario.append('mejorarAudio', elementos.improveAudio.checked ? 'true' : 'false');
   formulario.append('modoAudio', elementos.audioMode.value || 'limpieza-simple');
+
   agregarOpcionesAFormulario(formulario, obtenerOpcionesTranscripcion());
   agregarOpcionesAFormulario(formulario, obtenerConfiguracionGemini());
   agregarOpcionesAFormulario(formulario, obtenerOpcionesEdicionAutomatica());
+  aplicarChecklistAFormulario(formulario, opcionesProcesamiento);
+
   return formulario;
 }
 
 async function iniciarProgresoReal(jobId) {
   prepararProgresoReal();
+
   const url = await crearUrlApi(`/api/progreso/${encodeURIComponent(jobId)}`);
+
   controladorProgreso = conectarProgresoReal({
     url,
     onError: (evento) => mostrarModalErrorEdicion(evento),
     onFinalizado: () => cerrarProgresoActual()
   });
-  actualizarProgresoReal({ titulo: 'Trabajo creado', detalle: 'Conectando barra de progreso real.', porcentaje: 1, estado: 'procesando', etapa: 'inicio' });
+
+  actualizarProgresoReal({
+    titulo: 'Trabajo creado',
+    detalle: 'Conectando barra de progreso real.',
+    porcentaje: 1,
+    estado: 'procesando',
+    etapa: 'inicio'
+  });
 }
 
 async function mostrarResultado(datos) {
   const urlExportada = await crearUrlPublica(datos.resultado?.urlPublica || datos.resultado?.exportUrl || '');
+
   elementos.resultPanel.hidden = false;
   elementos.editingSummary.hidden = false;
   elementos.editingSummary.textContent = obtenerResumenEdicionDinamica(datos);
   elementos.audioSummary.hidden = false;
-  elementos.audioSummary.textContent = obtenerResumenAudio(datos, elementos.improveAudio.checked);
+  elementos.audioSummary.textContent = obtenerResumenAudio(datos, Boolean(datos.opcionesProcesamiento?.mejorarAudio));
   elementos.transcriptionSummary.hidden = false;
   elementos.transcriptionSummary.textContent = obtenerResumenTranscripcion(datos);
+
   if (urlExportada) {
     elementos.resultVideo.hidden = false;
     elementos.resultVideo.src = urlExportada;
@@ -215,44 +333,116 @@ async function mostrarResultado(datos) {
 
 function construirErrorParaModal(datos, respaldoMensaje) {
   if (datos?.diagnostico) {
-    return { titulo: 'Fallo en diagnóstico', etapa: 'diagnostico', detalle: datos.mensaje || datos.diagnostico.mensaje || respaldoMensaje, archivo: 'diagnostico/diagnostico-automatico.service.js', recomendacion: 'Revisar diagnóstico automático antes de procesar el video.' };
+    return {
+      titulo: 'Fallo en diagnóstico',
+      etapa: 'diagnostico',
+      detalle: datos.mensaje || datos.diagnostico.mensaje || respaldoMensaje,
+      archivo: 'diagnostico/diagnostico-automatico.service.js',
+      recomendacion: 'Revisar diagnóstico automático antes de procesar el video.'
+    };
   }
 
-  return { titulo: 'Fallo de edición', etapa: 'servidor', detalle: datos?.mensaje || respaldoMensaje || 'No se pudo procesar el video.', archivo: 'server.js', recomendacion: 'Revisar el historial de progreso y el error del servidor.' };
+  return {
+    titulo: 'Fallo de edición',
+    etapa: 'servidor',
+    detalle: datos?.mensaje || respaldoMensaje || 'No se pudo procesar el video.',
+    archivo: 'server.js',
+    recomendacion: 'Revisar el historial de progreso y el error del servidor.'
+  };
+}
+
+async function abrirComparativaSiCorresponde(datos, opcionesProcesamiento) {
+  if (!opcionesProcesamiento?.exportacion) return false;
+
+  const originalUrl = await crearUrlPublica(datos.videoOriginalUrl || datos.originalUrl || datos.video?.urlPublica || '');
+  const editadoUrl = await crearUrlPublica(datos.videoEditadoUrl || datos.resultado?.urlPublica || datos.resultado?.exportUrl || '');
+
+  const urlComparativa = construirUrlComparativa({
+    originalUrl,
+    editadoUrl,
+    jobId: datos.jobId || '',
+    opciones: opcionesProcesamiento
+  });
+
+  if (!urlComparativa) return false;
+
+  guardarUltimoProcesamientoParaReprocesar({
+    respuesta: datos,
+    opcionesProcesamiento,
+    originalUrl,
+    editadoUrl,
+    comparativaUrl: urlComparativa
+  });
+
+  window.location.href = urlComparativa;
+  return true;
 }
 
 async function procesarFormulario(evento) {
   evento.preventDefault();
+
   ocultarMensaje();
   reiniciarResultado();
   cerrarProgresoActual();
 
-  const jobId = crearJobIdFrontend();
   let modalErrorMostrado = false;
 
   try {
-    const formulario = crearFormularioProcesamiento(jobId);
+    validarVideoSeleccionado(elementos.videoInput.files?.[0]);
+
+    const opcionesProcesamiento = await abrirChecklistProcesamiento();
+
+    if (!opcionesProcesamiento) {
+      mostrarMensaje('Procesamiento cancelado. No se realizó ningún cambio.', 'normal');
+      return;
+    }
+
+    const jobId = crearJobIdFrontend();
+    const formulario = crearFormularioProcesamiento(jobId, opcionesProcesamiento);
+
     bloquearFormulario(true);
     await iniciarProgresoReal(jobId);
-    const respuesta = await fetch(await crearUrlApi('/api/procesar-video'), { method: 'POST', body: formulario });
+
+    const respuesta = await fetch(await crearUrlApi('/api/procesar-video'), {
+      method: 'POST',
+      body: formulario
+    });
+
     const datos = await leerRespuestaJsonSegura(respuesta);
 
     if (!respuesta.ok || !datos.ok) {
       const resumenDiagnostico = datos?.diagnostico ? ` ${obtenerResumenDiagnostico(datos)}` : '';
       const mensaje = `${datos.mensaje || 'No se pudo procesar el video.'}${resumenDiagnostico}`.trim();
+
       mostrarModalErrorEdicion(construirErrorParaModal(datos, mensaje));
       modalErrorMostrado = true;
       throw new Error(mensaje);
     }
 
-    actualizarProgresoReal({ titulo: 'Video listo', detalle: datos.mensaje || 'Proceso completado correctamente.', porcentaje: 100, estado: 'finalizado', etapa: 'finalizado' });
-    await mostrarResultado(datos);
+    actualizarProgresoReal({
+      titulo: 'Video listo',
+      detalle: datos.mensaje || 'Proceso completado correctamente.',
+      porcentaje: 100,
+      estado: 'finalizado',
+      etapa: 'finalizado'
+    });
+
+    await mostrarResultado({ ...datos, opcionesProcesamiento });
     mostrarMensaje(datos.mensaje || 'Proceso completado correctamente.', 'ok');
+    await abrirComparativaSiCorresponde(datos, opcionesProcesamiento);
   } catch (error) {
     mostrarMensaje(error.message || 'Ocurrió un error al procesar el video.', 'error');
+
     if (!modalErrorMostrado) {
-      mostrarModalErrorEdicion({ titulo: 'Fallo de edición', etapa: 'app', detalle: error.message || 'Ocurrió un error al procesar el video.', archivo: 'app/app.js', recomendacion: 'Revisar la conexión con el servidor y el historial de progreso.' });
+      mostrarModalErrorEdicion({
+        titulo: 'Fallo de edición',
+        etapa: 'app',
+        detalle: error.message || 'Ocurrió un error al procesar el video.',
+        archivo: 'app/app.js',
+        recomendacion: 'Revisar la conexión con el servidor y el historial de progreso.'
+      });
     }
+
     console.error('Error al procesar video:', error);
   } finally {
     bloquearFormulario(false);
@@ -265,16 +455,22 @@ function sincronizarModoAudio() {
 
 function iniciarInterfaz() {
   if (!validarElementosRequeridos()) return;
+
   ocultarProgreso();
   ocultarMensaje();
   reiniciarResultado();
+
   inicializarGeminiPopup();
   inicializarTranscripcionUI();
   inicializarModalErrorEdicion();
+  inicializarFuncionesPopup();
+  inicializarChecklistProcesamiento();
   aplicarModoAutomaticoVisual();
+
   elementos.videoInput.addEventListener('change', registrarCambioDeArchivo);
   elementos.videoForm.addEventListener('submit', procesarFormulario);
   elementos.improveAudio.addEventListener('change', sincronizarModoAudio);
+
   sincronizarModoAudio();
   verificarServidor();
 }
