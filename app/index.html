@@ -23,24 +23,14 @@
 
       <form id="videoForm" class="video-form">
         <section class="form-section upload-card">
-          <label class="file-picker" for="videoInput">
-            <span class="file-picker__icon">🎬</span>
-            <span class="file-picker__title">Seleccionar video</span>
-            <span class="file-picker__hint">MP4, MOV, WEBM, MKV o AVI</span>
-          </label>
+          <label class="file-picker" for="videoInput"><span class="file-picker__icon">🎬</span><span class="file-picker__title">Seleccionar video</span><span class="file-picker__hint">MP4, MOV, WEBM, MKV o AVI</span></label>
           <input id="videoInput" class="file-input" name="video" type="file" accept="video/*,.mp4,.mov,.m4v,.avi,.mkv,.webm" required />
           <p id="fileName" class="file-name">Ningún video seleccionado.</p>
         </section>
 
         <section class="form-section auto-card">
-          <div>
-            <p class="eyebrow">Modo automático</p>
-            <h2>Edición configurable antes de iniciar</h2>
-            <p id="autoModeSummary" class="auto-summary">Al presionar Procesar, se abrirá un checklist para elegir audio, subtítulos, cortes, visuales, sonidos y exportación.</p>
-          </div>
-          <div class="auto-pills" aria-label="Funciones automáticas disponibles">
-            <span>Audio</span><span>Subtítulos</span><span>Cortes</span><span>Visuales</span><span>Sonidos</span><span>Comparativa</span>
-          </div>
+          <div><p class="eyebrow">Modo automático</p><h2>Edición configurable antes de iniciar</h2><p id="autoModeSummary" class="auto-summary">Al presionar Procesar, se abrirá un checklist para elegir audio, subtítulos, cortes, visuales, sonidos y exportación.</p></div>
+          <div class="auto-pills" aria-label="Funciones automáticas disponibles"><span>Audio</span><span>Subtítulos</span><span>Cortes</span><span>Visuales</span><span>Sonidos</span><span>Comparativa</span></div>
         </section>
 
         <input type="hidden" id="platformInput" name="plataforma" value="tiktok" />
@@ -50,107 +40,43 @@
           <summary>Opciones avanzadas</summary>
           <div class="advanced-grid">
             <section class="form-section options-card">
-              <div class="options-header">
-                <div><h2>Audio</h2><p>Estas opciones se respetan solo si “Mejorar audio” queda marcado en el checklist.</p></div>
-              </div>
-              <label class="toggle-row" for="improveAudio">
-                <input id="improveAudio" name="mejorarAudio" type="checkbox" checked />
-                <span><strong>Mejorar audio automáticamente</strong><small>Reduce ruido, normaliza volumen y mejora claridad.</small></span>
-              </label>
-              <label class="select-row" for="audioMode">
-                <span>Modo de audio</span>
-                <select id="audioMode" name="modoAudio"><option value="limpieza-simple" selected>Limpieza simple</option></select>
-              </label>
+              <div class="options-header"><div><h2>Audio</h2><p>Estas opciones se respetan solo si “Mejorar audio” queda marcado en el checklist.</p></div></div>
+              <label class="toggle-row" for="improveAudio"><input id="improveAudio" name="mejorarAudio" type="checkbox" checked /><span><strong>Mejorar audio automáticamente</strong><small>Reduce ruido, normaliza volumen y mejora claridad.</small></span></label>
+              <label class="select-row" for="audioMode"><span>Modo de audio</span><select id="audioMode" name="modoAudio"><option value="limpieza-simple" selected>Limpieza simple</option></select></label>
             </section>
-
             <section class="form-section options-card">
-              <div class="options-header">
-                <div><h2>Transcripción y textos</h2><p>Estas opciones dependen del checklist antes de procesar.</p></div>
-                <button id="openGeminiButton" class="secondary-button" type="button">Configurar Gemini</button>
-              </div>
-              <label class="toggle-row" for="createTranscription">
-                <input id="createTranscription" name="crearTranscripcion" type="checkbox" checked />
-                <span><strong>Crear transcripción</strong><small>Usa texto manual o el motor disponible.</small></span>
-              </label>
-              <label class="toggle-row" for="addSubtitles">
-                <input id="addSubtitles" name="agregarSubtitulos" type="checkbox" checked />
-                <span><strong>Agregar subtítulos</strong><small>Subtítulos quemados en el video final.</small></span>
-              </label>
-              <label class="toggle-row" for="addFloatingTexts">
-                <input id="addFloatingTexts" name="agregarTextosFlotantes" type="checkbox" checked />
-                <span><strong>Agregar textos flotantes</strong><small>Momentos importantes convertidos en textos visuales.</small></span>
-              </label>
-              <label class="select-row" for="transcriptionLanguage">
-                <span>Idioma</span>
-                <select id="transcriptionLanguage" name="idiomaTranscripcion"><option value="es" selected>Español</option><option value="auto">Automático</option><option value="en">Inglés</option></select>
-              </label>
-              <label class="select-row" for="subtitleStyle">
-                <span>Estilo subtítulos</span>
-                <select id="subtitleStyle" name="estiloSubtitulos"><option value="tiktok-profesional" selected>TikTok profesional</option><option value="elegante">Elegante</option><option value="minimalista">Minimalista</option><option value="alto-contraste">Alto contraste</option></select>
-              </label>
-              <label class="select-row" for="floatingTextStyle">
-                <span>Estilo textos</span>
-                <select id="floatingTextStyle" name="estiloTextosFlotantes"><option value="badge" selected>Badge</option><option value="impacto">Impacto</option><option value="elegante">Elegante</option><option value="alerta">Alerta</option></select>
-              </label>
+              <div class="options-header"><div><h2>Transcripción y textos</h2><p>Estas opciones dependen del checklist antes de procesar.</p></div><button id="openGeminiButton" class="secondary-button" type="button">Configurar Gemini</button></div>
+              <label class="toggle-row" for="createTranscription"><input id="createTranscription" name="crearTranscripcion" type="checkbox" checked /><span><strong>Crear transcripción</strong><small>Usa texto manual o el motor disponible.</small></span></label>
+              <label class="toggle-row" for="addSubtitles"><input id="addSubtitles" name="agregarSubtitulos" type="checkbox" checked /><span><strong>Agregar subtítulos</strong><small>Subtítulos quemados en el video final.</small></span></label>
+              <label class="toggle-row" for="addFloatingTexts"><input id="addFloatingTexts" name="agregarTextosFlotantes" type="checkbox" checked /><span><strong>Agregar textos flotantes</strong><small>Momentos importantes convertidos en textos visuales.</small></span></label>
+              <label class="select-row" for="transcriptionLanguage"><span>Idioma</span><select id="transcriptionLanguage" name="idiomaTranscripcion"><option value="es" selected>Español</option><option value="auto">Automático</option><option value="en">Inglés</option></select></label>
+              <label class="select-row" for="subtitleStyle"><span>Estilo subtítulos</span><select id="subtitleStyle" name="estiloSubtitulos"><option value="tiktok-profesional" selected>TikTok profesional</option><option value="elegante">Elegante</option><option value="minimalista">Minimalista</option><option value="alto-contraste">Alto contraste</option></select></label>
+              <label class="select-row" for="floatingTextStyle"><span>Estilo textos</span><select id="floatingTextStyle" name="estiloTextosFlotantes"><option value="badge" selected>Badge</option><option value="impacto">Impacto</option><option value="elegante">Elegante</option><option value="alerta">Alerta</option></select></label>
               <label class="select-row" for="maxFloatingTexts"><span>Máximo textos</span><input id="maxFloatingTexts" name="maxTextosFlotantes" type="number" min="1" max="12" value="6" /></label>
               <label class="textarea-row" for="manualTranscriptText"><span>Transcripción manual opcional</span><textarea id="manualTranscriptText" name="textoTranscripcionManual" rows="5" placeholder="Opcional. La app puede procesar el video sin que pegues nada aquí."></textarea></label>
               <p id="geminiSettingsSummary" class="mini-summary">Gemini desactivado · Se usará fallback local cuando aplique</p>
             </section>
           </div>
         </details>
-
         <button id="processButton" class="primary-button" type="submit">Procesar</button>
       </form>
 
-      <section id="progressArea" class="progress-area" hidden>
-        <div class="progress-topline"><div><p class="eyebrow">Progreso real</p><h2 id="progressTitle">Esperando video</h2></div><strong id="progressPercent">0%</strong></div>
-        <div class="progress-track" aria-label="Barra de progreso de edición"><div id="progressBar" class="progress-bar" style="width: 0%;"></div></div>
-        <div class="progress-status-row"><div class="progress-loader"></div><p id="progressText">Esperando video.</p></div>
-        <ol id="progressHistory" class="progress-history"></ol>
-      </section>
-
+      <section id="progressArea" class="progress-area" hidden><div class="progress-topline"><div><p class="eyebrow">Progreso real</p><h2 id="progressTitle">Esperando video</h2></div><strong id="progressPercent">0%</strong></div><div class="progress-track" aria-label="Barra de progreso de edición"><div id="progressBar" class="progress-bar" style="width: 0%;"></div></div><div class="progress-status-row"><div class="progress-loader"></div><p id="progressText">Esperando video.</p></div><ol id="progressHistory" class="progress-history"></ol></section>
       <section id="messageBox" class="message-box" hidden></section>
       <section id="resultPanel" class="result-panel" hidden>
         <div class="result-header"><div><p class="eyebrow">Resultado</p><h2>Video procesado</h2></div><a id="downloadLink" class="download-link" href="#" download hidden>Descargar video</a></div>
         <p id="editingSummary" class="editing-summary" hidden></p>
         <p id="audioSummary" class="audio-summary" hidden></p>
         <p id="transcriptionSummary" class="transcription-summary" hidden></p>
+        <section id="impactReportPanel" class="impact-report-panel" hidden></section>
         <video id="resultVideo" class="result-video" controls playsinline hidden></video>
       </section>
     </section>
   </main>
 
-  <section id="funcionesPopupModal" class="avj-funciones-modal" hidden aria-hidden="true">
-    <div class="avj-funciones-modal__backdrop" data-funciones-cerrar="true"></div>
-    <section class="avj-funciones-modal__panel" role="dialog" aria-modal="true" aria-labelledby="funcionesPopupTitulo">
-      <header class="avj-funciones-modal__header"><div><p class="eyebrow">Control interno</p><h2 id="funcionesPopupTitulo">Centro de funciones</h2><p>Revisa y prueba los módulos registrados de AutoVideoJeff.</p></div><button type="button" class="avj-funciones-close" data-funciones-cerrar="true" aria-label="Cerrar">×</button></header>
-      <div class="avj-funciones-toolbar"><div class="avj-funciones-search"><label for="funcionesPopupBuscar">Buscar o escribir función</label><input id="funcionesPopupBuscar" type="search" placeholder="Ejemplo: detectar-silencios, ffmpeg, exportar..." autocomplete="off" /></div><button type="button" id="funcionesPopupProbarTexto" class="avj-funciones-btn">Probar escrito</button></div>
-      <div id="funcionesPopupEstado" class="avj-funciones-estado" hidden></div>
-      <div id="funcionesPopupResumen"></div>
-      <div class="avj-funciones-modal__body"><div id="funcionesPopupListado" class="avj-funciones-listado"><div class="avj-funciones-cargando">Cargando funciones...</div></div><aside id="funcionesPopupResultado" class="avj-funciones-panel-resultado"><div class="avj-funciones-ayuda"><strong>Modo de uso</strong><p>Busca una función y presiona “Probar”. Si requiere video o texto, el sistema te avisará sin romper el flujo principal.</p></div></aside></div>
-    </section>
-  </section>
-
-  <section id="errorModal" class="modal-backdrop" hidden>
-    <div class="modal-card error-modal-card" role="dialog" aria-modal="true" aria-labelledby="errorModalTitle">
-      <div class="modal-header"><div><p class="eyebrow">Error de edición</p><h2 id="errorModalTitle">Fallo de edición</h2></div><button id="closeErrorModal" class="icon-button" type="button" aria-label="Cerrar">×</button></div>
-      <div class="error-detail-box"><p id="errorModalStage">Etapa: no identificada</p><p id="errorModalDetail">No se recibió detalle del error.</p><p id="errorModalFile">Archivo sugerido: no identificado</p><p id="errorModalRecommendation">Revisa el historial de edición para ubicar el problema.</p></div>
-    </div>
-  </section>
-
-  <section id="geminiModal" class="modal-backdrop" hidden>
-    <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="geminiModalTitle">
-      <div class="modal-header"><div><p class="eyebrow">Configuración</p><h2 id="geminiModalTitle">Gemini para textos flotantes</h2></div><button id="closeGeminiModal" class="icon-button" type="button" aria-label="Cerrar">×</button></div>
-      <label class="toggle-row" for="useGemini"><input id="useGemini" type="checkbox" /><span><strong>Usar Gemini</strong><small>Analiza la transcripción y decide textos importantes.</small></span></label>
-      <label class="toggle-row" for="useFallbackGemini"><input id="useFallbackGemini" type="checkbox" checked /><span><strong>Usar fallback local si Gemini falla</strong><small>El video no se detiene si no hay conexión.</small></span></label>
-      <label class="textarea-row" for="geminiCredencial"><span>Dato de conexión Gemini</span><input id="geminiCredencial" type="password" autocomplete="off" placeholder="Dato local" /></label>
-      <label class="select-row" for="geminiModelo"><span>Modelo</span><input id="geminiModelo" type="text" value="gemini-1.5-flash" /></label>
-      <label class="textarea-row" for="geminiGuia"><span>Guía para Gemini</span><textarea id="geminiGuia" rows="5"></textarea></label>
-      <div class="modal-grid"><label class="select-row" for="geminiTemperatura"><span>Temperatura</span><input id="geminiTemperatura" type="number" min="0" max="1" step="0.05" value="0.35" /></label><label class="select-row" for="geminiTimeoutMs"><span>Tiempo espera ms</span><input id="geminiTimeoutMs" type="number" min="10000" max="180000" step="1000" value="60000" /></label></div>
-      <button id="saveGeminiSettings" class="primary-button" type="button">Guardar configuración</button>
-    </div>
-  </section>
-
+  <section id="funcionesPopupModal" class="avj-funciones-modal" hidden aria-hidden="true"><div class="avj-funciones-modal__backdrop" data-funciones-cerrar="true"></div><section class="avj-funciones-modal__panel" role="dialog" aria-modal="true" aria-labelledby="funcionesPopupTitulo"><header class="avj-funciones-modal__header"><div><p class="eyebrow">Control interno</p><h2 id="funcionesPopupTitulo">Centro de funciones</h2><p>Revisa y prueba los módulos registrados de AutoVideoJeff.</p></div><button type="button" class="avj-funciones-close" data-funciones-cerrar="true" aria-label="Cerrar">×</button></header><div class="avj-funciones-toolbar"><div class="avj-funciones-search"><label for="funcionesPopupBuscar">Buscar o escribir función</label><input id="funcionesPopupBuscar" type="search" placeholder="Ejemplo: detectar-silencios, ffmpeg, exportar..." autocomplete="off" /></div><button type="button" id="funcionesPopupProbarTexto" class="avj-funciones-btn">Probar escrito</button></div><div id="funcionesPopupEstado" class="avj-funciones-estado" hidden></div><div id="funcionesPopupResumen"></div><div class="avj-funciones-modal__body"><div id="funcionesPopupListado" class="avj-funciones-listado"><div class="avj-funciones-cargando">Cargando funciones...</div></div><aside id="funcionesPopupResultado" class="avj-funciones-panel-resultado"><div class="avj-funciones-ayuda"><strong>Modo de uso</strong><p>Busca una función y presiona “Probar”. Si requiere video o texto, el sistema te avisará sin romper el flujo principal.</p></div></aside></div></section></section>
+  <section id="errorModal" class="modal-backdrop" hidden><div class="modal-card error-modal-card" role="dialog" aria-modal="true" aria-labelledby="errorModalTitle"><div class="modal-header"><div><p class="eyebrow">Error de edición</p><h2 id="errorModalTitle">Fallo de edición</h2></div><button id="closeErrorModal" class="icon-button" type="button" aria-label="Cerrar">×</button></div><div class="error-detail-box"><p id="errorModalStage">Etapa: no identificada</p><p id="errorModalDetail">No se recibió detalle del error.</p><p id="errorModalFile">Archivo sugerido: no identificado</p><p id="errorModalRecommendation">Revisa el historial de edición para ubicar el problema.</p></div></div></section>
+  <section id="geminiModal" class="modal-backdrop" hidden><div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="geminiModalTitle"><div class="modal-header"><div><p class="eyebrow">Configuración</p><h2 id="geminiModalTitle">Gemini para textos flotantes</h2></div><button id="closeGeminiModal" class="icon-button" type="button" aria-label="Cerrar">×</button></div><label class="toggle-row" for="useGemini"><input id="useGemini" type="checkbox" /><span><strong>Usar Gemini</strong><small>Analiza la transcripción y decide textos importantes.</small></span></label><label class="toggle-row" for="useFallbackGemini"><input id="useFallbackGemini" type="checkbox" checked /><span><strong>Usar fallback local si Gemini falla</strong><small>El video no se detiene si no hay conexión.</small></span></label><label class="textarea-row" for="geminiCredencial"><span>Dato de conexión Gemini</span><input id="geminiCredencial" type="password" autocomplete="off" placeholder="Dato local" /></label><label class="select-row" for="geminiModelo"><span>Modelo</span><input id="geminiModelo" type="text" value="gemini-1.5-flash" /></label><label class="textarea-row" for="geminiGuia"><span>Guía para Gemini</span><textarea id="geminiGuia" rows="5"></textarea></label><div class="modal-grid"><label class="select-row" for="geminiTemperatura"><span>Temperatura</span><input id="geminiTemperatura" type="number" min="0" max="1" step="0.05" value="0.35" /></label><label class="select-row" for="geminiTimeoutMs"><span>Tiempo espera ms</span><input id="geminiTimeoutMs" type="number" min="10000" max="180000" step="1000" value="60000" /></label></div><button id="saveGeminiSettings" class="primary-button" type="button">Guardar configuración</button></div></section>
   <script type="module" src="./app.js"></script>
 </body>
 </html>
