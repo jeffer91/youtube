@@ -2,6 +2,7 @@ import fs from 'fs';
 import { reportarModulo } from '../progreso/progreso-modulo.js';
 import { crearEdicionTikTokSimple } from './tiktok-simple/tiktok.service.js';
 import { crearEdicionTikTokCuadradoCentro } from './tiktok-cuadrado-centro/tiktok-cuadrado-centro.service.js';
+import { calcularImpactoVisual } from '../motor/metricas/video-impacto.service.js';
 
 const MODOS_TIKTOK = Object.freeze({ SIMPLE: 'simple', CUADRADO_CENTRO: 'cuadrado-centro' });
 const PLATAFORMA_PREDETERMINADA = 'tiktok';
@@ -47,20 +48,28 @@ function crearResumenEdicionDinamica(edicionDinamica) {
   return { recibida: Boolean(edicionDinamica), activa: Boolean(edicionDinamica?.activo), omitida: Boolean(edicionDinamica?.omitido), videoDinamico: edicionDinamica?.videoDinamico || null, tieneMapaTiempo: Boolean(edicionDinamica?.mapaTiempo), tieneTranscripcionAjustada: Boolean(edicionDinamica?.transcripcionAjustada), mensaje: edicionDinamica?.diagnostico?.mensaje || edicionDinamica?.motivo || null };
 }
 
+function validarPlanVisual(resultado) {
+  if (!resultado?.render?.filtroVideo) throw new Error('El plan de edición no generó filtroVideo para FFmpeg.');
+  if (!resultado?.salida?.nombreExportado) throw new Error('El plan de edición no generó nombreExportado.');
+}
+
 async function editarTikTok({ entrada, entendimiento, audio = null, transcripcion = null, edicionDinamica = null, opciones, modo, plataforma, progreso = null }) {
   validarModoTikTok(modo);
   const opcionesFinales = { ...opciones, plataforma, modo, edicionDinamicaActiva: Boolean(edicionDinamica?.activo && !edicionDinamica?.omitido) };
   const parametros = { entrada, entendimiento, audio, transcripcion, edicionDinamica, opciones: opcionesFinales, progreso };
-
   await reportarModulo(progreso, { etapa: 'editar', porcentaje: 76, titulo: 'Preparando edición TikTok', detalle: `Modo seleccionado: ${modo}.`, datos: { modo, plataforma }, archivo: 'editar/editar.conexion.js' });
 
-  const resultado = modo === MODOS_TIKTOK.SIMPLE
+  const resultadoBase = modo === MODOS_TIKTOK.SIMPLE
     ? await crearEdicionTikTokSimple(parametros)
     : await crearEdicionTikTokCuadradoCentro(parametros);
 
-  await reportarModulo(progreso, { etapa: 'editar', porcentaje: 91, titulo: 'Plan de edición generado', detalle: `${resultado.tipo || 'edición'} lista para exportar.`, datos: { tipo: resultado.tipo, modo: resultado.modo, sonidos: Boolean(resultado.sonidos && !resultado.sonidos.omitido), visual: Boolean(resultado.visualDinamico && !resultado.visualDinamico.omitido) }, archivo: 'editar/editar.conexion.js' });
+  validarPlanVisual(resultadoBase);
 
-  return { ...resultado, edicionDinamica: crearResumenEdicionDinamica(edicionDinamica) };
+  const impactoVisual = calcularImpactoVisual({ edicion: resultadoBase, edicionDinamica, opciones: opcionesFinales });
+  const resultado = { ...resultadoBase, edicionDinamica: crearResumenEdicionDinamica(edicionDinamica), impactoVisual };
+
+  await reportarModulo(progreso, { etapa: 'editar', porcentaje: 91, titulo: 'Plan de edición generado', detalle: `${resultado.tipo || 'edición'} lista para exportar.`, datos: { tipo: resultado.tipo, modo: resultado.modo, sonidos: Boolean(resultado.sonidos && !resultado.sonidos.omitido), visual: Boolean(resultado.visualDinamico && !resultado.visualDinamico.omitido), impactoVisual }, archivo: 'editar/editar.conexion.js' });
+  return resultado;
 }
 
 export async function editarVideo({ entrada, entendimiento, audio = null, transcripcion = null, edicionDinamica = null, opciones = {}, progreso = null }) {
@@ -71,3 +80,5 @@ export async function editarVideo({ entrada, entendimiento, audio = null, transc
   if (plataforma !== 'tiktok') throw new Error(`Esta versión solo admite TikTok. Plataforma indicada: ${plataforma}`);
   return await editarTikTok({ entrada, entendimiento, audio, transcripcion, edicionDinamica, opciones, modo, plataforma, progreso });
 }
+
+export default { editarVideo };
