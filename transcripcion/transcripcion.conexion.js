@@ -11,6 +11,7 @@ import { construirCapasVideo } from './capas/construir-capas-video.js';
 import { crearReporteTranscripcion } from './reportes/crear-reporte-transcripcion.js';
 import { crearReporteGemini } from './reportes/crear-reporte-gemini.js';
 import { crearDiagnosticoTranscripcion } from './diagnostico/diagnostico-transcripcion.service.js';
+import { calcularImpactoTexto } from '../motor/metricas/texto-impacto.service.js';
 
 function validarBase({ entrada, entendimiento }) {
   if (!entrada || typeof entrada !== 'object') throw new Error('No se puede procesar transcripción porque falta la entrada.');
@@ -19,8 +20,8 @@ function validarBase({ entrada, entendimiento }) {
   if (entendimiento.ok !== true) throw new Error('No se puede procesar transcripción porque el análisis del video no terminó correctamente.');
 }
 
-function resultadoOmitido(mensaje) {
-  return {
+function resultadoOmitido(mensaje, entendimiento, opciones) {
+  const resultado = {
     ok: true,
     etapa: 'transcripcion',
     omitido: true,
@@ -36,6 +37,7 @@ function resultadoOmitido(mensaje) {
     diagnostico: null,
     creadoEn: new Date().toISOString()
   };
+  return { ...resultado, impactoTexto: calcularImpactoTexto({ transcripcion: resultado, entendimiento, opciones }) };
 }
 
 function resultadoModuloOmitido(mensaje, extras = {}) {
@@ -55,16 +57,14 @@ export async function procesarTranscripcion({ entrada, entendimiento, audio = nu
   const config = obtenerConfigTranscripcion(opciones);
 
   if (!config.transcripcion.crearTranscripcion) {
-    return resultadoOmitido('La transcripción está desactivada por selección del usuario.');
+    return resultadoOmitido('La transcripción está desactivada por selección del usuario.', entendimiento, opciones);
   }
 
   const transcripcion = await transcribirVideo({ entrada, entendimiento, audio, opciones });
   const archivosTranscripcion = await guardarArchivosTranscripcion({ entrada, transcripcion, opciones });
-
   const subtitulos = config.subtitulos.agregarSubtitulos
     ? await generarSubtitulos({ entrada, transcripcion, opciones })
     : resultadoModuloOmitido('Subtítulos omitidos por selección del usuario.', { srt: null, ass: null, segmentosUsados: 0 });
-
   const necesitaTextosFlotantes = config.textosFlotantes.agregarTextosFlotantes === true;
 
   let paqueteGemini = null;
@@ -78,12 +78,10 @@ export async function procesarTranscripcion({ entrada, entendimiento, audio = nu
     paqueteGemini = prepararPaqueteGemini({ entrada, entendimiento, audio, transcripcion, subtitulos, opciones });
     geminiResultado = await consultarGeminiParaMomentos({ paqueteGemini, segmentos: transcripcion.segmentos || [], opciones });
     origenMomentos = geminiResultado;
-
     if (debeUsarFallback({ geminiResultado, config })) {
       fallbackResultado = generarMomentosFallbackLocal({ transcripcion, opciones, motivo: geminiResultado?.mensaje || geminiResultado?.error || 'Gemini no generó momentos válidos.' });
       if (fallbackResultado.ok) origenMomentos = fallbackResultado;
     }
-
     archivosGemini = await guardarArchivosGemini({ entrada, paqueteGemini, geminiResultado, fallbackResultado, opciones });
     reporteGemini = await crearReporteGemini({ entrada, paqueteGemini, geminiResultado, fallbackResultado, opciones });
   } else {
@@ -96,12 +94,11 @@ export async function procesarTranscripcion({ entrada, entendimiento, audio = nu
   const textosFlotantes = necesitaTextosFlotantes
     ? await generarTextosFlotantes({ entrada, origenMomentos, opciones })
     : resultadoModuloOmitido('Textos flotantes omitidos por selección del usuario.', { textos: [], cantidad: 0, rutaTextosFlotantes: null });
-
   const capasVideo = await construirCapasVideo({ entrada, subtitulos, textosFlotantes, opciones });
   const reporteTranscripcion = await crearReporteTranscripcion({ entrada, transcripcion, archivosTranscripcion, subtitulos, textosFlotantes, capasVideo, opciones });
   const diagnostico = await crearDiagnosticoTranscripcion({ entrada, opciones, transcripcion, subtitulos, geminiResultado, fallbackResultado, textosFlotantes, capasVideo });
 
-  return {
+  const resultado = {
     ok: true,
     etapa: 'transcripcion',
     omitido: false,
@@ -117,6 +114,8 @@ export async function procesarTranscripcion({ entrada, entendimiento, audio = nu
     diagnostico,
     creadoEn: new Date().toISOString()
   };
+
+  return { ...resultado, impactoTexto: calcularImpactoTexto({ transcripcion: resultado, entendimiento, opciones }) };
 }
 
 export default { procesarTranscripcion };
