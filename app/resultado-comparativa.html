@@ -6,70 +6,22 @@
   <title>Antes y después de la edición | AutoVideoJeff</title>
   <link rel="stylesheet" href="./styles.css" />
 </head>
-
 <body>
   <main class="avj-comparativa-page">
     <div class="avj-comparativa-shell">
       <header class="avj-comparativa-header">
-        <div>
-          <p class="avj-comparativa-kicker">AutoVideoJeff</p>
-          <h1>Antes y después de la edición</h1>
-          <p>Compara el video original con el resultado procesado.</p>
-        </div>
-
-        <div class="avj-comparativa-actions">
-          <button type="button" id="btnReproducirAmbos" class="avj-comparativa-btn avj-comparativa-btn-primary">Reproducir ambos</button>
-          <button type="button" id="btnPausarAmbos" class="avj-comparativa-btn">Pausar ambos</button>
-          <button type="button" id="btnVolverProcesar" class="avj-comparativa-btn">Volver a procesar</button>
-          <button type="button" id="btnCerrarComparativa" class="avj-comparativa-btn avj-comparativa-btn-danger">Cerrar</button>
-        </div>
+        <div><p class="avj-comparativa-kicker">AutoVideoJeff</p><h1>Antes y después de la edición</h1><p>Compara el video original con el resultado procesado y revisa el impacto real de cada módulo.</p></div>
+        <div class="avj-comparativa-actions"><button type="button" id="btnReproducirAmbos" class="avj-comparativa-btn avj-comparativa-btn-primary">Reproducir ambos</button><button type="button" id="btnPausarAmbos" class="avj-comparativa-btn">Pausar ambos</button><button type="button" id="btnVolverProcesar" class="avj-comparativa-btn">Volver a procesar</button><button type="button" id="btnCerrarComparativa" class="avj-comparativa-btn avj-comparativa-btn-danger">Cerrar</button></div>
       </header>
-
       <section id="comparativaError" class="avj-comparativa-error" hidden></section>
-
       <section class="avj-comparativa-grid" aria-label="Comparación de videos">
-        <article class="avj-comparativa-card">
-          <div class="avj-comparativa-card-header">
-            <h2>Original</h2>
-            <span class="avj-comparativa-badge">Sin editar</span>
-          </div>
-
-          <div class="avj-comparativa-video-wrap">
-            <video id="videoOriginal" controls preload="metadata"></video>
-          </div>
-
-          <div class="avj-comparativa-card-actions">
-            <button type="button" id="btnPlayOriginal" class="avj-comparativa-btn">Reproducir original</button>
-            <button type="button" id="btnPauseOriginal" class="avj-comparativa-btn">Pausar original</button>
-            <button type="button" id="btnReiniciarOriginal" class="avj-comparativa-btn">Reiniciar original</button>
-          </div>
-        </article>
-
-        <article class="avj-comparativa-card">
-          <div class="avj-comparativa-card-header">
-            <h2>Editado</h2>
-            <span class="avj-comparativa-badge">Resultado final</span>
-          </div>
-
-          <div class="avj-comparativa-video-wrap">
-            <video id="videoEditado" controls preload="metadata"></video>
-          </div>
-
-          <div class="avj-comparativa-card-actions">
-            <button type="button" id="btnPlayEditado" class="avj-comparativa-btn">Reproducir editado</button>
-            <button type="button" id="btnPauseEditado" class="avj-comparativa-btn">Pausar editado</button>
-            <button type="button" id="btnReiniciarEditado" class="avj-comparativa-btn">Reiniciar editado</button>
-            <a id="btnDescargarEditado" class="avj-comparativa-btn avj-comparativa-btn-primary" href="#" download>Descargar editado</a>
-          </div>
-        </article>
+        <article class="avj-comparativa-card"><div class="avj-comparativa-card-header"><h2>Original</h2><span class="avj-comparativa-badge">Sin editar</span></div><div class="avj-comparativa-video-wrap"><video id="videoOriginal" controls preload="metadata"></video></div><div class="avj-comparativa-card-actions"><button type="button" id="btnPlayOriginal" class="avj-comparativa-btn">Reproducir original</button><button type="button" id="btnPauseOriginal" class="avj-comparativa-btn">Pausar original</button><button type="button" id="btnReiniciarOriginal" class="avj-comparativa-btn">Reiniciar original</button></div></article>
+        <article class="avj-comparativa-card"><div class="avj-comparativa-card-header"><h2>Editado</h2><span class="avj-comparativa-badge">Resultado final</span></div><div class="avj-comparativa-video-wrap"><video id="videoEditado" controls preload="metadata"></video></div><div class="avj-comparativa-card-actions"><button type="button" id="btnPlayEditado" class="avj-comparativa-btn">Reproducir editado</button><button type="button" id="btnPauseEditado" class="avj-comparativa-btn">Pausar editado</button><button type="button" id="btnReiniciarEditado" class="avj-comparativa-btn">Reiniciar editado</button><a id="btnDescargarEditado" class="avj-comparativa-btn avj-comparativa-btn-primary" href="#" download>Descargar editado</a></div></article>
       </section>
-
-      <section id="comparativaInfo" class="avj-comparativa-info">
-        Revisa el resultado. Si no te gusta, puedes volver al checklist y procesar nuevamente.
-      </section>
+      <section id="comparativaReporteImpacto" class="avj-comparativa-impact-report" hidden></section>
+      <section id="comparativaInfo" class="avj-comparativa-info">Revisa el resultado. Si no te gusta, puedes volver al checklist y procesar nuevamente.</section>
     </div>
   </main>
-
   <script type="module" src="./resultado-comparativa.js"></script>
 </body>
 </html>
