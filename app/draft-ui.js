@@ -1,3 +1,5 @@
+import { crearPanelInteligenciaDraft, recogerCambiosInteligencia } from './inteligencia-ui.js';
+
 function crearElemento(tag, className = '', texto = '') {
   const elemento = document.createElement(tag);
   if (className) elemento.className = className;
@@ -39,6 +41,16 @@ function crearResumenSeccion(titulo, items = []) {
   const tarjeta = crearElemento('article', 'draft-card');
   tarjeta.appendChild(crearElemento('h3', '', titulo));
   tarjeta.appendChild(crearElemento('p', 'mini-summary', `${activos}/${lista.length} elementos activos`));
+  return tarjeta;
+}
+
+function crearResumenInteligencia(draft = {}) {
+  const decisiones = draft?.secciones?.decisiones || {};
+  const seo = decisiones.seo || {};
+  const hook = decisiones.hook || {};
+  const tarjeta = crearElemento('article', 'draft-card draft-card--creative');
+  tarjeta.appendChild(crearElemento('h3', '', 'Creativo'));
+  tarjeta.appendChild(crearElemento('p', 'mini-summary', seo.tituloPrincipal || hook.tituloCorto || hook.texto || 'Sin sugerencias'));
   return tarjeta;
 }
 
@@ -105,6 +117,9 @@ export function pintarDraftRevision({ contenedor, draft } = {}) {
   resumen.appendChild(crearResumenSeccion('Subtítulos', draft.secciones?.subtitulos));
   resumen.appendChild(crearResumenSeccion('Textos flotantes', draft.secciones?.textosFlotantes));
   resumen.appendChild(crearResumenSeccion('B-Roll', draft.secciones?.broll));
+  resumen.appendChild(crearResumenInteligencia(draft));
+
+  const inteligencia = crearPanelInteligenciaDraft({ draft });
 
   const editor = crearElemento('section', 'draft-editor');
   editor.appendChild(crearListaEditable('cortes', draft.secciones?.cortes));
@@ -114,6 +129,7 @@ export function pintarDraftRevision({ contenedor, draft } = {}) {
 
   contenedor.appendChild(cabecera);
   contenedor.appendChild(resumen);
+  contenedor.appendChild(inteligencia);
   contenedor.appendChild(editor);
   contenedor.appendChild(crearAccionesDraft(draft.estadoPlan));
   return contenedor;
@@ -136,6 +152,9 @@ export function recogerCambiosDraft(contenedor) {
       cambios[nombre].push({ ...original, id: original.id || index + 1, activo, texto });
     });
   });
+
+  const decisiones = recogerCambiosInteligencia(contenedor);
+  if (decisiones) cambios.decisiones = decisiones;
 
   return cambios;
 }
