@@ -21,6 +21,7 @@
     "check:render-plan": "node scripts/verificar-render-plan.js",
     "check:perfiles": "node scripts/verificar-perfiles.js",
     "check:inteligencia": "node scripts/verificar-inteligencia.js",
+    "check:ui-inteligencia": "node scripts/verificar-ui-inteligencia.js",
     "test:transcripcion-manual": "node scripts/probar-transcripcion-manual.js",
     "test:gemini-fallback": "node scripts/probar-fallback-gemini.js",
     "test:drawtext": "node scripts/probar-drawtext.js"
