@@ -13,7 +13,7 @@
         <div>
           <p class="eyebrow">Editor automático</p>
           <h1>AutoVideoJeff</h1>
-          <p class="hero-description">Carga un video y presiona Procesar. La app limpia audio, corta silencios, ajusta subtítulos, agrega textos, movimiento visual y sonidos automáticamente.</p>
+          <p class="hero-description">Carga un video y elige si quieres exportarlo directo o crear primero un borrador editable. La app limpia audio, corta silencios, ajusta subtítulos, agrega textos, movimiento visual y sonidos automáticamente.</p>
         </div>
         <div id="serverStatus" class="server-status server-status--checking">Verificando servidor</div>
       </div>
@@ -44,6 +44,35 @@
           </div>
         </section>
 
+        <section class="form-section plan-card">
+          <div class="options-header">
+            <div>
+              <p class="eyebrow">Plan de edición</p>
+              <h2>Nuevo Draft Mode</h2>
+              <p>Primero puedes crear un plan editable y revisar cortes, subtítulos y textos antes del render final.</p>
+            </div>
+          </div>
+
+          <div class="plan-grid">
+            <label class="select-row" for="perfilVisual"><span>Perfil visual</span><select id="perfilVisual" name="perfilVisual"><option value="educacion" selected>Educación</option><option value="futbol">Fútbol</option><option value="formal">Formal</option><option value="entretenimiento">Entretenimiento</option></select></label>
+            <label class="select-row" for="nivelEdicion"><span>Nivel edición</span><select id="nivelEdicion" name="nivelEdicion"><option value="1">Nivel 1 · Básico</option><option value="2" selected>Nivel 2 · Avanzado</option><option value="3">Nivel 3 · Pro</option><option value="4">Nivel 4 · Máximo</option></select></label>
+            <label class="select-row" for="formatoPrincipal"><span>Formato principal</span><select id="formatoPrincipal" name="formatoPrincipal"><option value="vertical-9-16" selected>Vertical 9:16</option><option value="horizontal-16-9">Horizontal 16:9</option><option value="cuadrado-1-1">Cuadrado 1:1</option></select></label>
+          </div>
+
+          <div class="format-checks" aria-label="Formatos de exportación">
+            <label class="chip-check" for="exportVertical"><input id="exportVertical" type="checkbox" checked /><span>Vertical</span></label>
+            <label class="chip-check" for="exportHorizontal"><input id="exportHorizontal" type="checkbox" /><span>Horizontal</span></label>
+            <label class="chip-check" for="exportSquare"><input id="exportSquare" type="checkbox" /><span>Cuadrado</span></label>
+          </div>
+
+          <div class="plan-switches">
+            <label class="toggle-row" for="draftMode"><input id="draftMode" name="draftMode" type="checkbox" checked /><span><strong>Crear borrador revisable</strong><small>Genera plan-edicion.json y draft-edicion.json antes del render final.</small></span></label>
+            <label class="toggle-row" for="renderAutomatico"><input id="renderAutomatico" name="renderAutomatico" type="checkbox" /><span><strong>Render automático después del plan</strong><small>Por ahora se mantiene apagado para proteger el flujo actual.</small></span></label>
+          </div>
+
+          <p id="planModeSummary" class="mini-summary">Draft Mode activo · Perfil educación · Nivel 2 · Exportación vertical.</p>
+        </section>
+
         <input type="hidden" id="platformInput" name="plataforma" value="tiktok" />
         <input type="hidden" id="modeInput" name="modo" value="cuadrado-centro" />
 
@@ -71,7 +100,10 @@
           </div>
         </details>
 
-        <button id="processButton" class="primary-button" type="submit">Procesar automáticamente</button>
+        <div class="button-row">
+          <button id="draftButton" class="secondary-action-button" type="button">Crear borrador revisable</button>
+          <button id="processButton" class="primary-button" type="submit">Procesar automáticamente</button>
+        </div>
       </form>
 
       <section id="progressArea" class="progress-area" hidden>
@@ -93,6 +125,8 @@
       </section>
 
       <section id="messageBox" class="message-box" hidden></section>
+
+      <section id="draftPanel" class="draft-panel" hidden></section>
 
       <section id="resultPanel" class="result-panel" hidden>
         <div class="result-header"><div><p class="eyebrow">Resultado</p><h2>Video exportado</h2></div><a id="downloadLink" class="download-link" href="#" download hidden>Descargar video</a></div>
