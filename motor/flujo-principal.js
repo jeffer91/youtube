@@ -2,6 +2,7 @@ import { procesarEntrada } from '../entrada/entrada.conexion.js';
 import { entenderVideo } from '../entender/entender.conexion.js';
 import { mejorarAudioVideo } from '../audio/audio.conexion.js';
 import { procesarTranscripcion } from '../transcripcion/transcripcion.conexion.js';
+import { procesarInteligenciaCreativa } from '../inteligencia/inteligencia.conexion.js';
 import { procesarEdicionDinamica } from '../editar/edicion-dinamica/edicion-dinamica.conexion.js';
 import { editarVideo } from '../editar/editar.conexion.js';
 import { prepararSalida } from '../salida/salida.conexion.js';
@@ -54,6 +55,7 @@ function normalizarOpciones(opciones = {}) {
     agregarSubtitulos: convertirBooleano(opciones?.agregarSubtitulos, true),
     agregarTextosFlotantes: convertirBooleano(opciones?.agregarTextosFlotantes, true),
     usarGemini: convertirBooleano(opciones?.usarGemini, false),
+    inteligenciaCreativa: convertirBooleano(opciones?.inteligenciaCreativa, true),
     edicionDinamica: convertirBooleano(opciones?.edicionDinamica ?? opciones?.activarEdicionDinamica ?? opciones?.usarEdicionDinamica, true),
     activarEdicionDinamica: true,
     usarEdicionDinamica: true,
@@ -80,12 +82,13 @@ async function reportarProgreso(progreso, evento) {
   try { return await progreso(evento); } catch (error) { console.warn('[progreso] No se pudo reportar evento:', error.message); return null; }
 }
 
-function crearMensajeFinal({ salida, audio, edicion, transcripcion, edicionDinamica, perfilVisual }) {
+function crearMensajeFinal({ salida, audio, edicion, transcripcion, edicionDinamica, perfilVisual, inteligencia }) {
   const modo = edicion?.modo || salida?.modo || MODO_VIDEO_PREDETERMINADO;
   const audioUsado = salida?.audio?.tipo || audio?.tipo || 'original';
   const capas = transcripcion?.capasVideo;
   const partes = [`Video exportado correctamente en modo ${modo}`];
   if (perfilVisual?.nombre) partes.push(`perfil ${perfilVisual.nombre}`);
+  if (inteligencia?.seo?.tituloPrincipal) partes.push('con SEO sugerido');
   if (edicionDinamica?.activo && !edicionDinamica?.omitido) partes.push('con edición automática');
   partes.push(audioUsado === 'sonidos-edicion' ? 'con efectos de sonido' : audioUsado === 'mejorado' ? 'con audio mejorado' : 'con audio procesado');
   if (capas?.usarSubtitulos || edicion?.transcripcion?.capasAplicadas) partes.push('subtítulos/textos');
@@ -132,6 +135,12 @@ export async function ejecutarFlujoPrincipal(solicitud) {
     historial.push(crearRegistroHistorial('transcripcion', transcripcion.mensaje || 'Etapa de transcripción completada.', { omitido: Boolean(transcripcion.omitido), segmentos: transcripcion.transcripcion?.cantidadSegmentos || 0, subtitulos: Boolean(transcripcion.capasVideo?.usarSubtitulos), textosFlotantes: transcripcion.textosFlotantes?.cantidad || 0, perfilVisual: opciones.perfilVisual }));
     await reportarProgreso(progreso, { etapa: 'transcripcion', porcentaje: 50, titulo: 'Textos preparados', detalle: `${transcripcion.transcripcion?.cantidadSegmentos || 0} segmentos · ${transcripcion.textosFlotantes?.cantidad || 0} textos flotantes.`, datos: { segmentos: transcripcion.transcripcion?.cantidadSegmentos || 0, textosFlotantes: transcripcion.textosFlotantes?.cantidad || 0 } });
 
+    etapaActual = 'inteligencia';
+    await reportarProgreso(progreso, { etapa: 'inteligencia', porcentaje: 52, titulo: 'Generando inteligencia creativa', detalle: 'Creando hook, SEO, puntos importantes y miniatura sugerida.' });
+    const inteligencia = await procesarInteligenciaCreativa({ entrada, entendimiento, transcripcion, opciones, guardar: true });
+    validarResultadoEtapa('inteligencia', inteligencia);
+    historial.push(crearRegistroHistorial('inteligencia', inteligencia.mensaje || 'Inteligencia creativa generada.', { hook: inteligencia.hook?.estado || null, seo: inteligencia.seo?.estado || null, miniatura: inteligencia.miniatura?.estado || null }));
+
     etapaActual = 'edicion-dinamica';
     await reportarProgreso(progreso, { etapa: 'edicion-dinamica', porcentaje: 55, titulo: 'Edición dinámica', detalle: 'Detectando pausas, cortando silencios y ajustando tiempos.' });
     const edicionDinamica = await procesarEdicionDinamica({ entrada, entendimiento, audio, transcripcion, opciones, progreso });
@@ -150,7 +159,7 @@ export async function ejecutarFlujoPrincipal(solicitud) {
     validarResultadoEtapa('salida', salida);
     historial.push(crearRegistroHistorial('salida', 'Video exportado correctamente.', { nombreExportado: salida.nombreExportado || null, urlPublica: salida.urlPublica || null, modo: salida.modo || edicion.modo || opciones.modo, audioUsado: salida.audio?.tipo || null }));
 
-    return { ok: true, estado: 'VIDEO_PROCESADO', mensaje: crearMensajeFinal({ salida, audio, edicion, transcripcion, edicionDinamica, perfilVisual: opciones.perfilAplicado }), proyecto: entrada.proyecto, video: entrada.video, entendimiento, audio, transcripcion, edicionDinamica, edicion, resultado: salida, perfilVisual: opciones.perfilAplicado || null, historial };
+    return { ok: true, estado: 'VIDEO_PROCESADO', mensaje: crearMensajeFinal({ salida, audio, edicion, transcripcion, edicionDinamica, perfilVisual: opciones.perfilAplicado, inteligencia }), proyecto: entrada.proyecto, video: entrada.video, entendimiento, audio, transcripcion, inteligencia, edicionDinamica, edicion, resultado: salida, perfilVisual: opciones.perfilAplicado || null, historial };
   } catch (error) {
     const mensaje = error?.message || 'Error desconocido en el flujo principal.';
     error.etapa = error.etapa || etapaActual;
