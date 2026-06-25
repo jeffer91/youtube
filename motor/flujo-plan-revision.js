@@ -3,6 +3,7 @@ import { entenderVideo } from '../entender/entender.conexion.js';
 import { mejorarAudioVideo } from '../audio/audio.conexion.js';
 import { procesarTranscripcion } from '../transcripcion/transcripcion.conexion.js';
 import { procesarInteligenciaCreativa } from '../inteligencia/inteligencia.conexion.js';
+import { procesarBrollSugerido } from '../broll/broll.conexion.js';
 import { procesarEdicionDinamica } from '../editar/edicion-dinamica/edicion-dinamica.conexion.js';
 import { editarVideo } from '../editar/editar.conexion.js';
 import { crearPlanEdicion } from '../plan-edicion/crear-plan-edicion.service.js';
@@ -57,6 +58,8 @@ function normalizarOpciones(opciones = {}) {
     agregarTextosFlotantes: convertirBooleano(opciones?.agregarTextosFlotantes, true),
     usarGemini: convertirBooleano(opciones?.usarGemini, false),
     inteligenciaCreativa: convertirBooleano(opciones?.inteligenciaCreativa, true),
+    brollActivo: convertirBooleano(opciones?.brollActivo ?? opciones?.usarBroll ?? opciones?.agregarBroll, true),
+    maxBroll: opciones?.maxBroll ?? opciones?.maxSugerenciasBroll ?? 8,
     edicionDinamica: convertirBooleano(opciones?.edicionDinamica ?? opciones?.activarEdicionDinamica ?? opciones?.usarEdicionDinamica, true),
     activarEdicionDinamica: true,
     usarEdicionDinamica: true,
@@ -127,8 +130,14 @@ export async function ejecutarFlujoPlanRevision(solicitud) {
     validarResultadoEtapa('inteligencia', inteligencia);
     historial.push(crearRegistroHistorial('inteligencia', inteligencia.mensaje || 'Inteligencia creativa generada.', { hook: inteligencia.hook?.estado || null, seo: inteligencia.seo?.estado || null, miniatura: inteligencia.miniatura?.estado || null }));
 
+    etapaActual = 'broll';
+    await reportarProgreso(progreso, { etapa: 'broll', porcentaje: 55, titulo: 'Sugiriendo B-Roll', detalle: 'Creando escenas de apoyo para revisión manual.' });
+    const broll = await procesarBrollSugerido({ entrada, entendimiento, transcripcion, inteligencia, opciones, guardar: true });
+    validarResultadoEtapa('broll', broll);
+    historial.push(crearRegistroHistorial('broll', broll.mensaje || 'B-Roll sugerido generado.', { estado: broll.estado, total: broll.total || 0, guardado: broll.guardado?.rutaBroll || null }));
+
     etapaActual = 'edicion-dinamica';
-    await reportarProgreso(progreso, { etapa: 'edicion-dinamica', porcentaje: 58, titulo: 'Creando edición dinámica', detalle: 'Detectando pausas, cortes y tiempos ajustados.' });
+    await reportarProgreso(progreso, { etapa: 'edicion-dinamica', porcentaje: 60, titulo: 'Creando edición dinámica', detalle: 'Detectando pausas, cortes y tiempos ajustados.' });
     const edicionDinamica = await procesarEdicionDinamica({ entrada, entendimiento, audio, transcripcion, opciones, progreso });
     validarResultadoEtapa('edicion-dinamica', edicionDinamica);
     historial.push(crearRegistroHistorial('edicion-dinamica', edicionDinamica.diagnostico?.mensaje || edicionDinamica.motivo || 'Etapa de edición dinámica completada.', { activo: Boolean(edicionDinamica.activo), omitido: Boolean(edicionDinamica.omitido), perfilVisual: opciones.perfilVisual }));
@@ -141,9 +150,9 @@ export async function ejecutarFlujoPlanRevision(solicitud) {
 
     etapaActual = 'plan-edicion';
     await reportarProgreso(progreso, { etapa: 'plan-edicion', porcentaje: 92, titulo: 'Creando plan editable', detalle: 'Guardando plan-edicion.json para revisión.' });
-    const planResultado = await crearPlanEdicion({ entrada, entendimiento, audio, transcripcion, inteligencia, edicionDinamica, edicion, opciones, guardar: true });
+    const planResultado = await crearPlanEdicion({ entrada, entendimiento, audio, transcripcion, inteligencia, broll, edicionDinamica, edicion, opciones, guardar: true });
     const plan = planResultado.plan;
-    historial.push(crearRegistroHistorial('plan-edicion', 'Plan de edición creado correctamente.', { planId: plan?.id || null, rutaPlan: planResultado.guardado?.rutaPlan || null, perfilVisual: opciones.perfilVisual, inteligencia: inteligencia.estado }));
+    historial.push(crearRegistroHistorial('plan-edicion', 'Plan de edición creado correctamente.', { planId: plan?.id || null, rutaPlan: planResultado.guardado?.rutaPlan || null, perfilVisual: opciones.perfilVisual, inteligencia: inteligencia.estado, broll: broll.estado }));
 
     etapaActual = 'revision';
     await reportarProgreso(progreso, { etapa: 'revision', porcentaje: 96, titulo: 'Creando Draft Mode', detalle: 'Preparando borrador editable antes del render.' });
@@ -163,6 +172,7 @@ export async function ejecutarFlujoPlanRevision(solicitud) {
       audio,
       transcripcion,
       inteligencia,
+      broll,
       edicionDinamica,
       edicion,
       plan,
