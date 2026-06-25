@@ -1,0 +1,113 @@
+function crearElemento(tag, className = '', texto = '') {
+  const elemento = document.createElement(tag);
+  if (className) elemento.className = className;
+  if (texto) elemento.textContent = texto;
+  return elemento;
+}
+
+function limpiarContenedor(contenedor) {
+  if (!contenedor) return;
+  while (contenedor.firstChild) contenedor.removeChild(contenedor.firstChild);
+}
+
+function crearResumenSeccion(titulo, items = []) {
+  const lista = Array.isArray(items) ? items : [];
+  const activos = lista.filter((item) => item?.activo !== false).length;
+  const tarjeta = crearElemento('article', 'draft-card');
+  tarjeta.appendChild(crearElemento('h3', '', titulo));
+  tarjeta.appendChild(crearElemento('p', 'mini-summary', `${activos}/${lista.length} elementos activos`));
+  return tarjeta;
+}
+
+function crearListaEditable(nombre, items = []) {
+  const bloque = crearElemento('section', 'draft-edit-section');
+  bloque.dataset.draftSection = nombre;
+  bloque.appendChild(crearElemento('h3', '', nombre));
+
+  const lista = crearElemento('div', 'draft-edit-list');
+  (Array.isArray(items) ? items : []).forEach((item, index) => {
+    const fila = crearElemento('label', 'draft-edit-row');
+    const check = crearElemento('input');
+    check.type = 'checkbox';
+    check.checked = item?.activo !== false;
+    check.dataset.index = String(index);
+    check.dataset.field = 'activo';
+
+    const texto = crearElemento('textarea', 'draft-edit-text');
+    texto.rows = 2;
+    texto.dataset.index = String(index);
+    texto.dataset.field = 'texto';
+    texto.value = item?.texto || item?.mensaje || item?.motivo || '';
+
+    fila.appendChild(check);
+    fila.appendChild(texto);
+    lista.appendChild(fila);
+  });
+
+  bloque.appendChild(lista);
+  return bloque;
+}
+
+export function pintarDraftRevision({ contenedor, draft } = {}) {
+  if (!contenedor) return null;
+  limpiarContenedor(contenedor);
+
+  if (!draft) {
+    contenedor.appendChild(crearElemento('p', 'message-box message-box--normal', 'No hay draft de revisión cargado.'));
+    return null;
+  }
+
+  const cabecera = crearElemento('section', 'draft-header');
+  cabecera.appendChild(crearElemento('p', 'eyebrow', 'Draft Mode'));
+  cabecera.appendChild(crearElemento('h2', '', 'Revisión antes del render final'));
+  cabecera.appendChild(crearElemento('p', 'mini-summary', `Plan: ${draft.planId || 'sin plan'} · Estado: ${draft.estadoPlan || 'sin estado'}`));
+
+  const resumen = crearElemento('section', 'draft-grid');
+  resumen.appendChild(crearResumenSeccion('Cortes', draft.secciones?.cortes));
+  resumen.appendChild(crearResumenSeccion('Subtítulos', draft.secciones?.subtitulos));
+  resumen.appendChild(crearResumenSeccion('Textos flotantes', draft.secciones?.textosFlotantes));
+  resumen.appendChild(crearResumenSeccion('B-Roll', draft.secciones?.broll));
+
+  const editor = crearElemento('section', 'draft-editor');
+  editor.appendChild(crearListaEditable('cortes', draft.secciones?.cortes));
+  editor.appendChild(crearListaEditable('subtitulos', draft.secciones?.subtitulos));
+  editor.appendChild(crearListaEditable('textosFlotantes', draft.secciones?.textosFlotantes));
+  editor.appendChild(crearListaEditable('broll', draft.secciones?.broll));
+
+  contenedor.appendChild(cabecera);
+  contenedor.appendChild(resumen);
+  contenedor.appendChild(editor);
+  return contenedor;
+}
+
+export function recogerCambiosDraft(contenedor) {
+  const cambios = { cortes: [], subtitulos: [], textosFlotantes: [], broll: [] };
+  if (!contenedor) return cambios;
+
+  const secciones = contenedor.querySelectorAll('[data-draft-section]');
+  secciones.forEach((seccion) => {
+    const nombre = seccion.dataset.draftSection;
+    if (!Array.isArray(cambios[nombre])) cambios[nombre] = [];
+
+    const filas = seccion.querySelectorAll('.draft-edit-row');
+    filas.forEach((fila, index) => {
+      const activo = fila.querySelector('input[data-field="activo"]')?.checked ?? true;
+      const texto = fila.querySelector('textarea[data-field="texto"]')?.value || '';
+      cambios[nombre].push({ id: index + 1, activo, texto });
+    });
+  });
+
+  return cambios;
+}
+
+export function inicializarDraftUI({ contenedorId = 'draftPanel' } = {}) {
+  const contenedor = document.getElementById(contenedorId);
+  return {
+    disponible: Boolean(contenedor),
+    contenedor,
+    pintar: (draft) => pintarDraftRevision({ contenedor, draft }),
+    recogerCambios: () => recogerCambiosDraft(contenedor)
+  };
+}
+
+export default { pintarDraftRevision, recogerCambiosDraft, inicializarDraftUI };
