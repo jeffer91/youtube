@@ -4,11 +4,14 @@ import multer from 'multer';
 import path from 'path';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
-import { procesarVideoDesdeMotor, crearDraftVideoDesdeMotor } from './motor/motor.conexion.js';
+import { procesarVideoDesdeMotor, crearDraftVideoDesdeMotor, renderizarPlanDesdeMotor } from './motor/motor.conexion.js';
 import { asegurarCarpeta, obtenerRutaRaiz, asegurarCarpetasBase as asegurarCarpetasDatosBase } from './comun/archivos.js';
 import { crearDiagnosticoAutomatico, diagnosticoEsBloqueante } from './diagnostico/diagnostico-automatico.service.js';
 import { crearTrabajoProgreso, crearJobId, suscribirClienteProgreso, emitirEventoProgreso } from './progreso/progreso-registro.js';
 import { crearReporteroProgreso, reportarErrorProgreso, reportarFinalizadoProgreso } from './progreso/progreso.conexion.js';
+import { aplicarDraftAPlan } from './revision/aplicar-draft-a-plan.js';
+import { crearDraftRevision } from './revision/crear-draft.service.js';
+import { aprobarPlanEdicion } from './plan-edicion/aprobar-plan-edicion.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -184,6 +187,11 @@ async function validarDiagnosticoAntesDeProcesar({ jobId, res, guardarReporte = 
   return { ok: true, diagnostico };
 }
 
+function obtenerPlanDesdeBody(body = {}) {
+  if (body.plan && typeof body.plan === 'object') return body.plan;
+  throw new Error('No se recibió el plan de edición.');
+}
+
 function crearAplicacionExpress({ modoElectron = false } = {}) {
   const rutasBase = obtenerRutasBase();
   asegurarCarpetasServidor(rutasBase);
@@ -192,8 +200,8 @@ function crearAplicacionExpress({ modoElectron = false } = {}) {
 
   app.disable('x-powered-by');
   app.use(cors());
-  app.use(express.json({ limit: '20mb' }));
-  app.use(express.urlencoded({ extended: true, limit: '20mb' }));
+  app.use(express.json({ limit: '40mb' }));
+  app.use(express.urlencoded({ extended: true, limit: '40mb' }));
   app.use(express.static(rutasBase.app, { extensions: ['html'], maxAge: 0, etag: false, lastModified: false, setHeaders: aplicarCabecerasSinCache }));
   app.use('/exports', express.static(rutasBase.videosExportados, { fallthrough: false, maxAge: 0, etag: false, lastModified: false, setHeaders: aplicarCabecerasSinCache }));
 
@@ -255,6 +263,62 @@ function crearAplicacionExpress({ modoElectron = false } = {}) {
       return crearErrorHttp(res, 500, error?.message || 'Error interno creando el draft.', process.env.NODE_ENV === 'production' ? null : error?.stack || null);
     } finally {
       await eliminarTemporalSiExiste(archivo?.path);
+    }
+  });
+
+  app.post('/api/draft/guardar-cambios', async (req, res) => {
+    try {
+      const plan = obtenerPlanDesdeBody(req.body || {});
+      const cambios = req.body?.cambios || {};
+      const usuario = normalizarTexto(req.body?.usuario, 'usuario');
+      const comentario = normalizarTexto(req.body?.comentario, 'Correcciones aplicadas desde Draft Mode.');
+      const resultadoPlan = await aplicarDraftAPlan({ plan, cambios, usuario, comentario, guardar: true });
+      const resultadoDraft = await crearDraftRevision({ plan: resultadoPlan.plan, guardar: true });
+      return res.json({ ok: true, mensaje: 'Cambios del draft guardados correctamente.', plan: resultadoPlan.plan, draft: resultadoDraft.draft, guardadoPlan: resultadoPlan.guardado || null, guardadoDraft: resultadoDraft.guardado || null, fecha: new Date().toISOString() });
+    } catch (error) {
+      console.error('[Servidor] Error guardando cambios del draft:', error);
+      return crearErrorHttp(res, 500, error?.message || 'Error interno guardando cambios del draft.', process.env.NODE_ENV === 'production' ? null : error?.stack || null);
+    }
+  });
+
+  app.post('/api/plan/aprobar', async (req, res) => {
+    try {
+      const plan = obtenerPlanDesdeBody(req.body || {});
+      const usuario = normalizarTexto(req.body?.usuario, 'usuario');
+      const comentario = normalizarTexto(req.body?.comentario, 'Plan aprobado desde Draft Mode.');
+      const resultado = await aprobarPlanEdicion({ plan, usuario, comentario, guardar: true });
+      return res.json({ ok: true, mensaje: 'Plan aprobado correctamente. Ya se puede renderizar el video final.', plan: resultado.plan, guardadoPlan: resultado.guardado || null, fecha: new Date().toISOString() });
+    } catch (error) {
+      console.error('[Servidor] Error aprobando plan:', error);
+      return crearErrorHttp(res, 500, error?.message || 'Error interno aprobando el plan.', process.env.NODE_ENV === 'production' ? null : error?.stack || null);
+    }
+  });
+
+  app.post('/api/plan/renderizar', async (req, res) => {
+    const jobId = normalizarTexto(req.body?.jobId, '') || crearJobId();
+    crearTrabajoProgreso(jobId);
+    const progreso = crearReporteroProgreso(jobId);
+
+    try {
+      const plan = obtenerPlanDesdeBody(req.body || {});
+      const diagnosticoResultado = await validarDiagnosticoAntesDeProcesar({ jobId, res, guardarReporte: true });
+      if (!diagnosticoResultado.ok) return;
+
+      emitirEventoProgreso(jobId, { etapa: 'render-plan', porcentaje: 80, titulo: 'Render final', detalle: 'Renderizando video desde plan aprobado.' });
+      const resultado = await renderizarPlanDesdeMotor({ plan, opciones: { jobId, renderDesdePlan: true }, progreso, jobId });
+
+      if (!resultado?.ok) {
+        const error = new Error(resultado?.mensaje || 'No se pudo renderizar el plan aprobado.');
+        reportarErrorProgreso(jobId, error, { etapa: 'render-plan', archivo: 'motor/renderizar-plan-aprobado.js', datos: resultado });
+        return res.status(422).json({ ok: false, mensaje: resultado?.mensaje || 'No se pudo renderizar el plan aprobado.', diagnostico: diagnosticoResultado.diagnostico, resultado, jobId, fecha: new Date().toISOString() });
+      }
+
+      reportarFinalizadoProgreso(jobId, { detalle: resultado.mensaje || 'Plan renderizado correctamente.', datos: { urlPublica: resultado.resultado?.urlPublica || null, nombreExportado: resultado.resultado?.nombreExportado || null } });
+      return res.json({ ok: true, mensaje: resultado.mensaje || 'Plan renderizado correctamente.', diagnostico: diagnosticoResultado.diagnostico, jobId, resultado: resultado.resultado, proyecto: resultado.proyecto, video: resultado.video, plan: resultado.plan, guardadoPlan: resultado.guardadoPlan, historial: resultado.historial || [], fecha: new Date().toISOString() });
+    } catch (error) {
+      console.error('[Servidor] Error renderizando plan:', error);
+      reportarErrorProgreso(jobId, error, { etapa: error?.etapa || 'render-plan', archivo: 'server.js' });
+      return crearErrorHttp(res, 500, error?.message || 'Error interno renderizando el plan.', process.env.NODE_ENV === 'production' ? null : error?.stack || null);
     }
   });
 
