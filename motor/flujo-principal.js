@@ -3,6 +3,7 @@ import { entenderVideo } from '../entender/entender.conexion.js';
 import { mejorarAudioVideo } from '../audio/audio.conexion.js';
 import { procesarTranscripcion } from '../transcripcion/transcripcion.conexion.js';
 import { procesarInteligenciaCreativa } from '../inteligencia/inteligencia.conexion.js';
+import { procesarBrollSugerido } from '../broll/broll.conexion.js';
 import { procesarEdicionDinamica } from '../editar/edicion-dinamica/edicion-dinamica.conexion.js';
 import { editarVideo } from '../editar/editar.conexion.js';
 import { prepararSalida } from '../salida/salida.conexion.js';
@@ -56,6 +57,8 @@ function normalizarOpciones(opciones = {}) {
     agregarTextosFlotantes: convertirBooleano(opciones?.agregarTextosFlotantes, true),
     usarGemini: convertirBooleano(opciones?.usarGemini, false),
     inteligenciaCreativa: convertirBooleano(opciones?.inteligenciaCreativa, true),
+    brollActivo: convertirBooleano(opciones?.brollActivo ?? opciones?.usarBroll ?? opciones?.agregarBroll, true),
+    maxBroll: opciones?.maxBroll ?? opciones?.maxSugerenciasBroll ?? 8,
     edicionDinamica: convertirBooleano(opciones?.edicionDinamica ?? opciones?.activarEdicionDinamica ?? opciones?.usarEdicionDinamica, true),
     activarEdicionDinamica: true,
     usarEdicionDinamica: true,
@@ -82,13 +85,14 @@ async function reportarProgreso(progreso, evento) {
   try { return await progreso(evento); } catch (error) { console.warn('[progreso] No se pudo reportar evento:', error.message); return null; }
 }
 
-function crearMensajeFinal({ salida, audio, edicion, transcripcion, edicionDinamica, perfilVisual, inteligencia }) {
+function crearMensajeFinal({ salida, audio, edicion, transcripcion, edicionDinamica, perfilVisual, inteligencia, broll }) {
   const modo = edicion?.modo || salida?.modo || MODO_VIDEO_PREDETERMINADO;
   const audioUsado = salida?.audio?.tipo || audio?.tipo || 'original';
   const capas = transcripcion?.capasVideo;
   const partes = [`Video exportado correctamente en modo ${modo}`];
   if (perfilVisual?.nombre) partes.push(`perfil ${perfilVisual.nombre}`);
   if (inteligencia?.seo?.tituloPrincipal) partes.push('con SEO sugerido');
+  if (broll?.total) partes.push(`${broll.total} sugerencias de B-Roll`);
   if (edicionDinamica?.activo && !edicionDinamica?.omitido) partes.push('con edición automática');
   partes.push(audioUsado === 'sonidos-edicion' ? 'con efectos de sonido' : audioUsado === 'mejorado' ? 'con audio mejorado' : 'con audio procesado');
   if (capas?.usarSubtitulos || edicion?.transcripcion?.capasAplicadas) partes.push('subtítulos/textos');
@@ -141,8 +145,14 @@ export async function ejecutarFlujoPrincipal(solicitud) {
     validarResultadoEtapa('inteligencia', inteligencia);
     historial.push(crearRegistroHistorial('inteligencia', inteligencia.mensaje || 'Inteligencia creativa generada.', { hook: inteligencia.hook?.estado || null, seo: inteligencia.seo?.estado || null, miniatura: inteligencia.miniatura?.estado || null }));
 
+    etapaActual = 'broll';
+    await reportarProgreso(progreso, { etapa: 'broll', porcentaje: 54, titulo: 'Sugiriendo B-Roll', detalle: 'Creando escenas de apoyo para el video.' });
+    const broll = await procesarBrollSugerido({ entrada, entendimiento, transcripcion, inteligencia, opciones, guardar: true });
+    validarResultadoEtapa('broll', broll);
+    historial.push(crearRegistroHistorial('broll', broll.mensaje || 'B-Roll sugerido generado.', { estado: broll.estado, total: broll.total || 0, guardado: broll.guardado?.rutaBroll || null }));
+
     etapaActual = 'edicion-dinamica';
-    await reportarProgreso(progreso, { etapa: 'edicion-dinamica', porcentaje: 55, titulo: 'Edición dinámica', detalle: 'Detectando pausas, cortando silencios y ajustando tiempos.' });
+    await reportarProgreso(progreso, { etapa: 'edicion-dinamica', porcentaje: 57, titulo: 'Edición dinámica', detalle: 'Detectando pausas, cortando silencios y ajustando tiempos.' });
     const edicionDinamica = await procesarEdicionDinamica({ entrada, entendimiento, audio, transcripcion, opciones, progreso });
     validarResultadoEtapa('edicion-dinamica', edicionDinamica);
     historial.push(crearRegistroHistorial('edicion-dinamica', edicionDinamica.diagnostico?.mensaje || edicionDinamica.motivo || 'Etapa de edición dinámica completada.', { activo: Boolean(edicionDinamica.activo), omitido: Boolean(edicionDinamica.omitido), videoDinamico: edicionDinamica.videoDinamico || null, cortesAplicados: edicionDinamica.cortes?.resumen?.cantidadCortesAplicados || 0, segundosEliminados: edicionDinamica.cortes?.resumen?.segundosEliminados || 0, tieneMapaTiempo: Boolean(edicionDinamica.mapaTiempo), perfilVisual: opciones.perfilVisual }));
@@ -159,7 +169,7 @@ export async function ejecutarFlujoPrincipal(solicitud) {
     validarResultadoEtapa('salida', salida);
     historial.push(crearRegistroHistorial('salida', 'Video exportado correctamente.', { nombreExportado: salida.nombreExportado || null, urlPublica: salida.urlPublica || null, modo: salida.modo || edicion.modo || opciones.modo, audioUsado: salida.audio?.tipo || null }));
 
-    return { ok: true, estado: 'VIDEO_PROCESADO', mensaje: crearMensajeFinal({ salida, audio, edicion, transcripcion, edicionDinamica, perfilVisual: opciones.perfilAplicado, inteligencia }), proyecto: entrada.proyecto, video: entrada.video, entendimiento, audio, transcripcion, inteligencia, edicionDinamica, edicion, resultado: salida, perfilVisual: opciones.perfilAplicado || null, historial };
+    return { ok: true, estado: 'VIDEO_PROCESADO', mensaje: crearMensajeFinal({ salida, audio, edicion, transcripcion, edicionDinamica, perfilVisual: opciones.perfilAplicado, inteligencia, broll }), proyecto: entrada.proyecto, video: entrada.video, entendimiento, audio, transcripcion, inteligencia, broll, edicionDinamica, edicion, resultado: salida, perfilVisual: opciones.perfilAplicado || null, historial };
   } catch (error) {
     const mensaje = error?.message || 'Error desconocido en el flujo principal.';
     error.etapa = error.etapa || etapaActual;
