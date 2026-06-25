@@ -1,5 +1,5 @@
 export const DIAGNOSTICO_AUTOMATICO_CONFIG = Object.freeze({
-  version: '1.0.0',
+  version: '1.1.0',
   bloquearSiFfmpegFalla: true,
   bloquearSiCarpetasFallan: true,
   bloquearSiModulosCriticosFallan: true,
@@ -7,6 +7,9 @@ export const DIAGNOSTICO_AUTOMATICO_CONFIG = Object.freeze({
   nombreReporte: 'diagnostico-automatico.json',
   modulosCriticos: [
     'motor/flujo-principal.js',
+    'motor/flujo-plan-revision.js',
+    'plan-edicion/plan-edicion.conexion.js',
+    'revision/revision.conexion.js',
     'editar/edicion-dinamica/edicion-dinamica.conexion.js',
     'editar/edicion-dinamica/visual/visual.conexion.js',
     'editar/edicion-dinamica/sonidos/sonidos.conexion.js',
