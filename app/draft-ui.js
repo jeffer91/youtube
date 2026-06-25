@@ -1,4 +1,5 @@
 import { crearPanelInteligenciaDraft, recogerCambiosInteligencia } from './inteligencia-ui.js';
+import { crearPanelBrollDraft, recogerCambiosBroll } from './broll-ui.js';
 
 function crearElemento(tag, className = '', texto = '') {
   const elemento = document.createElement(tag);
@@ -120,16 +121,17 @@ export function pintarDraftRevision({ contenedor, draft } = {}) {
   resumen.appendChild(crearResumenInteligencia(draft));
 
   const inteligencia = crearPanelInteligenciaDraft({ draft });
+  const broll = crearPanelBrollDraft({ items: draft.secciones?.broll || [] });
 
   const editor = crearElemento('section', 'draft-editor');
   editor.appendChild(crearListaEditable('cortes', draft.secciones?.cortes));
   editor.appendChild(crearListaEditable('subtitulos', draft.secciones?.subtitulos));
   editor.appendChild(crearListaEditable('textosFlotantes', draft.secciones?.textosFlotantes));
-  editor.appendChild(crearListaEditable('broll', draft.secciones?.broll));
 
   contenedor.appendChild(cabecera);
   contenedor.appendChild(resumen);
   contenedor.appendChild(inteligencia);
+  contenedor.appendChild(broll);
   contenedor.appendChild(editor);
   contenedor.appendChild(crearAccionesDraft(draft.estadoPlan));
   return contenedor;
@@ -139,7 +141,7 @@ export function recogerCambiosDraft(contenedor) {
   const cambios = { cortes: [], subtitulos: [], textosFlotantes: [], broll: [] };
   if (!contenedor) return cambios;
 
-  const secciones = contenedor.querySelectorAll('[data-draft-section]');
+  const secciones = contenedor.querySelectorAll('[data-draft-section]:not(.broll-panel)');
   secciones.forEach((seccion) => {
     const nombre = seccion.dataset.draftSection;
     if (!Array.isArray(cambios[nombre])) cambios[nombre] = [];
@@ -152,6 +154,8 @@ export function recogerCambiosDraft(contenedor) {
       cambios[nombre].push({ ...original, id: original.id || index + 1, activo, texto });
     });
   });
+
+  cambios.broll = recogerCambiosBroll(contenedor);
 
   const decisiones = recogerCambiosInteligencia(contenedor);
   if (decisiones) cambios.decisiones = decisiones;
