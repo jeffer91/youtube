@@ -17,6 +17,22 @@ function crearBoton(id, className, texto) {
   return boton;
 }
 
+function codificarOriginal(item = {}) {
+  try {
+    return encodeURIComponent(JSON.stringify(item || {}));
+  } catch (_error) {
+    return encodeURIComponent(JSON.stringify({}));
+  }
+}
+
+function decodificarOriginal(valor = '') {
+  try {
+    return JSON.parse(decodeURIComponent(valor || '%7B%7D'));
+  } catch (_error) {
+    return {};
+  }
+}
+
 function crearResumenSeccion(titulo, items = []) {
   const lista = Array.isArray(items) ? items : [];
   const activos = lista.filter((item) => item?.activo !== false).length;
@@ -35,6 +51,7 @@ function crearListaEditable(nombre, items = []) {
   (Array.isArray(items) ? items : []).forEach((item, index) => {
     const fila = crearElemento('label', 'draft-edit-row');
     fila.dataset.index = String(index);
+    fila.dataset.original = codificarOriginal(item);
 
     const check = crearElemento('input');
     check.type = 'checkbox';
@@ -113,9 +130,10 @@ export function recogerCambiosDraft(contenedor) {
 
     const filas = seccion.querySelectorAll('.draft-edit-row');
     filas.forEach((fila, index) => {
+      const original = decodificarOriginal(fila.dataset.original || '');
       const activo = fila.querySelector('input[data-field="activo"]')?.checked ?? true;
       const texto = fila.querySelector('textarea[data-field="texto"]')?.value || '';
-      cambios[nombre].push({ id: index + 1, activo, texto });
+      cambios[nombre].push({ ...original, id: original.id || index + 1, activo, texto });
     });
   });
 
