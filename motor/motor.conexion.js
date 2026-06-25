@@ -24,6 +24,12 @@ function validarSolicitud(solicitud) {
   if (solicitud.opciones && typeof solicitud.opciones !== 'object') throw new Error('Las opciones del motor deben ser un objeto.');
 }
 
+function validarSolicitudPlan(solicitud) {
+  if (!solicitud || typeof solicitud !== 'object') throw new Error('La solicitud del plan no es válida.');
+  if (!solicitud.plan || typeof solicitud.plan !== 'object') throw new Error('No se recibió el plan de edición.');
+  if (solicitud.opciones && typeof solicitud.opciones !== 'object') throw new Error('Las opciones del motor deben ser un objeto.');
+}
+
 function normalizarOpcionesMotor(opciones = {}) {
   return {
     ...opciones,
@@ -50,7 +56,7 @@ function crearRespuestaFlujoPendiente(solicitud, archivoFaltante, mensaje) {
     estado: 'FLUJO_PENDIENTE',
     mensaje,
     recibido: {
-      nombreOriginal: solicitud.nombreOriginal,
+      nombreOriginal: solicitud.nombreOriginal || null,
       nombreTemporal: solicitud.nombreTemporal || null,
       plataforma: opciones.plataforma,
       modo: opciones.modo,
@@ -107,4 +113,25 @@ export async function crearDraftVideoDesdeMotor(solicitud) {
   }
 }
 
-export default { procesarVideoDesdeMotor, crearDraftVideoDesdeMotor };
+export async function renderizarPlanDesdeMotor(solicitud) {
+  validarSolicitudPlan(solicitud);
+  const opciones = normalizarOpcionesMotor(solicitud.opciones || {});
+
+  try {
+    const moduloRender = await import('./renderizar-plan-aprobado.js');
+    if (typeof moduloRender.renderizarPlanAprobado !== 'function') throw new Error('El render de plan existe, pero no exporta renderizarPlanAprobado.');
+    return await moduloRender.renderizarPlanAprobado({
+      plan: solicitud.plan,
+      opciones,
+      progreso: solicitud.progreso || null,
+      jobId: solicitud.jobId || null
+    });
+  } catch (error) {
+    if (esErrorDeModuloFaltante(error, 'renderizar-plan-aprobado.js')) {
+      return crearRespuestaFlujoPendiente({ ...solicitud, opciones }, 'motor/renderizar-plan-aprobado.js', 'Plan recibido correctamente, pero falta motor/renderizar-plan-aprobado.js para renderizar.');
+    }
+    throw error;
+  }
+}
+
+export default { procesarVideoDesdeMotor, crearDraftVideoDesdeMotor, renderizarPlanDesdeMotor };
