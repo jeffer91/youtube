@@ -40,6 +40,8 @@ const elementos = {
 let apiBaseCache = null;
 let controladorProgreso = null;
 let draftUI = null;
+let planActual = null;
+let draftActual = null;
 
 function validarElementosRequeridos() {
   const faltantes = Object.entries(elementos).filter(([, valor]) => !valor).map(([nombre]) => nombre);
@@ -74,12 +76,29 @@ function ocultarProgreso() {
 }
 
 function reiniciarDraft() {
+  planActual = null;
+  draftActual = null;
   elementos.draftPanel.hidden = true;
   elementos.draftPanel.innerHTML = '';
 }
 
 function reiniciarResultado() {
   reiniciarDraft();
+  elementos.resultPanel.hidden = true;
+  elementos.resultVideo.hidden = true;
+  elementos.resultVideo.removeAttribute('src');
+  elementos.resultVideo.load();
+  elementos.downloadLink.hidden = true;
+  elementos.downloadLink.removeAttribute('href');
+  elementos.editingSummary.hidden = true;
+  elementos.editingSummary.textContent = '';
+  elementos.audioSummary.hidden = true;
+  elementos.audioSummary.textContent = '';
+  elementos.transcriptionSummary.hidden = true;
+  elementos.transcriptionSummary.textContent = '';
+}
+
+function limpiarSoloResultadoExportado() {
   elementos.resultPanel.hidden = true;
   elementos.resultVideo.hidden = true;
   elementos.resultVideo.removeAttribute('src');
@@ -103,6 +122,7 @@ function bloquearFormulario(bloquear, modoOperacion = 'procesar') {
   bloquearControlesTranscripcion(bloquear);
   bloquearControlesGemini(bloquear);
   bloquearControlesPlanEdicion(bloquear);
+  if (draftUI?.bloquear) draftUI.bloquear(bloquear);
   elementos.processButton.textContent = bloquear && modoOperacion === 'procesar' ? 'Editando automáticamente...' : 'Procesar automáticamente';
   elementos.draftButton.textContent = bloquear && modoOperacion === 'draft' ? 'Creando borrador...' : 'Crear borrador revisable';
 }
@@ -146,6 +166,19 @@ async function leerRespuestaJsonSegura(respuesta) {
   } catch (_error) {
     return { ok: false, mensaje: texto };
   }
+}
+
+async function postJson(ruta, payload) {
+  const respuesta = await fetch(await crearUrlApi(ruta), {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload || {})
+  });
+  const datos = await leerRespuestaJsonSegura(respuesta);
+  if (!respuesta.ok || !datos.ok) {
+    throw new Error(datos.mensaje || 'No se pudo completar la operación.');
+  }
+  return datos;
 }
 
 function actualizarEstadoServidor(ok, mensaje) {
@@ -216,11 +249,11 @@ async function mostrarResultado(datos) {
   const urlExportada = await crearUrlPublica(datos.resultado?.urlPublica || datos.resultado?.exportUrl || '');
   elementos.resultPanel.hidden = false;
   elementos.editingSummary.hidden = false;
-  elementos.editingSummary.textContent = obtenerResumenEdicionDinamica(datos);
+  elementos.editingSummary.textContent = datos.plan ? `Render desde plan · Estado: ${datos.plan.estado || 'sin estado'}` : obtenerResumenEdicionDinamica(datos);
   elementos.audioSummary.hidden = false;
-  elementos.audioSummary.textContent = obtenerResumenAudio(datos, elementos.improveAudio.checked);
+  elementos.audioSummary.textContent = datos.audio ? obtenerResumenAudio(datos, elementos.improveAudio.checked) : 'Audio aplicado según el plan aprobado.';
   elementos.transcriptionSummary.hidden = false;
-  elementos.transcriptionSummary.textContent = obtenerResumenTranscripcion(datos);
+  elementos.transcriptionSummary.textContent = datos.transcripcion ? obtenerResumenTranscripcion(datos) : 'Subtítulos y textos aplicados según el plan aprobado.';
   if (urlExportada) {
     elementos.resultVideo.hidden = false;
     elementos.resultVideo.src = urlExportada;
@@ -229,12 +262,25 @@ async function mostrarResultado(datos) {
   }
 }
 
+function enlazarAccionesDraft() {
+  const saveButton = document.getElementById('saveDraftChangesButton');
+  const approveButton = document.getElementById('approvePlanButton');
+  const renderButton = document.getElementById('renderApprovedPlanButton');
+  if (saveButton) saveButton.addEventListener('click', guardarCambiosDraft);
+  if (approveButton) approveButton.addEventListener('click', aprobarPlanActual);
+  if (renderButton) renderButton.addEventListener('click', renderizarPlanActual);
+  if (renderButton && planActual?.estado !== 'APROBADO') renderButton.disabled = true;
+}
+
 function mostrarDraft(datos) {
+  planActual = datos.plan || planActual;
+  draftActual = datos.draft || draftActual;
   elementos.draftPanel.hidden = false;
-  if (draftUI?.pintar) draftUI.pintar(datos.draft);
-  const planId = datos.plan?.id || 'sin id';
-  const draftId = datos.draft?.id || 'sin id';
-  mostrarMensaje(`Borrador creado correctamente. Plan: ${planId} · Draft: ${draftId}. Revisa el panel antes del render final.`, 'ok');
+  if (draftUI?.pintar) draftUI.pintar(draftActual);
+  enlazarAccionesDraft();
+  const planId = planActual?.id || 'sin id';
+  const draftId = draftActual?.id || 'sin id';
+  mostrarMensaje(`Borrador listo. Plan: ${planId} · Draft: ${draftId}. Puedes guardar cambios, aprobar y renderizar.`, 'ok');
 }
 
 function construirErrorParaModal(datos, respaldoMensaje) {
@@ -299,6 +345,82 @@ async function crearDraftDesdeBoton() {
     ajustesFormulario: { requiereRevision: 'true', draftMode: 'true', renderAutomatico: 'false' },
     onOk: mostrarDraft
   });
+}
+
+async function guardarCambiosDraft() {
+  if (!planActual) {
+    mostrarMensaje('Primero crea un borrador para poder guardar cambios.', 'error');
+    return;
+  }
+
+  try {
+    ocultarMensaje();
+    bloquearFormulario(true, 'draft');
+    const cambios = draftUI?.recogerCambios ? draftUI.recogerCambios() : {};
+    const datos = await postJson('/api/draft/guardar-cambios', { plan: planActual, cambios, comentario: 'Cambios guardados desde la interfaz.' });
+    mostrarDraft(datos);
+    mostrarMensaje(datos.mensaje || 'Cambios guardados correctamente.', 'ok');
+  } catch (error) {
+    mostrarMensaje(error.message || 'No se pudieron guardar los cambios del draft.', 'error');
+    mostrarModalErrorEdicion({ titulo: 'Fallo guardando draft', etapa: 'draft', detalle: error.message || 'No se pudieron guardar los cambios.', archivo: 'app/app.js', recomendacion: 'Revisar que el plan siga en estado editable.' });
+  } finally {
+    bloquearFormulario(false, 'draft');
+  }
+}
+
+async function aprobarPlanActual() {
+  if (!planActual) {
+    mostrarMensaje('Primero crea y guarda un borrador para aprobar el plan.', 'error');
+    return;
+  }
+
+  try {
+    ocultarMensaje();
+    bloquearFormulario(true, 'draft');
+    const datos = await postJson('/api/plan/aprobar', { plan: planActual, comentario: 'Plan aprobado desde la interfaz.' });
+    planActual = datos.plan;
+    draftActual = { ...(draftActual || {}), estadoPlan: planActual.estado };
+    mostrarDraft({ plan: planActual, draft: draftActual });
+    mostrarMensaje(datos.mensaje || 'Plan aprobado correctamente.', 'ok');
+  } catch (error) {
+    mostrarMensaje(error.message || 'No se pudo aprobar el plan.', 'error');
+    mostrarModalErrorEdicion({ titulo: 'Fallo aprobando plan', etapa: 'aprobacion', detalle: error.message || 'No se pudo aprobar el plan.', archivo: 'app/app.js', recomendacion: 'Guarda primero los cambios del draft y vuelve a intentar.' });
+  } finally {
+    bloquearFormulario(false, 'draft');
+  }
+}
+
+async function renderizarPlanActual() {
+  if (!planActual) {
+    mostrarMensaje('Primero crea y aprueba un plan para renderizar.', 'error');
+    return;
+  }
+  if (planActual.estado !== 'APROBADO') {
+    mostrarMensaje('El plan debe estar aprobado antes de renderizar.', 'error');
+    return;
+  }
+
+  const jobId = crearJobIdFrontend();
+  let modalErrorMostrado = false;
+
+  try {
+    ocultarMensaje();
+    limpiarSoloResultadoExportado();
+    bloquearFormulario(true, 'procesar');
+    await iniciarProgresoReal(jobId);
+    const datos = await postJson('/api/plan/renderizar', { plan: planActual, jobId });
+    planActual = datos.plan || planActual;
+    actualizarProgresoReal({ titulo: 'Video listo', detalle: datos.mensaje || 'Render final completado.', porcentaje: 100, estado: 'finalizado', etapa: 'finalizado' });
+    await mostrarResultado(datos);
+    mostrarMensaje(datos.mensaje || 'Render final completado correctamente.', 'ok');
+  } catch (error) {
+    mostrarMensaje(error.message || 'No se pudo renderizar el plan aprobado.', 'error');
+    if (!modalErrorMostrado) {
+      mostrarModalErrorEdicion({ titulo: 'Fallo renderizando plan', etapa: 'render-plan', detalle: error.message || 'No se pudo renderizar el plan aprobado.', archivo: 'app/app.js', recomendacion: 'Revisa que el plan esté aprobado y que el video original exista en el proyecto.' });
+    }
+  } finally {
+    bloquearFormulario(false, 'procesar');
+  }
 }
 
 function sincronizarModoAudio() {
