@@ -23,6 +23,7 @@
     "check:inteligencia": "node scripts/verificar-inteligencia.js",
     "check:ui-inteligencia": "node scripts/verificar-ui-inteligencia.js",
     "check:broll": "node scripts/verificar-broll.js",
+    "check:ui-broll": "node scripts/verificar-ui-broll.js",
     "test:transcripcion-manual": "node scripts/probar-transcripcion-manual.js",
     "test:gemini-fallback": "node scripts/probar-fallback-gemini.js",
     "test:drawtext": "node scripts/probar-drawtext.js"
