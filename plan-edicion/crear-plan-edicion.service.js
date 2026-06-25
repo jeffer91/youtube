@@ -29,7 +29,8 @@ function extraerFormatos(config, edicion) {
   return [...formatos];
 }
 
-function crearResumenHook({ transcripcion, opciones }) {
+function crearResumenHook({ transcripcion, opciones, inteligencia }) {
+  if (inteligencia?.hook) return inteligencia.hook;
   const segmentos = extraerSegmentos(transcripcion);
   const primerSegmentoConTexto = segmentos.find((segmento) => String(segmento?.texto || '').trim().length > 0) || null;
   return {
@@ -38,7 +39,7 @@ function crearResumenHook({ transcripcion, opciones }) {
     inicio: primerSegmentoConTexto?.inicio ?? 0,
     fin: primerSegmentoConTexto?.fin ?? null,
     texto: primerSegmentoConTexto?.texto || '',
-    motivo: primerSegmentoConTexto ? 'Hook base tomado del primer segmento con texto. Se reemplazará por inteligencia real en el siguiente bloque.' : 'No hay segmentos con texto para sugerir hook.'
+    motivo: primerSegmentoConTexto ? 'Hook base tomado del primer segmento con texto.' : 'No hay segmentos con texto para sugerir hook.'
   };
 }
 
@@ -64,6 +65,21 @@ function crearPerfilPlan(opciones = {}) {
     sonido: perfil.sonido,
     mensaje: `Perfil visual aplicado: ${perfil.nombre}.`
   };
+}
+
+function crearDecisionSeo(inteligencia = null) {
+  if (inteligencia?.seo) return inteligencia.seo;
+  return { estado: 'PENDIENTE', archivoSeo: null, mensaje: 'SEO automático se conectará en el módulo inteligencia.' };
+}
+
+function crearDecisionMiniatura(inteligencia = null) {
+  if (inteligencia?.miniatura) return inteligencia.miniatura;
+  return null;
+}
+
+function crearPuntosImportantes(inteligencia = null) {
+  if (inteligencia?.puntosImportantes) return inteligencia.puntosImportantes;
+  return { estado: 'PENDIENTE', cantidad: 0, puntos: [] };
 }
 
 function crearRevisionBase({ transcripcion, edicionDinamica, config }) {
@@ -92,12 +108,12 @@ function crearExportacionBase({ config, edicion }) {
   };
 }
 
-export async function crearPlanEdicion({ entrada, entendimiento = null, audio = null, transcripcion = null, edicionDinamica = null, edicion = null, opciones = {}, guardar = true } = {}) {
+export async function crearPlanEdicion({ entrada, entendimiento = null, audio = null, transcripcion = null, inteligencia = null, edicionDinamica = null, edicion = null, opciones = {}, guardar = true } = {}) {
   if (!entrada?.proyecto?.id) throw new Error('No se puede crear plan de edición sin proyecto de entrada.');
 
   const config = obtenerConfigPlanEdicion(opciones);
   const idPlan = `plan-${entrada.proyecto.id}-${Date.now().toString(36)}`;
-  const hook = crearResumenHook({ transcripcion, opciones });
+  const hook = crearResumenHook({ transcripcion, opciones, inteligencia });
   const perfilVisual = crearPerfilPlan(opciones);
 
   const plan = {
@@ -133,16 +149,19 @@ export async function crearPlanEdicion({ entrada, entendimiento = null, audio = 
     },
     decisiones: {
       perfilVisual,
+      inteligencia: inteligencia ? { estado: inteligencia.estado, mensaje: inteligencia.mensaje, guardado: inteligencia.guardado || null } : { estado: 'NO_GENERADA' },
       hook,
+      puntosImportantes: crearPuntosImportantes(inteligencia),
       broll: { estado: 'PENDIENTE', items: [], mensaje: 'B-Roll inteligente se conectará en un módulo posterior.' },
-      seo: { estado: 'PENDIENTE', archivoSeo: null, mensaje: 'SEO automático se conectará en el módulo inteligencia.' },
-      branding: { estado: 'PENDIENTE', logo: null, outro: null, miniatura: null }
+      seo: crearDecisionSeo(inteligencia),
+      branding: { estado: 'PENDIENTE', logo: null, outro: null, miniatura: crearDecisionMiniatura(inteligencia) }
     },
     etapas: {
       entrada,
       entendimiento,
       audio,
       transcripcion,
+      inteligencia,
       edicionDinamica,
       edicion
     },
@@ -152,7 +171,7 @@ export async function crearPlanEdicion({ entrada, entendimiento = null, audio = 
       carpetaProyecto: entrada.rutas?.carpetaProyecto || null,
       rutaVideoOriginal: entrada.video?.rutaOriginal || null
     },
-    historial: [crearEventoPlan(EVENTOS_PLAN_EDICION.CREADO, 'Plan de edición creado como borrador.', { perfil: config.perfil, nivelEdicion: config.nivelEdicion, perfilVisual: perfilVisual.id })],
+    historial: [crearEventoPlan(EVENTOS_PLAN_EDICION.CREADO, 'Plan de edición creado como borrador.', { perfil: config.perfil, nivelEdicion: config.nivelEdicion, perfilVisual: perfilVisual.id, inteligencia: inteligencia?.estado || 'NO_GENERADA' })],
     creadoEn: new Date().toISOString(),
     actualizadoEn: new Date().toISOString(),
     trazabilidad: {
