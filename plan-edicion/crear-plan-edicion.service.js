@@ -42,6 +42,30 @@ function crearResumenHook({ transcripcion, opciones }) {
   };
 }
 
+function crearPerfilPlan(opciones = {}) {
+  const perfil = opciones.perfilAplicado || null;
+  if (!perfil) {
+    return {
+      estado: 'NO_APLICADO',
+      id: opciones.perfilVisual || opciones.perfil || 'educacion',
+      mensaje: 'El perfil visual se registró solo por id; no se recibió configuración completa.'
+    };
+  }
+
+  return {
+    estado: 'APLICADO',
+    id: perfil.id,
+    nombre: perfil.nombre,
+    descripcion: perfil.descripcion,
+    ritmo: perfil.ritmo,
+    visual: perfil.visual,
+    transcripcion: perfil.transcripcion,
+    edicion: perfil.edicion,
+    sonido: perfil.sonido,
+    mensaje: `Perfil visual aplicado: ${perfil.nombre}.`
+  };
+}
+
 function crearRevisionBase({ transcripcion, edicionDinamica, config }) {
   const segmentos = extraerSegmentos(transcripcion);
   const textos = extraerTextosFlotantes(transcripcion).slice(0, config.maxTextosFlotantes);
@@ -74,6 +98,7 @@ export async function crearPlanEdicion({ entrada, entendimiento = null, audio = 
   const config = obtenerConfigPlanEdicion(opciones);
   const idPlan = `plan-${entrada.proyecto.id}-${Date.now().toString(36)}`;
   const hook = crearResumenHook({ transcripcion, opciones });
+  const perfilVisual = crearPerfilPlan(opciones);
 
   const plan = {
     ok: true,
@@ -102,9 +127,12 @@ export async function crearPlanEdicion({ entrada, entendimiento = null, audio = 
       formatoPrincipal: config.formatoPrincipal,
       formatosExportacion: config.formatosExportacion,
       requiereRevision: config.requiereRevision,
-      renderAutomatico: config.renderAutomatico
+      renderAutomatico: config.renderAutomatico,
+      perfilVisualAplicado: perfilVisual.id,
+      ritmoPerfil: perfilVisual.ritmo || null
     },
     decisiones: {
+      perfilVisual,
       hook,
       broll: { estado: 'PENDIENTE', items: [], mensaje: 'B-Roll inteligente se conectará en un módulo posterior.' },
       seo: { estado: 'PENDIENTE', archivoSeo: null, mensaje: 'SEO automático se conectará en el módulo inteligencia.' },
@@ -124,7 +152,7 @@ export async function crearPlanEdicion({ entrada, entendimiento = null, audio = 
       carpetaProyecto: entrada.rutas?.carpetaProyecto || null,
       rutaVideoOriginal: entrada.video?.rutaOriginal || null
     },
-    historial: [crearEventoPlan(EVENTOS_PLAN_EDICION.CREADO, 'Plan de edición creado como borrador.', { perfil: config.perfil, nivelEdicion: config.nivelEdicion })],
+    historial: [crearEventoPlan(EVENTOS_PLAN_EDICION.CREADO, 'Plan de edición creado como borrador.', { perfil: config.perfil, nivelEdicion: config.nivelEdicion, perfilVisual: perfilVisual.id })],
     creadoEn: new Date().toISOString(),
     actualizadoEn: new Date().toISOString(),
     trazabilidad: {
