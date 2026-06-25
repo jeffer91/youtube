@@ -17,6 +17,7 @@
     "check:transcripcion": "node scripts/verificar-integracion-transcripcion.js",
     "check:plan-edicion": "node scripts/verificar-plan-edicion.js",
     "check:revision": "node scripts/verificar-revision.js",
+    "check:flujo-draft": "node scripts/verificar-flujo-draft.js",
     "test:transcripcion-manual": "node scripts/probar-transcripcion-manual.js",
     "test:gemini-fallback": "node scripts/probar-fallback-gemini.js",
     "test:drawtext": "node scripts/probar-drawtext.js"
