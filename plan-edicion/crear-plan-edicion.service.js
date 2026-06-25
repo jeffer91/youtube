@@ -20,6 +20,12 @@ function extraerCortes(edicionDinamica) {
   return [];
 }
 
+function extraerBroll(broll) {
+  if (Array.isArray(broll?.items)) return broll.items;
+  if (Array.isArray(broll)) return broll;
+  return [];
+}
+
 function extraerFormatos(config, edicion) {
   const formatoSalida = edicion?.salida?.formato || null;
   const formatos = new Set(config.formatosExportacion || []);
@@ -82,17 +88,34 @@ function crearPuntosImportantes(inteligencia = null) {
   return { estado: 'PENDIENTE', cantidad: 0, puntos: [] };
 }
 
-function crearRevisionBase({ transcripcion, edicionDinamica, config }) {
+function crearDecisionBroll(broll = null) {
+  if (!broll) {
+    return { estado: 'PENDIENTE', items: [], mensaje: 'B-Roll sugerido pendiente.' };
+  }
+
+  return {
+    estado: broll.estado || 'SUGERIDO_LOCAL',
+    tipo: broll.tipo || 'broll-sugerido',
+    total: broll.total || extraerBroll(broll).length,
+    items: extraerBroll(broll),
+    mensaje: broll.mensaje || 'B-Roll sugerido localmente.',
+    advertencias: broll.advertencias || [],
+    guardado: broll.guardado || null
+  };
+}
+
+function crearRevisionBase({ transcripcion, edicionDinamica, broll, config }) {
   const segmentos = extraerSegmentos(transcripcion);
   const textos = extraerTextosFlotantes(transcripcion).slice(0, config.maxTextosFlotantes);
   const cortes = extraerCortes(edicionDinamica);
+  const brollItems = extraerBroll(broll);
 
   return {
     requiereRevision: config.requiereRevision,
     cortes: cortes.map((corte, index) => ({ id: corte.id || index + 1, activo: true, ...corte })),
     subtitulos: segmentos.map((segmento, index) => ({ id: segmento.id || index + 1, activo: true, inicio: segmento.inicio ?? 0, fin: segmento.fin ?? null, texto: segmento.texto || '' })),
     textosFlotantes: textos.map((texto, index) => ({ id: texto.id || index + 1, activo: true, ...texto })),
-    broll: [],
+    broll: brollItems.map((item, index) => ({ id: item.id || `broll-${index + 1}`, activo: item.activo !== false, ...item })),
     miniatura: null,
     observaciones: []
   };
@@ -108,13 +131,14 @@ function crearExportacionBase({ config, edicion }) {
   };
 }
 
-export async function crearPlanEdicion({ entrada, entendimiento = null, audio = null, transcripcion = null, inteligencia = null, edicionDinamica = null, edicion = null, opciones = {}, guardar = true } = {}) {
+export async function crearPlanEdicion({ entrada, entendimiento = null, audio = null, transcripcion = null, inteligencia = null, broll = null, edicionDinamica = null, edicion = null, opciones = {}, guardar = true } = {}) {
   if (!entrada?.proyecto?.id) throw new Error('No se puede crear plan de edición sin proyecto de entrada.');
 
   const config = obtenerConfigPlanEdicion(opciones);
   const idPlan = `plan-${entrada.proyecto.id}-${Date.now().toString(36)}`;
   const hook = crearResumenHook({ transcripcion, opciones, inteligencia });
   const perfilVisual = crearPerfilPlan(opciones);
+  const decisionBroll = crearDecisionBroll(broll);
 
   const plan = {
     ok: true,
@@ -152,7 +176,7 @@ export async function crearPlanEdicion({ entrada, entendimiento = null, audio = 
       inteligencia: inteligencia ? { estado: inteligencia.estado, mensaje: inteligencia.mensaje, guardado: inteligencia.guardado || null } : { estado: 'NO_GENERADA' },
       hook,
       puntosImportantes: crearPuntosImportantes(inteligencia),
-      broll: { estado: 'PENDIENTE', items: [], mensaje: 'B-Roll inteligente se conectará en un módulo posterior.' },
+      broll: decisionBroll,
       seo: crearDecisionSeo(inteligencia),
       branding: { estado: 'PENDIENTE', logo: null, outro: null, miniatura: crearDecisionMiniatura(inteligencia) }
     },
@@ -162,16 +186,17 @@ export async function crearPlanEdicion({ entrada, entendimiento = null, audio = 
       audio,
       transcripcion,
       inteligencia,
+      broll,
       edicionDinamica,
       edicion
     },
-    revision: crearRevisionBase({ transcripcion, edicionDinamica, config }),
+    revision: crearRevisionBase({ transcripcion, edicionDinamica, broll, config }),
     exportacion: crearExportacionBase({ config, edicion }),
     rutas: {
       carpetaProyecto: entrada.rutas?.carpetaProyecto || null,
       rutaVideoOriginal: entrada.video?.rutaOriginal || null
     },
-    historial: [crearEventoPlan(EVENTOS_PLAN_EDICION.CREADO, 'Plan de edición creado como borrador.', { perfil: config.perfil, nivelEdicion: config.nivelEdicion, perfilVisual: perfilVisual.id, inteligencia: inteligencia?.estado || 'NO_GENERADA' })],
+    historial: [crearEventoPlan(EVENTOS_PLAN_EDICION.CREADO, 'Plan de edición creado como borrador.', { perfil: config.perfil, nivelEdicion: config.nivelEdicion, perfilVisual: perfilVisual.id, inteligencia: inteligencia?.estado || 'NO_GENERADA', broll: decisionBroll.estado, totalBroll: decisionBroll.total || 0 })],
     creadoEn: new Date().toISOString(),
     actualizadoEn: new Date().toISOString(),
     trazabilidad: {
