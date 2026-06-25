@@ -6,6 +6,7 @@ import { procesarEdicionDinamica } from '../editar/edicion-dinamica/edicion-dina
 import { editarVideo } from '../editar/editar.conexion.js';
 import { crearPlanEdicion } from '../plan-edicion/crear-plan-edicion.service.js';
 import { crearDraftRevision } from '../revision/crear-draft.service.js';
+import { aplicarPerfilVisual } from '../perfiles/perfiles.conexion.js';
 
 const PLATAFORMA_PREDETERMINADA = 'tiktok';
 const MODO_VIDEO_PREDETERMINADO = 'cuadrado-centro';
@@ -71,6 +72,7 @@ function normalizarOpciones(opciones = {}) {
     volumenSonidosEdicion: opciones?.volumenSonidosEdicion ?? 0.24,
     separacionMinimaSonidos: opciones?.separacionMinimaSonidos ?? 1.2,
     cantidadMaximaSonidos: opciones?.cantidadMaximaSonidos ?? 16,
+    perfilVisual: normalizarTexto(opciones?.perfilVisual || opciones?.perfil, 'educacion'),
     requiereRevision: convertirBooleano(opciones?.requiereRevision ?? opciones?.draftMode, true),
     renderAutomatico: false
   };
@@ -82,14 +84,16 @@ async function reportarProgreso(progreso, evento) {
 }
 
 export async function ejecutarFlujoPlanRevision(solicitud) {
-  const opciones = normalizarOpciones(solicitud?.opciones || {});
+  const opcionesBase = normalizarOpciones(solicitud?.opciones || {});
+  const opciones = aplicarPerfilVisual(opcionesBase);
   const historial = [];
   const progreso = solicitud?.progreso || null;
   let etapaActual = 'inicio';
 
   try {
     await reportarProgreso(progreso, { etapa: 'inicio', porcentaje: 3, titulo: 'Preparando draft', detalle: 'Solicitud recibida para crear plan de edición.' });
-    historial.push(crearRegistroHistorial('inicio', 'Solicitud recibida para crear plan de edición.', { nombreOriginal: solicitud.nombreOriginal, plataforma: opciones.plataforma, modo: opciones.modo }));
+    historial.push(crearRegistroHistorial('inicio', 'Solicitud recibida para crear plan de edición.', { nombreOriginal: solicitud.nombreOriginal, plataforma: opciones.plataforma, modo: opciones.modo, perfilVisual: opciones.perfilAplicado?.nombre || opciones.perfilVisual }));
+    historial.push(crearRegistroHistorial('perfil', `Perfil visual aplicado: ${opciones.perfilAplicado?.nombre || opciones.perfilVisual}.`, { perfilVisual: opciones.perfilVisual, ritmo: opciones.perfilAplicado?.ritmo || null, estiloSubtitulos: opciones.estiloSubtitulos, estiloTextosFlotantes: opciones.estiloTextosFlotantes }));
 
     etapaActual = 'entrada';
     await reportarProgreso(progreso, { etapa: 'entrada', porcentaje: 10, titulo: 'Copiando video', detalle: 'Guardando video dentro del proyecto.' });
@@ -113,25 +117,25 @@ export async function ejecutarFlujoPlanRevision(solicitud) {
     await reportarProgreso(progreso, { etapa: 'transcripcion', porcentaje: 40, titulo: 'Preparando textos', detalle: 'Creando transcripción, subtítulos y textos flotantes.' });
     const transcripcion = await procesarTranscripcion({ entrada, entendimiento, audio, opciones });
     validarResultadoEtapa('transcripcion', transcripcion);
-    historial.push(crearRegistroHistorial('transcripcion', transcripcion.mensaje || 'Etapa de transcripción completada.', { segmentos: transcripcion.transcripcion?.cantidadSegmentos || 0, textosFlotantes: transcripcion.textosFlotantes?.cantidad || 0 }));
+    historial.push(crearRegistroHistorial('transcripcion', transcripcion.mensaje || 'Etapa de transcripción completada.', { segmentos: transcripcion.transcripcion?.cantidadSegmentos || 0, textosFlotantes: transcripcion.textosFlotantes?.cantidad || 0, perfilVisual: opciones.perfilVisual }));
 
     etapaActual = 'edicion-dinamica';
     await reportarProgreso(progreso, { etapa: 'edicion-dinamica', porcentaje: 55, titulo: 'Creando edición dinámica', detalle: 'Detectando pausas, cortes y tiempos ajustados.' });
     const edicionDinamica = await procesarEdicionDinamica({ entrada, entendimiento, audio, transcripcion, opciones, progreso });
     validarResultadoEtapa('edicion-dinamica', edicionDinamica);
-    historial.push(crearRegistroHistorial('edicion-dinamica', edicionDinamica.diagnostico?.mensaje || edicionDinamica.motivo || 'Etapa de edición dinámica completada.', { activo: Boolean(edicionDinamica.activo), omitido: Boolean(edicionDinamica.omitido) }));
+    historial.push(crearRegistroHistorial('edicion-dinamica', edicionDinamica.diagnostico?.mensaje || edicionDinamica.motivo || 'Etapa de edición dinámica completada.', { activo: Boolean(edicionDinamica.activo), omitido: Boolean(edicionDinamica.omitido), perfilVisual: opciones.perfilVisual }));
 
     etapaActual = 'editar';
     await reportarProgreso(progreso, { etapa: 'editar', porcentaje: 76, titulo: 'Creando plan técnico', detalle: 'Preparando filtro, visuales y sonidos sin render final.' });
     const edicion = await editarVideo({ entrada, entendimiento, audio, transcripcion, edicionDinamica, opciones, progreso });
     validarResultadoEtapa('editar', edicion);
-    historial.push(crearRegistroHistorial('editar', 'Plan técnico de edición generado correctamente.', { tipo: edicion.tipo || null, modo: edicion.modo || opciones.modo, formato: edicion.salida?.formato || null }));
+    historial.push(crearRegistroHistorial('editar', 'Plan técnico de edición generado correctamente.', { tipo: edicion.tipo || null, modo: edicion.modo || opciones.modo, formato: edicion.salida?.formato || null, perfilVisual: opciones.perfilVisual }));
 
     etapaActual = 'plan-edicion';
     await reportarProgreso(progreso, { etapa: 'plan-edicion', porcentaje: 92, titulo: 'Creando plan editable', detalle: 'Guardando plan-edicion.json para revisión.' });
     const planResultado = await crearPlanEdicion({ entrada, entendimiento, audio, transcripcion, edicionDinamica, edicion, opciones, guardar: true });
     const plan = planResultado.plan;
-    historial.push(crearRegistroHistorial('plan-edicion', 'Plan de edición creado correctamente.', { planId: plan?.id || null, rutaPlan: planResultado.guardado?.rutaPlan || null }));
+    historial.push(crearRegistroHistorial('plan-edicion', 'Plan de edición creado correctamente.', { planId: plan?.id || null, rutaPlan: planResultado.guardado?.rutaPlan || null, perfilVisual: opciones.perfilVisual }));
 
     etapaActual = 'revision';
     await reportarProgreso(progreso, { etapa: 'revision', porcentaje: 96, titulo: 'Creando Draft Mode', detalle: 'Preparando borrador editable antes del render.' });
@@ -154,6 +158,7 @@ export async function ejecutarFlujoPlanRevision(solicitud) {
       edicion,
       plan,
       draft,
+      perfilVisual: opciones.perfilAplicado || null,
       guardadoPlan: planResultado.guardado || null,
       guardadoDraft: draftResultado.guardado || null,
       historial
