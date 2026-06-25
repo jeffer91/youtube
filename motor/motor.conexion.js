@@ -12,9 +12,9 @@ function convertirBooleano(valor, valorPorDefecto = true) {
   return valorPorDefecto;
 }
 
-function esErrorDeFlujoPrincipalFaltante(error) {
+function esErrorDeModuloFaltante(error, nombreArchivo) {
   const mensaje = String(error?.message || '');
-  return error?.code === 'ERR_MODULE_NOT_FOUND' && mensaje.includes('flujo-principal.js');
+  return error?.code === 'ERR_MODULE_NOT_FOUND' && mensaje.includes(nombreArchivo);
 }
 
 function validarSolicitud(solicitud) {
@@ -37,16 +37,18 @@ function normalizarOpcionesMotor(opciones = {}) {
     edicionDinamica: convertirBooleano(opciones.edicionDinamica ?? opciones.activarEdicionDinamica ?? opciones.usarEdicionDinamica, true),
     cortarSilencios: convertirBooleano(opciones.cortarSilencios, true),
     agregarEfectosVisualesDinamicos: convertirBooleano(opciones.agregarEfectosVisualesDinamicos, true),
-    agregarSonidosEdicion: convertirBooleano(opciones.agregarSonidosEdicion, true)
+    agregarSonidosEdicion: convertirBooleano(opciones.agregarSonidosEdicion, true),
+    requiereRevision: convertirBooleano(opciones.requiereRevision ?? opciones.draftMode, true),
+    renderAutomatico: convertirBooleano(opciones.renderAutomatico, false)
   };
 }
 
-function crearRespuestaFlujoPendiente(solicitud) {
+function crearRespuestaFlujoPendiente(solicitud, archivoFaltante, mensaje) {
   const opciones = normalizarOpcionesMotor(solicitud.opciones || {});
   return {
     ok: false,
-    estado: 'FLUJO_PRINCIPAL_PENDIENTE',
-    mensaje: 'Base recibida correctamente, pero falta motor/flujo-principal.js para procesar el video.',
+    estado: 'FLUJO_PENDIENTE',
+    mensaje,
     recibido: {
       nombreOriginal: solicitud.nombreOriginal,
       nombreTemporal: solicitud.nombreTemporal || null,
@@ -55,7 +57,7 @@ function crearRespuestaFlujoPendiente(solicitud) {
       mejorarAudio: opciones.mejorarAudio,
       modoAudio: opciones.modoAudio
     },
-    pendientes: ['motor/flujo-principal.js', 'entrada/entrada.conexion.js', 'entender/entender.conexion.js', 'audio/audio.conexion.js', 'editar/editar.conexion.js', 'salida/salida.conexion.js']
+    pendientes: [archivoFaltante]
   };
 }
 
@@ -75,7 +77,34 @@ export async function procesarVideoDesdeMotor(solicitud) {
       jobId: solicitud.jobId || null
     });
   } catch (error) {
-    if (esErrorDeFlujoPrincipalFaltante(error)) return crearRespuestaFlujoPendiente({ ...solicitud, opciones });
+    if (esErrorDeModuloFaltante(error, 'flujo-principal.js')) {
+      return crearRespuestaFlujoPendiente({ ...solicitud, opciones }, 'motor/flujo-principal.js', 'Base recibida correctamente, pero falta motor/flujo-principal.js para procesar el video.');
+    }
     throw error;
   }
 }
+
+export async function crearDraftVideoDesdeMotor(solicitud) {
+  validarSolicitud(solicitud);
+  const opciones = normalizarOpcionesMotor({ ...(solicitud.opciones || {}), requiereRevision: true, renderAutomatico: false });
+
+  try {
+    const moduloFlujo = await import('./flujo-plan-revision.js');
+    if (typeof moduloFlujo.ejecutarFlujoPlanRevision !== 'function') throw new Error('El flujo de plan/revisión existe, pero no exporta ejecutarFlujoPlanRevision.');
+    return await moduloFlujo.ejecutarFlujoPlanRevision({
+      archivoTemporal: solicitud.archivoTemporal,
+      nombreOriginal: solicitud.nombreOriginal,
+      nombreTemporal: solicitud.nombreTemporal || null,
+      opciones,
+      progreso: solicitud.progreso || null,
+      jobId: solicitud.jobId || null
+    });
+  } catch (error) {
+    if (esErrorDeModuloFaltante(error, 'flujo-plan-revision.js')) {
+      return crearRespuestaFlujoPendiente({ ...solicitud, opciones }, 'motor/flujo-plan-revision.js', 'Base recibida correctamente, pero falta motor/flujo-plan-revision.js para crear el draft.');
+    }
+    throw error;
+  }
+}
+
+export default { procesarVideoDesdeMotor, crearDraftVideoDesdeMotor };
