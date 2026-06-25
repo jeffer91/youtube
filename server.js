@@ -4,7 +4,7 @@ import multer from 'multer';
 import path from 'path';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
-import { procesarVideoDesdeMotor } from './motor/motor.conexion.js';
+import { procesarVideoDesdeMotor, crearDraftVideoDesdeMotor } from './motor/motor.conexion.js';
 import { asegurarCarpeta, obtenerRutaRaiz, asegurarCarpetasBase as asegurarCarpetasDatosBase } from './comun/archivos.js';
 import { crearDiagnosticoAutomatico, diagnosticoEsBloqueante } from './diagnostico/diagnostico-automatico.service.js';
 import { crearTrabajoProgreso, crearJobId, suscribirClienteProgreso, emitirEventoProgreso } from './progreso/progreso-registro.js';
@@ -29,6 +29,7 @@ function convertirBooleano(valor, valorPorDefecto = true) {
 }
 
 function normalizarTexto(valor, valorPorDefecto) {
+  if (Array.isArray(valor)) return valor.map((item) => String(item || '').trim()).filter(Boolean).join(',');
   if (typeof valor !== 'string') return valorPorDefecto;
   const limpio = valor.trim();
   return limpio.length > 0 ? limpio : valorPorDefecto;
@@ -139,6 +140,12 @@ function normalizarOpcionesDesdeBody(body = {}) {
     volumenSonidosEdicion: normalizarNumero(body.volumenSonidosEdicion, 0.24, 0.04, 0.48),
     separacionMinimaSonidos: normalizarNumero(body.separacionMinimaSonidos, 1.2, 0.5, 4),
     cantidadMaximaSonidos: Math.round(normalizarNumero(body.cantidadMaximaSonidos, 16, 1, 32)),
+    perfilVisual: normalizarTexto(body.perfilVisual || body.perfil, 'educacion'),
+    nivelEdicion: Math.round(normalizarNumero(body.nivelEdicion || body.nivel, 2, 1, 4)),
+    formatoPrincipal: normalizarTexto(body.formatoPrincipal || body.formato, 'vertical-9-16'),
+    formatosExportacion: normalizarTexto(body.formatosExportacion || body.formatos, 'vertical-9-16'),
+    requiereRevision: convertirBooleano(body.requiereRevision ?? body.draftMode, true),
+    renderAutomatico: convertirBooleano(body.renderAutomatico, false),
     jobId: normalizarTexto(body.jobId, '')
   };
 }
@@ -163,6 +170,20 @@ function aplicarCabecerasSinCache(res) {
   res.setHeader('Surrogate-Control', 'no-store');
 }
 
+async function validarDiagnosticoAntesDeProcesar({ jobId, res, guardarReporte = true } = {}) {
+  emitirEventoProgreso(jobId, { etapa: 'diagnostico', porcentaje: 5, titulo: 'Revisando sistema', detalle: 'Validando FFmpeg, carpetas y módulos antes de editar.' });
+  const diagnostico = await crearDiagnosticoSeguro({ guardarReporte });
+
+  if (diagnosticoEsBloqueante(diagnostico)) {
+    const error = new Error('La app detectó un problema antes de procesar. Revisa el diagnóstico automático.');
+    reportarErrorProgreso(jobId, error, { etapa: 'diagnostico', archivo: 'diagnostico/diagnostico-automatico.service.js', datos: diagnostico });
+    res.status(503).json({ ok: false, mensaje: error.message, diagnostico, jobId, fecha: new Date().toISOString() });
+    return { ok: false, diagnostico };
+  }
+
+  return { ok: true, diagnostico };
+}
+
 function crearAplicacionExpress({ modoElectron = false } = {}) {
   const rutasBase = obtenerRutasBase();
   asegurarCarpetasServidor(rutasBase);
@@ -179,7 +200,7 @@ function crearAplicacionExpress({ modoElectron = false } = {}) {
   app.get('/api/estado', async (_req, res) => {
     aplicarCabecerasSinCache(res);
     const diagnostico = await crearDiagnosticoSeguro({ guardarReporte: false });
-    res.json({ ok: true, app: 'AutoVideoJeff', estado: diagnosticoEsBloqueante(diagnostico) ? 'SERVIDOR_CON_DIAGNOSTICO_PENDIENTE' : 'SERVIDOR_ACTIVO', modo: modoElectron ? 'electron' : 'web', predeterminados: { plataforma: PLATAFORMA_PREDETERMINADA, modoVideo: MODO_VIDEO_PREDETERMINADO, modoAudio: MODO_AUDIO_PREDETERMINADO, crearTranscripcion: true, agregarSubtitulos: true, agregarTextosFlotantes: true, edicionDinamica: true, cortarSilencios: true, visualDinamico: true, sonidosEdicion: true, intensidadEdicion: 'automatica' }, diagnostico, rutas: { raizDatos: rutasBase.raizDatos, videosExportados: rutasBase.videosExportados, audiosMejorados: rutasBase.audiosMejorados }, fecha: new Date().toISOString() });
+    res.json({ ok: true, app: 'AutoVideoJeff', estado: diagnosticoEsBloqueante(diagnostico) ? 'SERVIDOR_CON_DIAGNOSTICO_PENDIENTE' : 'SERVIDOR_ACTIVO', modo: modoElectron ? 'electron' : 'web', predeterminados: { plataforma: PLATAFORMA_PREDETERMINADA, modoVideo: MODO_VIDEO_PREDETERMINADO, modoAudio: MODO_AUDIO_PREDETERMINADO, crearTranscripcion: true, agregarSubtitulos: true, agregarTextosFlotantes: true, edicionDinamica: true, cortarSilencios: true, visualDinamico: true, sonidosEdicion: true, intensidadEdicion: 'automatica', requiereRevision: true, renderAutomatico: false }, diagnostico, rutas: { raizDatos: rutasBase.raizDatos, videosExportados: rutasBase.videosExportados, audiosMejorados: rutasBase.audiosMejorados }, fecha: new Date().toISOString() });
   });
 
   app.get('/api/diagnostico', async (_req, res) => {
@@ -198,6 +219,45 @@ function crearAplicacionExpress({ modoElectron = false } = {}) {
     suscribirClienteProgreso(jobId, res);
   });
 
+  app.post('/api/crear-draft-video', upload.single('video'), async (req, res) => {
+    const archivo = req.file || null;
+    const opcionesIniciales = normalizarOpcionesDesdeBody(req.body || {});
+    const jobId = opcionesIniciales.jobId || crearJobId();
+    crearTrabajoProgreso(jobId);
+    const progreso = crearReporteroProgreso(jobId);
+
+    try {
+      if (!archivo) {
+        const error = new Error('No se recibió ningún video.');
+        reportarErrorProgreso(jobId, error, { etapa: 'entrada', archivo: 'server.js' });
+        return crearErrorHttp(res, 400, 'No se recibió ningún video.');
+      }
+
+      const diagnosticoResultado = await validarDiagnosticoAntesDeProcesar({ jobId, res, guardarReporte: true });
+      if (!diagnosticoResultado.ok) return;
+
+      emitirEventoProgreso(jobId, { etapa: 'diagnostico', porcentaje: 8, titulo: 'Sistema listo', detalle: 'Diagnóstico correcto. Creando plan y draft.' });
+      const opciones = { ...opcionesIniciales, jobId, requiereRevision: true, renderAutomatico: false };
+      const resultado = await crearDraftVideoDesdeMotor({ archivoTemporal: archivo.path, nombreOriginal: archivo.originalname, nombreTemporal: archivo.filename, opciones, progreso, jobId });
+
+      if (!resultado?.ok) {
+        const error = new Error(resultado?.mensaje || 'No se pudo crear el draft del video.');
+        reportarErrorProgreso(jobId, error, { etapa: 'servidor', archivo: 'motor/motor.conexion.js', datos: resultado });
+        return res.status(422).json({ ok: false, mensaje: resultado?.mensaje || 'No se pudo crear el draft del video.', diagnostico: diagnosticoResultado.diagnostico, resultado, jobId, fecha: new Date().toISOString() });
+      }
+
+      reportarFinalizadoProgreso(jobId, { detalle: resultado.mensaje || 'Draft creado correctamente.', datos: { planId: resultado.plan?.id || null, draftId: resultado.draft?.id || null } });
+
+      return res.json({ ok: true, mensaje: resultado.mensaje || 'Draft creado correctamente.', diagnostico: diagnosticoResultado.diagnostico, jobId, proyecto: resultado.proyecto, video: resultado.video, entendimiento: resultado.entendimiento, audio: resultado.audio, transcripcion: resultado.transcripcion, edicionDinamica: resultado.edicionDinamica, edicion: resultado.edicion, plan: resultado.plan, draft: resultado.draft, guardadoPlan: resultado.guardadoPlan, guardadoDraft: resultado.guardadoDraft, historial: resultado.historial || [], fecha: new Date().toISOString() });
+    } catch (error) {
+      console.error('[Servidor] Error creando draft:', error);
+      reportarErrorProgreso(jobId, error, { etapa: error?.etapa || null, archivo: null });
+      return crearErrorHttp(res, 500, error?.message || 'Error interno creando el draft.', process.env.NODE_ENV === 'production' ? null : error?.stack || null);
+    } finally {
+      await eliminarTemporalSiExiste(archivo?.path);
+    }
+  });
+
   app.post('/api/procesar-video', upload.single('video'), async (req, res) => {
     const archivo = req.file || null;
     const opcionesIniciales = normalizarOpcionesDesdeBody(req.body || {});
@@ -212,14 +272,8 @@ function crearAplicacionExpress({ modoElectron = false } = {}) {
         return crearErrorHttp(res, 400, 'No se recibió ningún video.');
       }
 
-      emitirEventoProgreso(jobId, { etapa: 'diagnostico', porcentaje: 5, titulo: 'Revisando sistema', detalle: 'Validando FFmpeg, carpetas y módulos antes de editar.' });
-      const diagnostico = await crearDiagnosticoSeguro({ guardarReporte: true });
-
-      if (diagnosticoEsBloqueante(diagnostico)) {
-        const error = new Error('La app detectó un problema antes de procesar. Revisa el diagnóstico automático.');
-        reportarErrorProgreso(jobId, error, { etapa: 'diagnostico', archivo: 'diagnostico/diagnostico-automatico.service.js', datos: diagnostico });
-        return res.status(503).json({ ok: false, mensaje: error.message, diagnostico, jobId, fecha: new Date().toISOString() });
-      }
+      const diagnosticoResultado = await validarDiagnosticoAntesDeProcesar({ jobId, res, guardarReporte: true });
+      if (!diagnosticoResultado.ok) return;
 
       emitirEventoProgreso(jobId, { etapa: 'diagnostico', porcentaje: 8, titulo: 'Sistema listo', detalle: 'Diagnóstico correcto. Iniciando edición automática.' });
       const opciones = { ...opcionesIniciales, jobId };
@@ -228,12 +282,12 @@ function crearAplicacionExpress({ modoElectron = false } = {}) {
       if (!resultado?.ok) {
         const error = new Error(resultado?.mensaje || 'El video no se pudo procesar.');
         reportarErrorProgreso(jobId, error, { etapa: 'servidor', archivo: 'motor/motor.conexion.js', datos: resultado });
-        return res.status(422).json({ ok: false, mensaje: resultado?.mensaje || 'El video no se pudo procesar.', diagnostico, resultado, jobId, fecha: new Date().toISOString() });
+        return res.status(422).json({ ok: false, mensaje: resultado?.mensaje || 'El video no se pudo procesar.', diagnostico: diagnosticoResultado.diagnostico, resultado, jobId, fecha: new Date().toISOString() });
       }
 
       reportarFinalizadoProgreso(jobId, { detalle: resultado.mensaje || 'Video procesado correctamente.', datos: { urlPublica: resultado.resultado?.urlPublica || null, nombreExportado: resultado.resultado?.nombreExportado || null } });
 
-      return res.json({ ok: true, mensaje: resultado.mensaje || 'Video procesado correctamente.', diagnostico, jobId, resultado: resultado.resultado, proyecto: resultado.proyecto, video: resultado.video, entendimiento: resultado.entendimiento, audio: resultado.audio, transcripcion: resultado.transcripcion, edicionDinamica: resultado.edicionDinamica, edicion: resultado.edicion, historial: resultado.historial || [], fecha: new Date().toISOString() });
+      return res.json({ ok: true, mensaje: resultado.mensaje || 'Video procesado correctamente.', diagnostico: diagnosticoResultado.diagnostico, jobId, resultado: resultado.resultado, proyecto: resultado.proyecto, video: resultado.video, entendimiento: resultado.entendimiento, audio: resultado.audio, transcripcion: resultado.transcripcion, edicionDinamica: resultado.edicionDinamica, edicion: resultado.edicion, historial: resultado.historial || [], fecha: new Date().toISOString() });
     } catch (error) {
       console.error('[Servidor] Error procesando video:', error);
       reportarErrorProgreso(jobId, error, { etapa: error?.etapa || null, archivo: null });
