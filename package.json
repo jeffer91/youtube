@@ -15,6 +15,8 @@
     "check:progreso": "node scripts/verificar-progreso-real.js",
     "check:todo": "node scripts/verificar-todo.js",
     "check:transcripcion": "node scripts/verificar-integracion-transcripcion.js",
+    "check:plan-edicion": "node scripts/verificar-plan-edicion.js",
+    "check:revision": "node scripts/verificar-revision.js",
     "test:transcripcion-manual": "node scripts/probar-transcripcion-manual.js",
     "test:gemini-fallback": "node scripts/probar-fallback-gemini.js",
     "test:drawtext": "node scripts/probar-drawtext.js"
