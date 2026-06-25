@@ -10,6 +10,13 @@ function limpiarContenedor(contenedor) {
   while (contenedor.firstChild) contenedor.removeChild(contenedor.firstChild);
 }
 
+function crearBoton(id, className, texto) {
+  const boton = crearElemento('button', className, texto);
+  boton.id = id;
+  boton.type = 'button';
+  return boton;
+}
+
 function crearResumenSeccion(titulo, items = []) {
   const lista = Array.isArray(items) ? items : [];
   const activos = lista.filter((item) => item?.activo !== false).length;
@@ -27,6 +34,8 @@ function crearListaEditable(nombre, items = []) {
   const lista = crearElemento('div', 'draft-edit-list');
   (Array.isArray(items) ? items : []).forEach((item, index) => {
     const fila = crearElemento('label', 'draft-edit-row');
+    fila.dataset.index = String(index);
+
     const check = crearElemento('input');
     check.type = 'checkbox';
     check.checked = item?.activo !== false;
@@ -44,8 +53,20 @@ function crearListaEditable(nombre, items = []) {
     lista.appendChild(fila);
   });
 
+  if (lista.childElementCount === 0) {
+    lista.appendChild(crearElemento('p', 'mini-summary', 'No hay elementos para revisar en esta sección.'));
+  }
+
   bloque.appendChild(lista);
   return bloque;
+}
+
+function crearAccionesDraft(estadoPlan) {
+  const acciones = crearElemento('section', 'draft-actions');
+  acciones.appendChild(crearBoton('saveDraftChangesButton', 'secondary-action-button', 'Guardar cambios del draft'));
+  acciones.appendChild(crearBoton('approvePlanButton', 'secondary-action-button', estadoPlan === 'APROBADO' ? 'Plan aprobado' : 'Aprobar plan'));
+  acciones.appendChild(crearBoton('renderApprovedPlanButton', 'primary-button', 'Renderizar video final'));
+  return acciones;
 }
 
 export function pintarDraftRevision({ contenedor, draft } = {}) {
@@ -77,6 +98,7 @@ export function pintarDraftRevision({ contenedor, draft } = {}) {
   contenedor.appendChild(cabecera);
   contenedor.appendChild(resumen);
   contenedor.appendChild(editor);
+  contenedor.appendChild(crearAccionesDraft(draft.estadoPlan));
   return contenedor;
 }
 
@@ -100,14 +122,22 @@ export function recogerCambiosDraft(contenedor) {
   return cambios;
 }
 
+export function bloquearAccionesDraft(contenedor, bloquear) {
+  if (!contenedor) return;
+  contenedor.querySelectorAll('button, input, textarea, select').forEach((control) => {
+    control.disabled = bloquear;
+  });
+}
+
 export function inicializarDraftUI({ contenedorId = 'draftPanel' } = {}) {
   const contenedor = document.getElementById(contenedorId);
   return {
     disponible: Boolean(contenedor),
     contenedor,
     pintar: (draft) => pintarDraftRevision({ contenedor, draft }),
-    recogerCambios: () => recogerCambiosDraft(contenedor)
+    recogerCambios: () => recogerCambiosDraft(contenedor),
+    bloquear: (bloquear) => bloquearAccionesDraft(contenedor, bloquear)
   };
 }
 
-export default { pintarDraftRevision, recogerCambiosDraft, inicializarDraftUI };
+export default { pintarDraftRevision, recogerCambiosDraft, bloquearAccionesDraft, inicializarDraftUI };
