@@ -7,6 +7,8 @@ import { validarVideoSeleccionado } from './validar-formulario.js';
 import { obtenerOpcionesEdicionAutomatica, aplicarModoAutomaticoVisual } from './edicion-automatica-ui.js';
 import { inicializarModalErrorEdicion, mostrarModalErrorEdicion } from './error-modal.js';
 import { crearJobIdFrontend, prepararProgresoReal, conectarProgresoReal, actualizarProgresoReal } from './progreso-real-ui.js';
+import { inicializarPlanEdicionUI, obtenerOpcionesPlanEdicion, bloquearControlesPlanEdicion } from './plan-edicion-ui.js';
+import { inicializarDraftUI } from './draft-ui.js';
 
 const elementos = {
   serverStatus: document.getElementById('serverStatus'),
@@ -14,6 +16,8 @@ const elementos = {
   videoInput: document.getElementById('videoInput'),
   fileName: document.getElementById('fileName'),
   processButton: document.getElementById('processButton'),
+  draftButton: document.getElementById('draftButton'),
+  draftPanel: document.getElementById('draftPanel'),
   progressArea: document.getElementById('progressArea'),
   progressText: document.getElementById('progressText'),
   progressTitle: document.getElementById('progressTitle'),
@@ -35,6 +39,7 @@ const elementos = {
 
 let apiBaseCache = null;
 let controladorProgreso = null;
+let draftUI = null;
 
 function validarElementosRequeridos() {
   const faltantes = Object.entries(elementos).filter(([, valor]) => !valor).map(([nombre]) => nombre);
@@ -68,7 +73,13 @@ function ocultarProgreso() {
   elementos.progressText.textContent = '';
 }
 
+function reiniciarDraft() {
+  elementos.draftPanel.hidden = true;
+  elementos.draftPanel.innerHTML = '';
+}
+
 function reiniciarResultado() {
+  reiniciarDraft();
   elementos.resultPanel.hidden = true;
   elementos.resultVideo.hidden = true;
   elementos.resultVideo.removeAttribute('src');
@@ -83,14 +94,17 @@ function reiniciarResultado() {
   elementos.transcriptionSummary.textContent = '';
 }
 
-function bloquearFormulario(bloquear) {
+function bloquearFormulario(bloquear, modoOperacion = 'procesar') {
   elementos.processButton.disabled = bloquear;
+  elementos.draftButton.disabled = bloquear;
   elementos.videoInput.disabled = bloquear;
   elementos.improveAudio.disabled = bloquear;
   elementos.audioMode.disabled = bloquear;
   bloquearControlesTranscripcion(bloquear);
   bloquearControlesGemini(bloquear);
-  elementos.processButton.textContent = bloquear ? 'Editando automáticamente...' : 'Procesar automáticamente';
+  bloquearControlesPlanEdicion(bloquear);
+  elementos.processButton.textContent = bloquear && modoOperacion === 'procesar' ? 'Editando automáticamente...' : 'Procesar automáticamente';
+  elementos.draftButton.textContent = bloquear && modoOperacion === 'draft' ? 'Creando borrador...' : 'Crear borrador revisable';
 }
 
 async function obtenerBaseApi() {
@@ -162,14 +176,14 @@ function registrarCambioDeArchivo() {
   }
   const pesoMb = archivo.size / (1024 * 1024);
   elementos.fileName.textContent = `${archivo.name} · ${pesoMb.toFixed(1)} MB`;
-  mostrarMensaje('Video seleccionado. Presiona Procesar automáticamente.', 'normal');
+  mostrarMensaje('Video seleccionado. Puedes crear un borrador revisable o procesar directamente.', 'normal');
 }
 
 function agregarOpcionesAFormulario(formulario, opciones) {
   Object.entries(opciones).forEach(([clave, valor]) => formulario.append(clave, valor ?? ''));
 }
 
-function crearFormularioProcesamiento(jobId) {
+function crearFormularioProcesamiento(jobId, ajustes = {}) {
   const archivo = elementos.videoInput.files?.[0];
   validarVideoSeleccionado(archivo);
   const formulario = new FormData();
@@ -182,6 +196,8 @@ function crearFormularioProcesamiento(jobId) {
   agregarOpcionesAFormulario(formulario, obtenerOpcionesTranscripcion());
   agregarOpcionesAFormulario(formulario, obtenerConfiguracionGemini());
   agregarOpcionesAFormulario(formulario, obtenerOpcionesEdicionAutomatica());
+  agregarOpcionesAFormulario(formulario, obtenerOpcionesPlanEdicion());
+  agregarOpcionesAFormulario(formulario, ajustes);
   return formulario;
 }
 
@@ -213,6 +229,14 @@ async function mostrarResultado(datos) {
   }
 }
 
+function mostrarDraft(datos) {
+  elementos.draftPanel.hidden = false;
+  if (draftUI?.pintar) draftUI.pintar(datos.draft);
+  const planId = datos.plan?.id || 'sin id';
+  const draftId = datos.draft?.id || 'sin id';
+  mostrarMensaje(`Borrador creado correctamente. Plan: ${planId} · Draft: ${draftId}. Revisa el panel antes del render final.`, 'ok');
+}
+
 function construirErrorParaModal(datos, respaldoMensaje) {
   if (datos?.diagnostico) {
     return { titulo: 'Fallo en diagnóstico', etapa: 'diagnostico', detalle: datos.mensaje || datos.diagnostico.mensaje || respaldoMensaje, archivo: 'diagnostico/diagnostico-automatico.service.js', recomendacion: 'Revisar diagnóstico automático antes de procesar el video.' };
@@ -221,8 +245,7 @@ function construirErrorParaModal(datos, respaldoMensaje) {
   return { titulo: 'Fallo de edición', etapa: 'servidor', detalle: datos?.mensaje || respaldoMensaje || 'No se pudo procesar el video.', archivo: 'server.js', recomendacion: 'Revisar el historial de progreso y el error del servidor.' };
 }
 
-async function procesarFormulario(evento) {
-  evento.preventDefault();
+async function ejecutarOperacionVideo({ endpoint, modoOperacion, ajustesFormulario = {}, onOk }) {
   ocultarMensaje();
   reiniciarResultado();
   cerrarProgresoActual();
@@ -231,23 +254,23 @@ async function procesarFormulario(evento) {
   let modalErrorMostrado = false;
 
   try {
-    const formulario = crearFormularioProcesamiento(jobId);
-    bloquearFormulario(true);
+    const formulario = crearFormularioProcesamiento(jobId, ajustesFormulario);
+    bloquearFormulario(true, modoOperacion);
     await iniciarProgresoReal(jobId);
-    const respuesta = await fetch(await crearUrlApi('/api/procesar-video'), { method: 'POST', body: formulario });
+    const respuesta = await fetch(await crearUrlApi(endpoint), { method: 'POST', body: formulario });
     const datos = await leerRespuestaJsonSegura(respuesta);
 
     if (!respuesta.ok || !datos.ok) {
       const resumenDiagnostico = datos?.diagnostico ? ` ${obtenerResumenDiagnostico(datos)}` : '';
-      const mensaje = `${datos.mensaje || 'No se pudo procesar el video.'}${resumenDiagnostico}`.trim();
+      const mensaje = `${datos.mensaje || 'No se pudo completar la operación.'}${resumenDiagnostico}`.trim();
       mostrarModalErrorEdicion(construirErrorParaModal(datos, mensaje));
       modalErrorMostrado = true;
       throw new Error(mensaje);
     }
 
-    actualizarProgresoReal({ titulo: 'Video listo', detalle: datos.mensaje || 'Proceso completado correctamente.', porcentaje: 100, estado: 'finalizado', etapa: 'finalizado' });
-    await mostrarResultado(datos);
-    mostrarMensaje(datos.mensaje || 'Proceso completado correctamente.', 'ok');
+    actualizarProgresoReal({ titulo: modoOperacion === 'draft' ? 'Borrador listo' : 'Video listo', detalle: datos.mensaje || 'Proceso completado correctamente.', porcentaje: 100, estado: 'finalizado', etapa: 'finalizado' });
+    if (typeof onOk === 'function') await onOk(datos);
+    if (modoOperacion !== 'draft') mostrarMensaje(datos.mensaje || 'Proceso completado correctamente.', 'ok');
   } catch (error) {
     mostrarMensaje(error.message || 'Ocurrió un error al procesar el video.', 'error');
     if (!modalErrorMostrado) {
@@ -255,8 +278,27 @@ async function procesarFormulario(evento) {
     }
     console.error('Error al procesar video:', error);
   } finally {
-    bloquearFormulario(false);
+    bloquearFormulario(false, modoOperacion);
   }
+}
+
+async function procesarFormulario(evento) {
+  evento.preventDefault();
+  await ejecutarOperacionVideo({
+    endpoint: '/api/procesar-video',
+    modoOperacion: 'procesar',
+    ajustesFormulario: { requiereRevision: 'false', draftMode: 'false', renderAutomatico: 'true' },
+    onOk: mostrarResultado
+  });
+}
+
+async function crearDraftDesdeBoton() {
+  await ejecutarOperacionVideo({
+    endpoint: '/api/crear-draft-video',
+    modoOperacion: 'draft',
+    ajustesFormulario: { requiereRevision: 'true', draftMode: 'true', renderAutomatico: 'false' },
+    onOk: mostrarDraft
+  });
 }
 
 function sincronizarModoAudio() {
@@ -268,12 +310,15 @@ function iniciarInterfaz() {
   ocultarProgreso();
   ocultarMensaje();
   reiniciarResultado();
+  draftUI = inicializarDraftUI({ contenedorId: 'draftPanel' });
   inicializarGeminiPopup();
   inicializarTranscripcionUI();
+  inicializarPlanEdicionUI();
   inicializarModalErrorEdicion();
   aplicarModoAutomaticoVisual();
   elementos.videoInput.addEventListener('change', registrarCambioDeArchivo);
   elementos.videoForm.addEventListener('submit', procesarFormulario);
+  elementos.draftButton.addEventListener('click', crearDraftDesdeBoton);
   elementos.improveAudio.addEventListener('change', sincronizarModoAudio);
   sincronizarModoAudio();
   verificarServidor();
