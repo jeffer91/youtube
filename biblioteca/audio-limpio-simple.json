@@ -1,8 +1,8 @@
 {
   "nombre": "audio-voz-al-frente",
-  "descripcion": "Preset profesional para voz hablada: acerca la voz, mejora nitidez, controla ruido y deja volumen fuerte para redes sociales.",
+  "descripcion": "Preset profesional para voz hablada: acerca la voz, mejora nitidez, controla ruido inicial y deja volumen fuerte para redes sociales.",
   "tipo": "limpieza-audio",
-  "version": "2.0.0",
+  "version": "2.1.0",
   "activoPorDefecto": true,
   "audio": {
     "codecAudio": "aac",
@@ -14,6 +14,11 @@
   "filtros": {
     "highpassHz": 95,
     "lowpassHz": 14500,
+    "inicioSeguro": {
+      "activo": true,
+      "duracionFadeIn": 0.28,
+      "evitarSonidosAntesDe": 0.45
+    },
     "reduccionRuido": {
       "activo": true,
       "noiseFloor": -26,
@@ -59,7 +64,7 @@
     },
     "volumenFinal": {
       "activo": true,
-      "ganancia": 1.18
+      "ganancia": 1.15
     },
     "normalizacionFinal": {
       "activo": true,
@@ -70,6 +75,7 @@
   },
   "notas": [
     "Este preset no solo limpia: tambien coloca la voz mas cerca y mas clara.",
+    "Agrega un fade-in muy corto para evitar ruido o golpe al inicio.",
     "Realza presencia y claridad para que la voz no se escuche lejana.",
     "El audio queda mas fuerte y uniforme para videos hablados de redes sociales.",
     "Si un video no tiene pista de audio, el modulo se omite sin romper el flujo."
