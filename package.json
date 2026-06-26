@@ -10,7 +10,7 @@
     "dev": "electron .",
     "server": "node server.js",
     "web": "node server.js",
-    "check:bloque1": "node scripts/verificar-todo.js",
+    "check:bloque1": "node scripts/verificar-bloque-1.js",
     "check:diagnostico": "node scripts/verificar-diagnostico-automatico.js",
     "check:integracion-final": "node scripts/verificar-integracion-final.js",
     "check:progreso": "node scripts/verificar-progreso-real.js",
