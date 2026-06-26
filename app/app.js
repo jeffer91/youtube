@@ -9,6 +9,7 @@ import { inicializarModalErrorEdicion, mostrarModalErrorEdicion } from './error-
 import { crearJobIdFrontend, prepararProgresoReal, conectarProgresoReal, actualizarProgresoReal } from './progreso-real-ui.js';
 import { limpiarResultadoPlataformasUI, mostrarResultadoPlataformasUI } from './resultado-plataformas-ui.js';
 import { inicializarConfiguracionProyectoUI, aplicarOpcionesProyectoAFormulario, bloquearControlesConfiguracionProyecto } from './configuracion-proyecto-ui.js';
+import { inicializarHistorialProyectosUI, recargarHistorialProyectosUI } from './historial-proyectos-ui.js';
 
 const elementos = {
   serverStatus: document.getElementById('serverStatus'),
@@ -295,6 +296,7 @@ async function procesarFormulario(evento) {
 
     actualizarProgresoReal({ titulo: 'Video listo', detalle: datos.mensaje || 'Proceso completado correctamente.', porcentaje: 100, estado: 'finalizado', etapa: 'finalizado' });
     await mostrarResultado(datos);
+    await recargarHistorialProyectosUI({ crearUrlApi });
     mostrarMensaje(datos.mensaje || 'Proceso completado correctamente.', 'ok');
   } catch (error) {
     mostrarMensaje(error.message || 'Ocurrió un error al procesar el video.', 'error');
@@ -317,6 +319,7 @@ function iniciarInterfaz() {
   ocultarMensaje();
   reiniciarResultado();
   inicializarConfiguracionProyectoUI();
+  inicializarHistorialProyectosUI({ crearUrlApi });
   inicializarGeminiPopup();
   inicializarTranscripcionUI();
   inicializarModalErrorEdicion();
