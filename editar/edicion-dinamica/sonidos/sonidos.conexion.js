@@ -1,3 +1,4 @@
+import fs from 'fs';
 import path from 'path';
 import { asegurarCarpeta, escribirJson } from '../../../comun/archivos.js';
 import { reportarModulo } from '../../../progreso/progreso-modulo.js';
@@ -11,7 +12,29 @@ function crearOmitido({ mensaje, carpetaSonidos = null, config = null }) {
   return { ok: true, omitido: true, mensaje, audioConSonidos: null, eventosSonido: [], config: config ? { activo: config.activo, modo: config.modo, volumen: config.volumen } : null, carpetaSonidos, creadoEn: new Date().toISOString() };
 }
 
-export async function procesarSonidosEdicion({ rutaVideoBase, visualDinamico = null, edicionDinamica = null, opciones = {}, progreso = null } = {}) {
+function existeArchivo(ruta) {
+  return Boolean(ruta && fs.existsSync(ruta));
+}
+
+function seleccionarAudioBase({ audio = null, rutaVideoBase = null, edicionDinamica = null }) {
+  const videoDinamicoActivo = Boolean(edicionDinamica?.activo && !edicionDinamica?.omitido && edicionDinamica?.videoDinamico);
+
+  if (!videoDinamicoActivo && audio?.usarAudioMejorado && existeArchivo(audio.rutaAudioMejorado)) {
+    return {
+      ruta: audio.rutaAudioMejorado,
+      origen: 'audio-mejorado',
+      mensaje: 'Los sonidos se mezclarán sobre la voz ya mejorada.'
+    };
+  }
+
+  return {
+    ruta: rutaVideoBase,
+    origen: videoDinamicoActivo ? 'video-dinamico-voz-procesada-en-mezcla' : 'video-base-voz-procesada-en-mezcla',
+    mensaje: 'Los sonidos se mezclarán procesando la voz del video base.'
+  };
+}
+
+export async function procesarSonidosEdicion({ rutaVideoBase, audio = null, visualDinamico = null, edicionDinamica = null, opciones = {}, progreso = null } = {}) {
   const config = obtenerConfigSonidosEdicion(opciones);
   const carpetaBase = edicionDinamica?.carpetaEdicionDinamica || null;
   const carpetaSonidos = carpetaBase ? path.join(carpetaBase, 'sonidos') : null;
@@ -58,13 +81,14 @@ export async function procesarSonidosEdicion({ rutaVideoBase, visualDinamico = n
 
     if (!validacion.ok) return crearOmitido({ mensaje: validacion.mensaje, carpetaSonidos, config });
 
-    await reportarModulo(progreso, { etapa: 'editar', porcentaje: 89, titulo: 'Mezclando sonidos', detalle: `Mezclando ${eventos.eventos.length} sonidos con la voz del video.`, datos: { eventosSonido: eventos.eventos.length }, archivo: 'editar/edicion-dinamica/sonidos/mezclar-sonidos-edicion.service.js' });
-    const mezcla = await mezclarSonidosEdicion({ rutaVideoBase, eventos: eventos.eventos, sonidosBase, carpetaSonidos, nombreSalida: config.nombreAudioFinal });
+    const audioBase = seleccionarAudioBase({ audio, rutaVideoBase, edicionDinamica });
+    await reportarModulo(progreso, { etapa: 'editar', porcentaje: 89, titulo: 'Mezclando voz y sonidos', detalle: `${audioBase.mensaje} Eventos: ${eventos.eventos.length}.`, datos: { eventosSonido: eventos.eventos.length, origenAudioBase: audioBase.origen }, archivo: 'editar/edicion-dinamica/sonidos/mezclar-sonidos-edicion.service.js' });
+    const mezcla = await mezclarSonidosEdicion({ rutaVideoBase, rutaAudioBase: audioBase.ruta, eventos: eventos.eventos, sonidosBase, carpetaSonidos, nombreSalida: config.nombreAudioFinal });
 
-    const resultado = { ok: true, omitido: false, mensaje: mezcla.mensaje, audioConSonidos: mezcla.audioConSonidos, nombreAudio: mezcla.nombreAudio, eventosSonido: eventos.eventos, eventosDescartados: eventos.descartados || 0, sonidosBase, validacion, mezcla, config: { activo: config.activo, modo: config.modo, volumen: config.volumen, separacionMinimaSegundos: config.separacionMinimaSegundos, cantidadMaximaEventos: config.cantidadMaximaEventos }, carpetaSonidos, creadoEn: new Date().toISOString() };
+    const resultado = { ok: true, omitido: false, mensaje: mezcla.mensaje, audioConSonidos: mezcla.audioConSonidos, nombreAudio: mezcla.nombreAudio, audioBase, eventosSonido: eventos.eventos, eventosDescartados: eventos.descartados || 0, sonidosBase, validacion, mezcla, config: { activo: config.activo, modo: config.modo, volumen: config.volumen, separacionMinimaSegundos: config.separacionMinimaSegundos, cantidadMaximaEventos: config.cantidadMaximaEventos }, carpetaSonidos, creadoEn: new Date().toISOString() };
 
     await escribirJson(path.join(carpetaSonidos, 'resultado-sonidos.json'), resultado);
-    await reportarModulo(progreso, { etapa: 'editar', porcentaje: 90, titulo: 'Sonidos aplicados', detalle: `${eventos.eventos.length} sonidos mezclados correctamente.`, datos: { eventosSonido: eventos.eventos.length, audioConSonidos: mezcla.audioConSonidos }, archivo: 'editar/edicion-dinamica/sonidos/sonidos.conexion.js' });
+    await reportarModulo(progreso, { etapa: 'editar', porcentaje: 90, titulo: 'Audio final preparado', detalle: `${eventos.eventos.length} sonidos mezclados con voz al frente.`, datos: { eventosSonido: eventos.eventos.length, audioConSonidos: mezcla.audioConSonidos, origenAudioBase: audioBase.origen }, archivo: 'editar/edicion-dinamica/sonidos/sonidos.conexion.js' });
 
     return resultado;
   } catch (error) {
