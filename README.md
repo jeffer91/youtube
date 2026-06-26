@@ -6,7 +6,7 @@ La idea principal es que Jeff pueda cargar un video, procesarlo con un clic y ob
 
 ## Estado actual
 
-Estado del proyecto: **en desarrollo avanzado**.
+Estado del proyecto: **entrega funcional preparada**.
 
 La app ya tiene:
 
@@ -20,38 +20,40 @@ La app ya tiene:
 - Exportacion final con FFmpeg.
 - Modulos opcionales blindados para continuar si fallan.
 - Comparacion antes/despues al terminar la exportacion.
+- Archivos BAT para abrir, actualizar, verificar y crear instalador.
+- Configuracion para generar instalador de Windows.
 
-Todavia falta cerrar:
+## Como se usa sin programar
 
-- Pruebas finales con videos reales.
-- Preparar instalador de Windows.
-- Preparar proceso para APK Android.
-- Ajustar documentacion final para usuario no programador.
+Haz doble clic en:
 
-## Como se usa
+```txt
+abrir_app.bat
+```
 
-### 1. Instalar dependencias
+Para actualizar desde GitHub y abrir:
+
+```txt
+actualizar_y_abrir.bat
+```
+
+Para verificar todo:
+
+```txt
+verificar_app.bat
+```
+
+Para crear instalador de Windows:
+
+```txt
+crear_instalador_windows.bat
+```
+
+## Como se usa desde Visual Studio Code
 
 ```bash
 npm install
-```
-
-### 2. Abrir como app de escritorio
-
-```bash
 npm start
-```
-
-### 3. Abrir como servidor web local
-
-```bash
-npm run web
-```
-
-Luego abrir:
-
-```txt
-http://localhost:3000
 ```
 
 ## Comandos utiles
@@ -60,7 +62,14 @@ http://localhost:3000
 npm run check:bloque1
 npm run check:bloque2
 npm run check:bloque3
+npm run check:bloque4
 npm run check:todo
+```
+
+Crear instalador:
+
+```bash
+npm run dist:win
 ```
 
 ## Estructura principal
@@ -75,6 +84,7 @@ AutoVideoJeff/
 ├── editar/              Plan de edicion y efectos visuales
 ├── entrada/             Recepcion y copia de videos
 ├── entender/            Analisis tecnico del video
+├── entrega/             Verificacion y entrega final
 ├── motor/               Flujo principal
 ├── progreso/            Barra y eventos de progreso
 ├── salida/              Exportacion final y antes/despues
@@ -95,10 +105,9 @@ entender/entender.conexion.js
 editar/editar.conexion.js
 salida/salida.conexion.js
 salida/antes-despues/antes-despues.conexion.js
+entrega/entrega.conexion.js
 transcripcion/transcripcion.conexion.js
 ```
-
-El motor principal no debe depender de archivos internos pequeños. Debe hablar con cada modulo a traves de sus archivos de conexion.
 
 ## Flujo de trabajo
 
@@ -130,35 +139,14 @@ antes/despues
 6. La exportacion final debe conservar el video original y el video editado.
 7. Al exportar debe mostrarse una comparacion antes/despues.
 
-## Plan de cierre en 4 bloques
+## Bloques completados
 
-### Bloque 1: Base ordenada
-
-Estado: completado.
-
-### Bloque 2: Modulos blindados
-
-Estado: completado para audio, transcripcion, edicion dinamica y visual dinamico.
-
-### Bloque 3: Exportacion profesional
-
-Estado: completado.
-
-Incluye:
-
-- Video original visible como Antes.
-- Video final visible como Despues.
-- Reporte `antes-despues.json`.
-- Resumen de cambios aplicados.
-
-### Bloque 4: Entrega final
-
-Pendiente:
-
-- Preparar instalador.
-- Preparar proceso de actualizacion.
-- Preparar pruebas finales.
-- Dejar la app lista para uso diario.
+| Bloque | Estado |
+|---|---|
+| Bloque 1 - Base ordenada | Completado |
+| Bloque 2 - Modulos blindados | Completado |
+| Bloque 3 - Antes/despues | Completado |
+| Bloque 4 - Entrega final | Completado |
 
 ## Documentacion de avance
 
@@ -166,8 +154,10 @@ Pendiente:
 docs/bloque-1-estado.md
 docs/bloque-2-estado.md
 docs/bloque-3-estado.md
+docs/bloque-4-estado.md
+docs/guia-uso-diario.md
 ```
 
 ## Version
 
-Version actual declarada en `package.json`: **0.3.5**.
+Version actual declarada en `package.json`: **0.3.6**.
