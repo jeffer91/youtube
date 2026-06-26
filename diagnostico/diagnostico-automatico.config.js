@@ -1,16 +1,30 @@
 export const DIAGNOSTICO_AUTOMATICO_CONFIG = Object.freeze({
-  version: '1.0.0',
+  version: '1.1.0',
   bloquearSiFfmpegFalla: true,
   bloquearSiCarpetasFallan: true,
   bloquearSiModulosCriticosFallan: true,
   guardarReporte: true,
   nombreReporte: 'diagnostico-automatico.json',
   modulosCriticos: [
+    'server.js',
+    'main.js',
+    'preload.js',
+    'app/index.html',
+    'app/app.js',
+    'motor/motor.conexion.js',
     'motor/flujo-principal.js',
+    'entrada/entrada.conexion.js',
+    'entender/entender.conexion.js',
+    'audio/audio.conexion.js',
+    'transcripcion/transcripcion.conexion.js',
+    'editar/editar.conexion.js',
     'editar/edicion-dinamica/edicion-dinamica.conexion.js',
     'editar/edicion-dinamica/visual/visual.conexion.js',
     'editar/edicion-dinamica/sonidos/sonidos.conexion.js',
-    'salida/exportar-simple/exportar.service.js'
+    'salida/salida.conexion.js',
+    'salida/exportar-simple/exportar.service.js',
+    'progreso/progreso.conexion.js',
+    'progreso/progreso-registro.js'
   ]
 });
 
