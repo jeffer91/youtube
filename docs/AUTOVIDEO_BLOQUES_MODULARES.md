@@ -67,14 +67,17 @@ Reemplazar recursos desde Produccion y guardar aprendizaje de la correccion.
 ### Bloque 18
 Gemini real conectado por perfil, con instrucciones especificas y fallback local seguro.
 
+### Bloque 19
+Diagnostico fuerte y reintento de etapa fallida desde la ventana de error.
+
 ## Comandos principales
 
 ```bash
 npm run check:autovideo
-npm run check:bloque18-autovideo
+npm run check:bloque19-autovideo
 npm start
 ```
 
 ## Nota importante
 
-La app mantiene render base funcional, permite seleccionar perfil y plataformas desde la interfaz, carga proyectos recientes desde el historial local, muestra el ultimo plan de Produccion, permite marcar y reemplazar sus elementos, registra aprendizaje por correcciones, muestra la biblioteca general en pantalla y ejecuta Gemini por perfil cuando hay credencial. Si Gemini no esta activo o falla, la app usa fallback local y no debe romper el flujo.
+La app mantiene render base funcional, permite seleccionar perfil y plataformas desde la interfaz, carga proyectos recientes desde el historial local, muestra el ultimo plan de Produccion, permite marcar y reemplazar sus elementos, registra aprendizaje por correcciones, muestra la biblioteca general en pantalla, ejecuta Gemini por perfil cuando hay credencial, y ahora incluye diagnostico fuerte con reintento de etapa fallida. Si una etapa falla, la app muestra una accion de reintento mientras el video siga seleccionado.
