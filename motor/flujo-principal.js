@@ -59,6 +59,7 @@ function crearMensajeFinal({ salida, audio, edicion, transcripcion, edicionDinam
   if (edicionDinamica?.activo && !edicionDinamica?.omitido) partes.push('con edición automática');
   partes.push(audioUsado === 'sonidos-edicion' ? 'con efectos de sonido' : audioUsado === 'mejorado' ? 'con audio mejorado' : 'con audio procesado');
   if (capas?.usarSubtitulos || edicion?.transcripcion?.capasAplicadas) partes.push('subtítulos/textos');
+  if (salida?.antesDespues?.ok) partes.push('antes/después');
   return `${partes.join(', ')}.`;
 }
 
@@ -114,9 +115,9 @@ export async function ejecutarFlujoPrincipal(solicitud) {
 
     etapaActual = 'salida';
     await reportarProgreso(progreso, { etapa: 'salida', porcentaje: 90, titulo: 'Exportando video final', detalle: 'Generando MP4 final.' });
-    const salida = await prepararSalida({ entrada, entendimiento, audio, edicion, opciones, progreso });
+    const salida = await prepararSalida({ entrada, entendimiento, audio, transcripcion, edicionDinamica, edicion, opciones, progreso });
     validarResultadoEtapa('salida', salida);
-    historial.push(crearRegistroHistorial('salida', 'Video exportado correctamente.', { nombreExportado: salida.nombreExportado || null, urlPublica: salida.urlPublica || null, modo: salida.modo || edicion.modo || opciones.modo, audioUsado: salida.audio?.tipo || null }));
+    historial.push(crearRegistroHistorial('salida', 'Video exportado correctamente con antes/después.', { nombreExportado: salida.nombreExportado || null, urlPublica: salida.urlPublica || null, antesDespues: Boolean(salida.antesDespues?.ok), modo: salida.modo || edicion.modo || opciones.modo, audioUsado: salida.audio?.tipo || null }));
 
     return { ok: true, estado: 'VIDEO_PROCESADO', mensaje: crearMensajeFinal({ salida, audio, edicion, transcripcion, edicionDinamica }), proyecto: entrada.proyecto, video: entrada.video, entendimiento, audio, transcripcion, edicionDinamica, edicion, resultado: salida, historial };
   } catch (error) {
