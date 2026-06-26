@@ -98,7 +98,7 @@ function crearMensajeFinal({ salida, audio, edicion, transcripcion, edicionDinam
   partes.push(audioUsado === 'sonidos-edicion' ? 'con efectos de sonido' : audioUsado === 'mejorado' ? 'con audio mejorado' : 'con audio procesado');
   if (capas?.usarSubtitulos || edicion?.transcripcion?.capasAplicadas) partes.push('subtítulos/textos');
   if (salida?.antesDespues?.ok) partes.push('antes/después');
-  if (modular?.ok) partes.push('módulos nuevos conectados');
+  if (modular?.resultadoPlataformas?.total) partes.push(`${modular.resultadoPlataformas.total} plataforma(s) preparadas`);
   return `${partes.join(', ')}.`;
 }
 
@@ -161,9 +161,9 @@ export async function ejecutarFlujoPrincipal(solicitud) {
     etapaActual = 'modular';
     await reportarProgreso(progreso, { etapa: 'modular', porcentaje: 96, titulo: 'Conectando módulos nuevos', detalle: 'Preparando producción, perfiles, exportaciones, Gemini y aprendizaje.' });
     const modular = await crearIntegracionModularAutoVideoJeff({ entrada, entendimiento, audio, transcripcion, edicionDinamica, edicion, salida, opciones });
-    historial.push(crearRegistroHistorial('modular', 'Módulos nuevos conectados al flujo principal.', { perfil: modular.perfil?.id || opciones.perfil, plataformas: modular.plataformas, elementosProduccion: modular.produccion?.elementos?.length || 0, exportaciones: modular.exportaciones?.length || 0 }));
+    historial.push(crearRegistroHistorial('modular', 'Módulos nuevos conectados al flujo principal.', { perfil: modular.perfil?.id || opciones.perfil, plataformas: modular.plataformas, elementosProduccion: modular.produccion?.elementos?.length || 0, exportaciones: modular.exportaciones?.length || 0, exportadas: modular.resultadoPlataformas?.exportadas || 0, pendientes: modular.resultadoPlataformas?.pendientes || 0 }));
 
-    return { ok: true, estado: 'VIDEO_PROCESADO', mensaje: crearMensajeFinal({ salida, audio, edicion, transcripcion, edicionDinamica, modular }), proyecto: entrada.proyecto, video: entrada.video, entendimiento, audio, transcripcion, edicionDinamica, edicion, modular, produccion: modular.produccion, exportaciones: modular.exportaciones, resultado: salida, historial };
+    return { ok: true, estado: 'VIDEO_PROCESADO', mensaje: crearMensajeFinal({ salida, audio, edicion, transcripcion, edicionDinamica, modular }), proyecto: entrada.proyecto, video: entrada.video, entendimiento, audio, transcripcion, edicionDinamica, edicion, modular, produccion: modular.produccion, exportaciones: modular.exportaciones, resultadoPlataformas: modular.resultadoPlataformas, resultado: salida, historial };
   } catch (error) {
     const mensaje = error?.message || 'Error desconocido en el flujo principal.';
     error.etapa = error.etapa || etapaActual;
