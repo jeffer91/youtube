@@ -4,13 +4,15 @@
 */
 
 export const GEMINI_CONFIG = Object.freeze({
-  version: '1.0.0',
+  version: '1.1.0',
   proveedor: 'gemini',
   modeloPorDefecto: 'gemini-1.5-flash',
   temperatura: 0.35,
   maxTokens: 4096,
+  timeoutMs: 60000,
   usarFallbackLocal: true,
   requiereClaveApi: true,
+  endpointBase: 'https://generativelanguage.googleapis.com/v1beta/models',
   tareas: Object.freeze({
     analizarTranscripcion: 'analizar_transcripcion',
     sugerirRecursos: 'sugerir_recursos',
@@ -30,8 +32,10 @@ export const GEMINI_CONFIG = Object.freeze({
 export function obtenerConfigGemini(opciones = {}) {
   return {
     ...GEMINI_CONFIG,
-    modelo: opciones.modelo || GEMINI_CONFIG.modeloPorDefecto,
-    temperatura: opciones.temperatura ?? GEMINI_CONFIG.temperatura,
-    apiKey: opciones.apiKey || process.env.GEMINI_API_KEY || ''
+    modelo: opciones.geminiModelo || opciones.modelo || GEMINI_CONFIG.modeloPorDefecto,
+    temperatura: Number(opciones.geminiTemperatura ?? opciones.temperatura ?? GEMINI_CONFIG.temperatura),
+    maxTokens: Number(opciones.geminiMaxTokens ?? opciones.maxTokens ?? GEMINI_CONFIG.maxTokens),
+    timeoutMs: Number(opciones.geminiTimeoutMs ?? opciones.timeoutMs ?? GEMINI_CONFIG.timeoutMs),
+    apiKey: opciones.geminiCredencial || opciones.apiKey || process.env.GEMINI_API_KEY || ''
   };
 }
