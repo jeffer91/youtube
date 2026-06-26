@@ -99,6 +99,25 @@
         <p id="editingSummary" class="editing-summary" hidden></p>
         <p id="audioSummary" class="audio-summary" hidden></p>
         <p id="transcriptionSummary" class="transcription-summary" hidden></p>
+        <section id="beforeAfterPanel" class="before-after-panel" hidden>
+          <div class="before-after-header">
+            <div>
+              <p class="eyebrow">Comparación</p>
+              <h2>Antes y después</h2>
+            </div>
+            <p id="beforeAfterSummary" class="before-after-summary"></p>
+          </div>
+          <div class="before-after-grid">
+            <article class="compare-card">
+              <strong>Antes</strong>
+              <video id="beforeVideo" class="compare-video" controls playsinline></video>
+            </article>
+            <article class="compare-card">
+              <strong>Después</strong>
+              <video id="afterVideo" class="compare-video" controls playsinline></video>
+            </article>
+          </div>
+        </section>
         <video id="resultVideo" class="result-video" controls playsinline hidden></video>
       </section>
     </section>
