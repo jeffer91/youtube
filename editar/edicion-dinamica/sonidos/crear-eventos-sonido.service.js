@@ -10,15 +10,8 @@ function redondear(valor, decimales = 3) {
 
 function obtenerEventosVisuales(visualDinamico) {
   const eventos = [];
-
-  if (Array.isArray(visualDinamico?.eventosVisuales)) {
-    eventos.push(...visualDinamico.eventosVisuales);
-  }
-
-  if (Array.isArray(visualDinamico?.etiquetas?.filtros)) {
-    eventos.push(...visualDinamico.etiquetas.filtros.map((item) => ({ ...item, tipo: 'etiqueta-visual' })));
-  }
-
+  if (Array.isArray(visualDinamico?.eventosVisuales)) eventos.push(...visualDinamico.eventosVisuales);
+  if (Array.isArray(visualDinamico?.etiquetas?.filtros)) eventos.push(...visualDinamico.etiquetas.filtros.map((item) => ({ ...item, tipo: 'etiqueta-visual' })));
   return eventos;
 }
 
@@ -33,15 +26,18 @@ function filtrarEventosMuyCercanos(eventos, separacionMinimaSegundos) {
   let ultimoTiempo = -Infinity;
 
   for (const evento of eventos) {
-    if (evento.tiempo - ultimoTiempo < separacionMinimaSegundos) {
-      continue;
-    }
-
+    if (evento.tiempo - ultimoTiempo < separacionMinimaSegundos) continue;
     salida.push(evento);
     ultimoTiempo = evento.tiempo;
   }
 
   return salida;
+}
+
+function filtrarInicioSeguro(eventos, inicioSeguroSegundos) {
+  const limite = Number(inicioSeguroSegundos || 0);
+  if (!Number.isFinite(limite) || limite <= 0) return eventos;
+  return eventos.filter((evento) => evento.tiempo >= limite);
 }
 
 export function crearEventosSonido({ visualDinamico = null, config, opciones = {} } = {}) {
@@ -73,7 +69,8 @@ export function crearEventosSonido({ visualDinamico = null, config, opciones = {
     };
   });
 
-  const filtrados = filtrarEventosMuyCercanos(eventosSonidoBase, config.separacionMinimaSegundos)
+  const eventosConInicioSeguro = filtrarInicioSeguro(eventosSonidoBase, config.inicioSeguroSegundos);
+  const filtrados = filtrarEventosMuyCercanos(eventosConInicioSeguro, config.separacionMinimaSegundos)
     .slice(0, config.cantidadMaximaEventos)
     .map((evento, index) => ({ ...evento, id: index + 1 }));
 
@@ -82,7 +79,8 @@ export function crearEventosSonido({ visualDinamico = null, config, opciones = {
     omitido: filtrados.length === 0,
     eventos: filtrados,
     descartados: eventosSonidoBase.length - filtrados.length,
-    mensaje: filtrados.length > 0 ? 'Eventos de sonido creados correctamente.' : 'No quedaron eventos de sonido luego de aplicar seguridad.'
+    inicioSeguroSegundos: config.inicioSeguroSegundos,
+    mensaje: filtrados.length > 0 ? 'Eventos de sonido creados correctamente con inicio seguro.' : 'No quedaron eventos de sonido luego de aplicar seguridad.'
   };
 }
 
