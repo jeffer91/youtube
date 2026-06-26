@@ -1,7 +1,7 @@
 {
   "name": "auto-video-jeff",
-  "version": "0.3.2",
-  "description": "App modular para editar videos automaticamente, con audio, transcripción, subtítulos, textos flotantes, edición dinámica, visuales, sonidos automáticos y progreso real.",
+  "version": "0.3.3",
+  "description": "App modular para editar videos automaticamente, con audio, transcripcion, subtitulos, textos flotantes, edicion dinamica, visuales, sonidos automaticos y progreso real.",
   "type": "module",
   "main": "main.js",
   "scripts": {
@@ -10,6 +10,7 @@
     "dev": "electron .",
     "server": "node server.js",
     "web": "node server.js",
+    "check:bloque1": "node scripts/verificar-todo.js",
     "check:diagnostico": "node scripts/verificar-diagnostico-automatico.js",
     "check:integracion-final": "node scripts/verificar-integracion-final.js",
     "check:progreso": "node scripts/verificar-progreso-real.js",
