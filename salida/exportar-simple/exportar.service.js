@@ -4,6 +4,7 @@ import { exportarConFfmpeg } from '../../comun/ffmpeg.js';
 import { asegurarCarpeta, escribirJson, obtenerRutaRaiz, crearRutaRelativaParaWeb } from '../../comun/archivos.js';
 import { reportarModulo } from '../../progreso/progreso-modulo.js';
 import { crearAntesDespues } from '../antes-despues/antes-despues.conexion.js';
+import { crearFiltroVozAlFrente } from '../../audio/limpieza-simple/limpieza-audio.service.js';
 
 const PLATAFORMA_PREDETERMINADA = 'tiktok';
 const MODO_VIDEO_PREDETERMINADO = 'cuadrado-centro';
@@ -42,13 +43,19 @@ function obtenerRutaAudioParaExportar({ audio, edicion }) {
   return obtenerRutaAudioMejoradoSeguro(audio);
 }
 
-function crearResumenAudioExportado({ audio, rutaAudioExterno, edicion }) {
+function obtenerFiltroAudioFinal({ rutaAudioExterno, entendimiento }) {
+  if (rutaAudioExterno) return null;
+  if (!entendimiento?.analisis?.tieneAudio) return null;
+  return crearFiltroVozAlFrente();
+}
+
+function crearResumenAudioExportado({ audio, rutaAudioExterno, filtroAudioFinal, edicion }) {
   const rutaAudioConSonidos = obtenerRutaAudioConSonidos(edicion);
-  if (rutaAudioConSonidos && rutaAudioExterno === rutaAudioConSonidos) return { tipo: 'sonidos-edicion', modulo: 'edicion-dinamica-sonidos', omitido: false, rutaAudioMejorado: rutaAudioExterno, nombreAudioMejorado: path.basename(rutaAudioExterno), mensaje: 'Se usó audio mezclado con efectos de sonido.' };
-  if (edicion?.render?.usarAudioDelVideoRender) return { tipo: 'video-render', modulo: 'edicion-dinamica', omitido: false, rutaAudioMejorado: null, nombreAudioMejorado: null, mensaje: 'Se usó el audio integrado en el video dinámico.' };
-  if (rutaAudioExterno) return { tipo: 'mejorado', modulo: audio?.tipo || 'limpieza-simple', omitido: false, rutaAudioMejorado: rutaAudioExterno, nombreAudioMejorado: audio?.nombreAudioMejorado || path.basename(rutaAudioExterno), mensaje: audio?.mensaje || 'Se usó audio mejorado.' };
-  if (audio?.usarAudioMejorado && audio?.rutaAudioMejorado && !fs.existsSync(audio.rutaAudioMejorado)) return { tipo: 'original', modulo: audio?.tipo || null, omitido: true, rutaAudioMejorado: null, nombreAudioMejorado: null, mensaje: 'Se usó audio original porque el audio mejorado no existe o no está disponible.' };
-  return { tipo: 'original', modulo: audio?.tipo || null, omitido: Boolean(audio?.omitido), rutaAudioMejorado: null, nombreAudioMejorado: null, mensaje: audio?.mensaje || 'Se usó el audio original del video.' };
+  if (rutaAudioConSonidos && rutaAudioExterno === rutaAudioConSonidos) return { tipo: 'sonidos-edicion', modulo: 'edicion-dinamica-sonidos', omitido: false, rutaAudioMejorado: rutaAudioExterno, nombreAudioMejorado: path.basename(rutaAudioExterno), filtroAudioFinal: null, mensaje: 'Se usó audio con voz al frente y efectos de sonido.' };
+  if (edicion?.render?.usarAudioDelVideoRender && filtroAudioFinal) return { tipo: 'voz-al-frente-video-render', modulo: 'salida-final', omitido: false, rutaAudioMejorado: null, nombreAudioMejorado: null, filtroAudioFinal, mensaje: 'Se procesó la voz del video dinámico para que suene más cercana y nítida.' };
+  if (rutaAudioExterno) return { tipo: 'mejorado', modulo: audio?.tipo || 'voz-al-frente', omitido: false, rutaAudioMejorado: rutaAudioExterno, nombreAudioMejorado: audio?.nombreAudioMejorado || path.basename(rutaAudioExterno), filtroAudioFinal: null, mensaje: audio?.mensaje || 'Se usó audio mejorado.' };
+  if (audio?.usarAudioMejorado && audio?.rutaAudioMejorado && !fs.existsSync(audio.rutaAudioMejorado)) return { tipo: 'original', modulo: audio?.tipo || null, omitido: true, rutaAudioMejorado: null, nombreAudioMejorado: null, filtroAudioFinal, mensaje: 'Se usó audio original porque el audio mejorado no existe o no está disponible.' };
+  return { tipo: filtroAudioFinal ? 'voz-al-frente-exportacion' : 'original', modulo: audio?.tipo || null, omitido: Boolean(audio?.omitido), rutaAudioMejorado: null, nombreAudioMejorado: null, filtroAudioFinal, mensaje: filtroAudioFinal ? 'Se aplicó voz al frente durante la exportación final.' : (audio?.mensaje || 'Se usó el audio original del video.') };
 }
 
 function crearNombreResumenSalida(modo) { return modo === 'cuadrado-centro' ? 'salida-tiktok-cuadrado-centro.json' : 'salida-simple.json'; }
@@ -69,17 +76,18 @@ export async function exportarVideoSimple({ entrada, entendimiento, audio = null
   const rutaResumenCompatibilidad = path.join(entrada.rutas.carpetaProyecto, 'salida-simple.json');
   const rutaVideoRender = obtenerRutaVideoRender({ entrada, edicion });
   const rutaAudioExterno = obtenerRutaAudioParaExportar({ audio, edicion });
+  const filtroAudioFinal = obtenerFiltroAudioFinal({ rutaAudioExterno, entendimiento });
 
   asegurarCarpeta(carpetaExportados);
-  await reportarModulo(progreso, { etapa: 'salida', porcentaje: 94, titulo: 'Renderizando video', detalle: `FFmpeg está exportando ${nombreExportado}.`, datos: { rutaVideoRender, rutaAudioExterno: rutaAudioExterno || null }, archivo: 'comun/ffmpeg.js' });
+  await reportarModulo(progreso, { etapa: 'salida', porcentaje: 94, titulo: 'Renderizando video', detalle: `FFmpeg está exportando ${nombreExportado}.`, datos: { rutaVideoRender, rutaAudioExterno: rutaAudioExterno || null, filtroAudioFinal: Boolean(filtroAudioFinal) }, archivo: 'comun/ffmpeg.js' });
 
-  const resultadoFfmpeg = await exportarConFfmpeg({ rutaEntrada: rutaVideoRender, rutaSalida: rutaExportada, filtroVideo: edicion.render.filtroVideo, rutaAudioExterno, codecVideo: edicion.render.codecVideo || 'libx264', codecAudio: edicion.render.codecAudio || 'aac', crf: edicion.render.crf || 23, presetFfmpeg: edicion.render.presetFfmpeg || 'veryfast', audioBitrate: edicion.render.audioBitrate || '160k' });
+  const resultadoFfmpeg = await exportarConFfmpeg({ rutaEntrada: rutaVideoRender, rutaSalida: rutaExportada, filtroVideo: edicion.render.filtroVideo, rutaAudioExterno, filtroAudio: filtroAudioFinal, codecVideo: edicion.render.codecVideo || 'libx264', codecAudio: edicion.render.codecAudio || 'aac', crf: edicion.render.crf || 23, presetFfmpeg: edicion.render.presetFfmpeg || 'veryfast', audioBitrate: edicion.render.audioBitrate || '192k' });
 
   await reportarModulo(progreso, { etapa: 'salida', porcentaje: 98, titulo: 'Validando archivo final', detalle: 'Comprobando que el MP4 exportado exista y no esté vacío.', archivo: 'salida/exportar-simple/exportar.service.js' });
   const stats = await validarArchivoExportado(rutaExportada);
-  const resumenAudio = crearResumenAudioExportado({ audio, rutaAudioExterno, edicion });
+  const resumenAudio = crearResumenAudioExportado({ audio, rutaAudioExterno, filtroAudioFinal, edicion });
 
-  const salidaBase = { ok: true, etapa: 'salida', tipo: 'exportar-simple', plataforma, modo, rutaExportada, rutaRelativa: crearRutaRelativaParaWeb(rutaExportada), nombreExportado, urlPublica: crearUrlPublica(nombreExportado), pesoBytes: stats.size, audio: resumenAudio, edicion: crearResumenEdicion(edicion), ffmpeg: { audioUsado: resultadoFfmpeg?.audioUsado || resumenAudio.tipo, videoRenderUsado: rutaVideoRender }, render: { filtroVideo: edicion.render.filtroVideo, codecVideo: edicion.render.codecVideo || 'libx264', codecAudio: edicion.render.codecAudio || 'aac', crf: edicion.render.crf || 23, presetFfmpeg: edicion.render.presetFfmpeg || 'veryfast', audioBitrate: edicion.render.audioBitrate || '160k', pixFmt: edicion.render.pixFmt || 'yuv420p' }, entrada: { nombreOriginal: entrada.video.nombreOriginal || null, rutaOriginal: entrada.video.rutaOriginal, rutaVideoRender, origenVideoRender: edicion?.render?.origenVideoEntrada || edicion?.entrada?.origenVideoRender || 'original' }, entendimiento: { orientacion: entendimiento?.analisis?.orientacion || null, duracionSegundos: entendimiento?.analisis?.duracionSegundos || null, tieneAudio: Boolean(entendimiento?.analisis?.tieneAudio) }, opciones: { ...opciones, plataforma, modo }, archivos: { resumenSalida: nombreResumenSalida, resumenCompatibilidad: 'salida-simple.json' }, creadoEn: new Date().toISOString() };
+  const salidaBase = { ok: true, etapa: 'salida', tipo: 'exportar-simple', plataforma, modo, rutaExportada, rutaRelativa: crearRutaRelativaParaWeb(rutaExportada), nombreExportado, urlPublica: crearUrlPublica(nombreExportado), pesoBytes: stats.size, audio: resumenAudio, edicion: crearResumenEdicion(edicion), ffmpeg: { audioUsado: resultadoFfmpeg?.audioUsado || resumenAudio.tipo, videoRenderUsado: rutaVideoRender, filtroAudioAplicado: Boolean(resultadoFfmpeg?.filtroAudioAplicado) }, render: { filtroVideo: edicion.render.filtroVideo, filtroAudio: filtroAudioFinal, codecVideo: edicion.render.codecVideo || 'libx264', codecAudio: edicion.render.codecAudio || 'aac', crf: edicion.render.crf || 23, presetFfmpeg: edicion.render.presetFfmpeg || 'veryfast', audioBitrate: edicion.render.audioBitrate || '192k', pixFmt: edicion.render.pixFmt || 'yuv420p' }, entrada: { nombreOriginal: entrada.video.nombreOriginal || null, rutaOriginal: entrada.video.rutaOriginal, rutaVideoRender, origenVideoRender: edicion?.render?.origenVideoEntrada || edicion?.entrada?.origenVideoRender || 'original' }, entendimiento: { orientacion: entendimiento?.analisis?.orientacion || null, duracionSegundos: entendimiento?.analisis?.duracionSegundos || null, tieneAudio: Boolean(entendimiento?.analisis?.tieneAudio) }, opciones: { ...opciones, plataforma, modo }, archivos: { resumenSalida: nombreResumenSalida, resumenCompatibilidad: 'salida-simple.json' }, creadoEn: new Date().toISOString() };
 
   const antesDespues = await crearAntesDespues({ entrada, salida: salidaBase, audio, transcripcion, edicionDinamica, edicion, opciones: { ...opciones, plataforma, modo } });
   const salida = { ...salidaBase, antesDespues };
@@ -87,7 +95,7 @@ export async function exportarVideoSimple({ entrada, entendimiento, audio = null
   await escribirJson(rutaResumenSalida, salida);
   if (rutaResumenCompatibilidad !== rutaResumenSalida) await escribirJson(rutaResumenCompatibilidad, salida);
 
-  await reportarModulo(progreso, { etapa: 'salida', porcentaje: 99, titulo: 'Antes y después listo', detalle: `${nombreExportado} exportado con comparación antes/después.`, datos: { nombreExportado, pesoBytes: stats.size, urlPublica: salida.urlPublica, antesDespues: Boolean(antesDespues?.ok) }, archivo: 'salida/antes-despues/antes-despues.conexion.js' });
+  await reportarModulo(progreso, { etapa: 'salida', porcentaje: 99, titulo: 'Antes y después listo', detalle: `${nombreExportado} exportado con comparación antes/después.`, datos: { nombreExportado, pesoBytes: stats.size, urlPublica: salida.urlPublica, audio: resumenAudio.tipo, antesDespues: Boolean(antesDespues?.ok) }, archivo: 'salida/antes-despues/antes-despues.conexion.js' });
 
   return { ...salida, rutaResumenSalida };
 }
