@@ -1,4 +1,4 @@
-/* Verificacion Bloque 11: package.json preparado para app modular y render multiplataforma. */
+/* Verificacion Bloque 12: package.json preparado para app modular, render y configuracion de proyecto. */
 
 import fs from 'fs';
 
@@ -14,11 +14,14 @@ const SCRIPTS_REQUERIDOS = [
   'check:bloque9-autovideo',
   'check:bloque10-autovideo',
   'check:bloque11-autovideo',
+  'check:bloque12-autovideo',
   'check:render-plataformas',
+  'check:configuracion-proyecto-ui',
   'check:autovideo'
 ];
 
 const BUILD_REQUERIDOS = [
+  'app/**/*',
   'aprendizaje/**/*',
   'biblioteca-proyecto/**/*',
   'exportacion/**/*',
