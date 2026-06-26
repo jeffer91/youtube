@@ -30,7 +30,11 @@ const elementos = {
   modeInput: document.getElementById('modeInput'),
   editingSummary: document.getElementById('editingSummary'),
   audioSummary: document.getElementById('audioSummary'),
-  transcriptionSummary: document.getElementById('transcriptionSummary')
+  transcriptionSummary: document.getElementById('transcriptionSummary'),
+  beforeAfterPanel: document.getElementById('beforeAfterPanel'),
+  beforeAfterSummary: document.getElementById('beforeAfterSummary'),
+  beforeVideo: document.getElementById('beforeVideo'),
+  afterVideo: document.getElementById('afterVideo')
 };
 
 let apiBaseCache = null;
@@ -68,11 +72,19 @@ function ocultarProgreso() {
   elementos.progressText.textContent = '';
 }
 
+function limpiarVideo(video) {
+  video.hidden = true;
+  video.removeAttribute('src');
+  video.load();
+}
+
 function reiniciarResultado() {
   elementos.resultPanel.hidden = true;
-  elementos.resultVideo.hidden = true;
-  elementos.resultVideo.removeAttribute('src');
-  elementos.resultVideo.load();
+  limpiarVideo(elementos.resultVideo);
+  limpiarVideo(elementos.beforeVideo);
+  limpiarVideo(elementos.afterVideo);
+  elementos.beforeAfterPanel.hidden = true;
+  elementos.beforeAfterSummary.textContent = '';
   elementos.downloadLink.hidden = true;
   elementos.downloadLink.removeAttribute('href');
   elementos.editingSummary.hidden = true;
@@ -196,6 +208,19 @@ async function iniciarProgresoReal(jobId) {
   actualizarProgresoReal({ titulo: 'Trabajo creado', detalle: 'Conectando barra de progreso real.', porcentaje: 1, estado: 'procesando', etapa: 'inicio' });
 }
 
+async function mostrarAntesDespues(antesDespues, urlExportada) {
+  const urlAntes = await crearUrlPublica(antesDespues?.original?.copiaVista?.urlPublica || antesDespues?.original?.urlPublica || '');
+  const urlDespues = await crearUrlPublica(antesDespues?.final?.urlPublica || urlExportada || '');
+  if (!urlAntes || !urlDespues) return;
+
+  elementos.beforeAfterPanel.hidden = false;
+  elementos.beforeAfterSummary.textContent = antesDespues?.resumen || 'Comparación generada correctamente.';
+  elementos.beforeVideo.hidden = false;
+  elementos.beforeVideo.src = urlAntes;
+  elementos.afterVideo.hidden = false;
+  elementos.afterVideo.src = urlDespues;
+}
+
 async function mostrarResultado(datos) {
   const urlExportada = await crearUrlPublica(datos.resultado?.urlPublica || datos.resultado?.exportUrl || '');
   elementos.resultPanel.hidden = false;
@@ -211,6 +236,7 @@ async function mostrarResultado(datos) {
     elementos.downloadLink.hidden = false;
     elementos.downloadLink.href = urlExportada;
   }
+  await mostrarAntesDespues(datos.resultado?.antesDespues, urlExportada);
 }
 
 function construirErrorParaModal(datos, respaldoMensaje) {
