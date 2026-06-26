@@ -19,8 +19,34 @@ function validarBase({ entrada, entendimiento }) {
   if (entendimiento.ok !== true) throw new Error('No se puede procesar transcripción porque el análisis del video no terminó correctamente.');
 }
 
-function resultadoOmitido(mensaje) {
-  return { ok: true, etapa: 'transcripcion', omitido: true, mensaje, transcripcion: null, archivosTranscripcion: null, subtitulos: null, gemini: null, fallback: null, textosFlotantes: null, capasVideo: null, reportes: null, diagnostico: null, creadoEn: new Date().toISOString() };
+function resultadoOmitido(mensaje, error = null) {
+  return {
+    ok: true,
+    etapa: 'transcripcion',
+    omitido: true,
+    mensaje,
+    transcripcion: null,
+    archivosTranscripcion: null,
+    subtitulos: null,
+    gemini: null,
+    fallback: null,
+    textosFlotantes: null,
+    capasVideo: null,
+    reportes: null,
+    diagnostico: {
+      ok: true,
+      bloqueante: false,
+      mensaje
+    },
+    errorControlado: error
+      ? {
+          modulo: 'transcripcion',
+          mensaje: error.message || String(error),
+          archivo: 'transcripcion/transcripcion.conexion.js'
+        }
+      : null,
+    creadoEn: new Date().toISOString()
+  };
 }
 
 function debeUsarFallback({ geminiResultado, config }) {
@@ -32,27 +58,42 @@ function debeUsarFallback({ geminiResultado, config }) {
 }
 
 export async function procesarTranscripcion({ entrada, entendimiento, audio = null, opciones = {} } = {}) {
-  validarBase({ entrada, entendimiento });
-  const config = obtenerConfigTranscripcion(opciones);
-  if (!config.transcripcion.crearTranscripcion) return resultadoOmitido('La transcripción está desactivada por opciones.');
-  const transcripcion = await transcribirVideo({ entrada, entendimiento, audio, opciones });
-  const archivosTranscripcion = await guardarArchivosTranscripcion({ entrada, transcripcion, opciones });
-  const subtitulos = await generarSubtitulos({ entrada, transcripcion, opciones });
-  const paqueteGemini = prepararPaqueteGemini({ entrada, entendimiento, audio, transcripcion, subtitulos, opciones });
-  const geminiResultado = await consultarGeminiParaMomentos({ paqueteGemini, segmentos: transcripcion.segmentos || [], opciones });
-  let fallbackResultado = null;
-  let origenMomentos = geminiResultado;
-  if (debeUsarFallback({ geminiResultado, config })) {
-    fallbackResultado = generarMomentosFallbackLocal({ transcripcion, opciones, motivo: geminiResultado?.mensaje || geminiResultado?.error || 'Gemini no generó momentos válidos.' });
-    if (fallbackResultado.ok) origenMomentos = fallbackResultado;
+  try {
+    validarBase({ entrada, entendimiento });
+    const config = obtenerConfigTranscripcion(opciones);
+
+    if (!config.transcripcion.crearTranscripcion) {
+      return resultadoOmitido('La transcripción está desactivada por opciones.');
+    }
+
+    const transcripcion = await transcribirVideo({ entrada, entendimiento, audio, opciones });
+    const archivosTranscripcion = await guardarArchivosTranscripcion({ entrada, transcripcion, opciones });
+    const subtitulos = await generarSubtitulos({ entrada, transcripcion, opciones });
+    const paqueteGemini = prepararPaqueteGemini({ entrada, entendimiento, audio, transcripcion, subtitulos, opciones });
+    const geminiResultado = await consultarGeminiParaMomentos({ paqueteGemini, segmentos: transcripcion.segmentos || [], opciones });
+    let fallbackResultado = null;
+    let origenMomentos = geminiResultado;
+
+    if (debeUsarFallback({ geminiResultado, config })) {
+      fallbackResultado = generarMomentosFallbackLocal({ transcripcion, opciones, motivo: geminiResultado?.mensaje || geminiResultado?.error || 'Gemini no generó momentos válidos.' });
+      if (fallbackResultado.ok) origenMomentos = fallbackResultado;
+    }
+
+    const archivosGemini = await guardarArchivosGemini({ entrada, paqueteGemini, geminiResultado, fallbackResultado, opciones });
+    const textosFlotantes = await generarTextosFlotantes({ entrada, origenMomentos, opciones });
+    const capasVideo = await construirCapasVideo({ entrada, subtitulos, textosFlotantes, opciones });
+    const reporteGemini = await crearReporteGemini({ entrada, paqueteGemini, geminiResultado, fallbackResultado, opciones });
+    const reporteTranscripcion = await crearReporteTranscripcion({ entrada, transcripcion, archivosTranscripcion, subtitulos, textosFlotantes, capasVideo, opciones });
+    const diagnostico = await crearDiagnosticoTranscripcion({ entrada, opciones, transcripcion, subtitulos, geminiResultado, fallbackResultado, textosFlotantes, capasVideo });
+
+    return { ok: true, etapa: 'transcripcion', omitido: false, mensaje: 'Módulo de transcripción procesado correctamente.', transcripcion, archivosTranscripcion, subtitulos, gemini: { ...geminiResultado, archivos: archivosGemini }, fallback: fallbackResultado, textosFlotantes, capasVideo, reportes: { gemini: reporteGemini, transcripcion: reporteTranscripcion }, diagnostico, errorControlado: null, creadoEn: new Date().toISOString() };
+  } catch (error) {
+    console.warn('[transcripcion] Transcripción omitida por error controlado:', error.message);
+    return resultadoOmitido(
+      'No se pudo preparar transcripción, subtítulos o textos. La edición continuará sin textos automáticos.',
+      error
+    );
   }
-  const archivosGemini = await guardarArchivosGemini({ entrada, paqueteGemini, geminiResultado, fallbackResultado, opciones });
-  const textosFlotantes = await generarTextosFlotantes({ entrada, origenMomentos, opciones });
-  const capasVideo = await construirCapasVideo({ entrada, subtitulos, textosFlotantes, opciones });
-  const reporteGemini = await crearReporteGemini({ entrada, paqueteGemini, geminiResultado, fallbackResultado, opciones });
-  const reporteTranscripcion = await crearReporteTranscripcion({ entrada, transcripcion, archivosTranscripcion, subtitulos, textosFlotantes, capasVideo, opciones });
-  const diagnostico = await crearDiagnosticoTranscripcion({ entrada, opciones, transcripcion, subtitulos, geminiResultado, fallbackResultado, textosFlotantes, capasVideo });
-  return { ok: true, etapa: 'transcripcion', omitido: false, mensaje: 'Módulo de transcripción procesado correctamente.', transcripcion, archivosTranscripcion, subtitulos, gemini: { ...geminiResultado, archivos: archivosGemini }, fallback: fallbackResultado, textosFlotantes, capasVideo, reportes: { gemini: reporteGemini, transcripcion: reporteTranscripcion }, diagnostico, creadoEn: new Date().toISOString() };
 }
 
 export default procesarTranscripcion;
