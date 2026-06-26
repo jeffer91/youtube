@@ -1,6 +1,6 @@
 {
   "name": "auto-video-jeff",
-  "version": "0.4.7",
+  "version": "0.4.8",
   "description": "App modular para editar videos automaticamente.",
   "type": "module",
   "main": "main.js",
@@ -24,6 +24,7 @@
     "check:biblioteca-proyecto": "node scripts/verificar-biblioteca-proyecto.js",
     "check:recursos-externos": "node scripts/verificar-recursos-externos.js",
     "check:gemini": "node scripts/verificar-gemini.js",
+    "check:gemini-real-perfil": "node scripts/verificar-gemini-real-perfil.js",
     "check:produccion": "node scripts/verificar-produccion.js",
     "check:aprendizaje": "node scripts/verificar-aprendizaje.js",
     "check:navegacion-ui": "node scripts/verificar-navegacion-ui.js",
@@ -61,6 +62,7 @@
     "check:bloque15-autovideo": "node scripts/verificar-bloque-15-autovideo.js",
     "check:bloque16-autovideo": "node scripts/verificar-bloque-16-autovideo.js",
     "check:bloque17-autovideo": "node scripts/verificar-bloque-17-autovideo.js",
+    "check:bloque18-autovideo": "node scripts/verificar-bloque-18-autovideo.js",
     "check:bloques-autovideo": "node scripts/verificar-bloques-autovideo.js",
     "check:autovideo": "npm run check:package-autovideo && npm run check:bloques-autovideo",
     "check:diagnostico": "node scripts/verificar-diagnostico-automatico.js",
@@ -74,46 +76,20 @@
     "test:gemini-fallback": "node scripts/probar-fallback-gemini.js",
     "test:drawtext": "node scripts/probar-drawtext.js"
   },
-  "keywords": [
-    "video",
-    "ffmpeg",
-    "tiktok",
-    "editor",
-    "electron"
-  ],
+  "keywords": ["video", "ffmpeg", "tiktok", "editor", "electron"],
   "author": "Jefferson Villarreal",
   "license": "MIT",
-  "engines": {
-    "node": ">=18.0.0"
-  },
-  "dependencies": {
-    "cors": "^2.8.5",
-    "express": "^4.19.2",
-    "ffmpeg-static": "^5.2.0",
-    "ffprobe-static": "^3.1.0",
-    "fluent-ffmpeg": "^2.1.3",
-    "multer": "^1.4.5-lts.1"
-  },
-  "devDependencies": {
-    "electron": "^31.0.0",
-    "electron-builder": "^24.13.3"
-  },
+  "engines": { "node": ">=18.0.0" },
+  "dependencies": { "cors": "^2.8.5", "express": "^4.19.2", "ffmpeg-static": "^5.2.0", "ffprobe-static": "^3.1.0", "fluent-ffmpeg": "^2.1.3", "multer": "^1.4.5-lts.1" },
+  "devDependencies": { "electron": "^31.0.0", "electron-builder": "^24.13.3" },
   "build": {
     "appId": "com.jeff.autovideojeff",
     "productName": "AutoVideoJeff",
     "asar": false,
     "directories": { "output": "release" },
-    "files": [
-      "app/**/*", "aprendizaje/**/*", "audio/**/*", "biblioteca/**/*", "biblioteca-proyecto/**/*", "comun/**/*", "diagnostico/**/*", "docs/**/*", "editar/**/*", "entrada/**/*", "entender/**/*", "entrega/**/*", "exportacion/**/*", "gemini/**/*", "motor/**/*", "perfiles/**/*", "produccion/**/*", "progreso/**/*", "proyectos/**/*", "recursos-externos/**/*", "salida/**/*", "scripts/**/*", "server/**/*", "subtitulos/**/*", "textos/**/*", "transcripcion/**/*", "visual/**/*", "main.js", "preload.js", "server.js", "package.json"
-    ],
+    "files": ["app/**/*", "aprendizaje/**/*", "audio/**/*", "biblioteca/**/*", "biblioteca-proyecto/**/*", "comun/**/*", "diagnostico/**/*", "docs/**/*", "editar/**/*", "entrada/**/*", "entender/**/*", "entrega/**/*", "exportacion/**/*", "gemini/**/*", "motor/**/*", "perfiles/**/*", "produccion/**/*", "progreso/**/*", "proyectos/**/*", "recursos-externos/**/*", "salida/**/*", "scripts/**/*", "server/**/*", "subtitulos/**/*", "textos/**/*", "transcripcion/**/*", "visual/**/*", "main.js", "preload.js", "server.js", "package.json"],
     "extraResources": [{ "from": "docs", "to": "docs" }],
     "win": { "target": ["nsis"] },
-    "nsis": {
-      "oneClick": false,
-      "perMachine": false,
-      "allowToChangeInstallationDirectory": true,
-      "createDesktopShortcut": true,
-      "createStartMenuShortcut": true
-    }
+    "nsis": { "oneClick": false, "perMachine": false, "allowToChangeInstallationDirectory": true, "createDesktopShortcut": true, "createStartMenuShortcut": true }
   }
 }
