@@ -20,6 +20,8 @@ const SCRIPTS_REQUERIDOS = [
   'check:bloque17-autovideo',
   'check:bloque18-autovideo',
   'check:bloque19-autovideo',
+  'check:bloque20-autovideo',
+  'check:cierre-final-autovideo',
   'check:diagnostico-fuerte',
   'check:biblioteca-ui',
   'check:produccion-reemplazo-ui',
@@ -29,7 +31,9 @@ const SCRIPTS_REQUERIDOS = [
   'check:historial-proyectos-ui',
   'check:produccion-revision-ui',
   'check:produccion-acciones-ui',
-  'check:autovideo'
+  'check:autovideo',
+  'release:win',
+  'dist:win'
 ];
 
 const BUILD_REQUERIDOS = [
@@ -38,6 +42,7 @@ const BUILD_REQUERIDOS = [
   'biblioteca/**/*',
   'biblioteca-proyecto/**/*',
   'diagnostico/**/*',
+  'docs/**/*',
   'exportacion/**/*',
   'gemini/**/*',
   'produccion/**/*',
@@ -54,6 +59,7 @@ function main() {
   const files = pkg.build?.files || [];
   const faltanScripts = SCRIPTS_REQUERIDOS.filter((script) => !scripts[script]);
   const faltanBuild = BUILD_REQUERIDOS.filter((item) => !files.includes(item));
+  if (pkg.version !== '1.0.0') throw new Error(`Version final incorrecta: ${pkg.version}`);
   if (faltanScripts.length || faltanBuild.length) throw new Error(`Faltan scripts: ${faltanScripts.join(', ') || 'ninguno'} | Faltan build files: ${faltanBuild.join(', ') || 'ninguno'}`);
   console.log('OK package AutoVideoJeff:', pkg.version, SCRIPTS_REQUERIDOS.length, 'scripts clave');
 }
