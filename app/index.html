@@ -5,9 +5,13 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>AutoVideoJeff</title>
   <link rel="stylesheet" href="./styles.css" />
+  <link rel="stylesheet" href="./navegacion/navegacion.css" />
 </head>
 <body>
   <main class="app-shell">
+    <section id="mainNavigation" class="aj-navigation-shell" aria-label="Navegación principal"></section>
+    <section id="pantallaDinamica" class="aj-dynamic-screen" aria-live="polite"></section>
+
     <section class="hero-card">
       <div class="hero-top">
         <div>
@@ -149,5 +153,6 @@
   </section>
 
   <script type="module" src="./app.js"></script>
+  <script type="module" src="./navegacion/navegacion-bootstrap.js"></script>
 </body>
 </html>
