@@ -1,4 +1,4 @@
-/* Verificacion Bloque 13: package.json preparado para app modular, render, configuracion e historial. */
+/* Verificacion Bloque 14: package.json preparado para app modular, historial y revision UI. */
 
 import fs from 'fs';
 
@@ -16,9 +16,11 @@ const SCRIPTS_REQUERIDOS = [
   'check:bloque11-autovideo',
   'check:bloque12-autovideo',
   'check:bloque13-autovideo',
+  'check:bloque14-autovideo',
   'check:render-plataformas',
   'check:configuracion-proyecto-ui',
   'check:historial-proyectos-ui',
+  'check:produccion-revision-ui',
   'check:autovideo'
 ];
 
