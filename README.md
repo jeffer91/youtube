@@ -18,6 +18,7 @@ La app ya tiene una base funcional:
 - Flujo principal conectado por etapas.
 - Modulos de entrada, entendimiento, audio, transcripcion, edicion dinamica, edicion y salida.
 - Exportacion final con FFmpeg.
+- Modulos opcionales blindados para continuar si fallan.
 
 Todavia falta cerrar:
 
@@ -60,6 +61,12 @@ npm run check:bloque1
 ```
 
 Revisa el estado base del Bloque 1, archivos obligatorios, limite de 1000 lineas, diagnostico, integracion y progreso.
+
+```bash
+npm run check:bloque2
+```
+
+Revisa que los modulos opcionales esten blindados: audio, transcripcion, edicion dinamica y visual dinamico.
 
 ```bash
 npm run check:todo
@@ -163,6 +170,7 @@ salida
 - Hacer que entrada, audio, transcripcion, edicion y salida fallen de forma controlada.
 - Evitar que un modulo opcional detenga todo si existe alternativa.
 - Mejorar mensajes de error.
+- Estado: completado para audio, transcripcion, edicion dinamica y visual dinamico.
 
 ### Bloque 3: Exportacion profesional
 
@@ -180,12 +188,13 @@ salida
 
 ## Documentacion de avance
 
-El resumen corto del Bloque 1 queda en:
+Resumenes cortos por bloque:
 
 ```txt
 docs/bloque-1-estado.md
+docs/bloque-2-estado.md
 ```
 
 ## Version
 
-Version actual declarada en `package.json`: **0.3.3**.
+Version actual declarada en `package.json`: **0.3.4**.
