@@ -6,6 +6,7 @@
     - Decidir si se debe mejorar el audio del video.
     - Conectar el motor principal con audio/limpieza-simple/limpieza-audio.service.js.
     - Devolver un objeto estándar para que salida/ use audio original o audio limpio.
+    - Si audio falla, no debe detener toda la edición: se usa el audio original.
   Con qué se conecta:
     - motor/flujo-principal.js
     - audio/limpieza-simple/limpieza-audio.service.js
@@ -51,43 +52,62 @@ function validarBaseAudio({ entrada, entendimiento }) {
   }
 }
 
-function crearResultadoAudioOmitido(motivo, opcionesAudio) {
+function crearResultadoAudioOmitido(motivo, opcionesAudio, error = null) {
   return {
     ok: true,
     etapa: 'audio',
-    tipo: opcionesAudio.modoAudio,
+    tipo: opcionesAudio?.modoAudio || 'audio-original',
     omitido: true,
     usarAudioMejorado: false,
     mensaje: motivo,
     rutaAudioMejorado: null,
     nombreAudioMejorado: null,
     opcionesAudio,
+    errorControlado: error
+      ? {
+          modulo: 'audio',
+          mensaje: error.message || String(error),
+          archivo: 'audio/audio.conexion.js'
+        }
+      : null,
     creadoEn: new Date().toISOString()
   };
 }
 
 export async function mejorarAudioVideo({ entrada, entendimiento, opciones = {} }) {
-  validarBaseAudio({ entrada, entendimiento });
-
   const opcionesAudio = normalizarOpcionesAudio(opciones);
 
-  if (!opcionesAudio.mejorarAudio) {
+  try {
+    validarBaseAudio({ entrada, entendimiento });
+
+    if (!opcionesAudio.mejorarAudio) {
+      return crearResultadoAudioOmitido(
+        'Mejora de audio desactivada por opciones del usuario.',
+        opcionesAudio
+      );
+    }
+
+    if (opcionesAudio.modoAudio !== 'limpieza-simple') {
+      return crearResultadoAudioOmitido(
+        `Modo de audio no soportado todavía: ${opcionesAudio.modoAudio}. Se usará el audio original.`,
+        opcionesAudio
+      );
+    }
+
+    return await limpiarAudioSimple({
+      entrada,
+      entendimiento,
+      opciones: {
+        ...opciones,
+        ...opcionesAudio
+      }
+    });
+  } catch (error) {
+    console.warn('[audio] Audio omitido por error controlado:', error.message);
     return crearResultadoAudioOmitido(
-      'Mejora de audio desactivada por opciones del usuario.',
-      opcionesAudio
+      'No se pudo mejorar el audio. La edición continuará con el audio original.',
+      opcionesAudio,
+      error
     );
   }
-
-  if (opcionesAudio.modoAudio !== 'limpieza-simple') {
-    throw new Error(`Modo de audio no soportado todavía: ${opcionesAudio.modoAudio}`);
-  }
-
-  return await limpiarAudioSimple({
-    entrada,
-    entendimiento,
-    opciones: {
-      ...opciones,
-      ...opcionesAudio
-    }
-  });
 }
