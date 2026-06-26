@@ -1,6 +1,7 @@
 import { crearDiagnosticoAutomatico } from '../diagnostico/diagnostico-automatico.service.js';
 import { verificarIntegracionFinal } from '../diagnostico/verificar-integracion-final.service.js';
 import { verificarProgresoReal } from '../diagnostico/verificar-progreso-real.service.js';
+import { verificarEntregaFinal } from '../entrega/entrega.conexion.js';
 
 function resumir(nombre, resultado) {
   return {
@@ -16,11 +17,13 @@ async function main() {
   const diagnostico = await crearDiagnosticoAutomatico({ guardarReporte: true });
   const integracion = await verificarIntegracionFinal();
   const progreso = await verificarProgresoReal();
+  const entrega = verificarEntregaFinal();
 
   const resultados = [
     resumir('diagnostico', diagnostico),
     resumir('integracion-final', integracion),
-    resumir('progreso-real', progreso)
+    resumir('progreso-real', progreso),
+    resumir('entrega-final', entrega)
   ];
 
   const ok = resultados.every((item) => item.ok);
