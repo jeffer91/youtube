@@ -1,10 +1,10 @@
 /*
-  Bloque 8
+  Bloque 8 y 9
   Funcion: conectar los modulos nuevos al resultado del flujo actual sin romper el render existente.
 */
 
 import { obtenerPerfil } from '../perfiles/perfiles.conexion.js';
-import { prepararExportaciones } from '../exportacion/exportacion.conexion.js';
+import { prepararExportaciones, crearResultadoPlataformas } from '../exportacion/exportacion.conexion.js';
 import { crearPlanAudio } from '../audio/audio.conexion.js';
 import { crearSubtitulosMultiplataforma } from '../subtitulos/subtitulos.conexion.js';
 import { detectarTextosRelevantes, generarTextosPantalla } from '../textos/textos.conexion.js';
@@ -71,6 +71,7 @@ export async function crearIntegracionModularAutoVideoJeff({ entrada = {}, enten
   const plataformaBase = { formato: salida.formato || '9:16', width: 1080, height: 1920, zonaSegura: { top: 170, bottom: 280, left: 80, right: 80 } };
 
   const exportaciones = prepararExportaciones({ ...proyecto, videoEditado: salida.rutaExportada || salida.rutaVideo || '', rutas: proyecto.rutas });
+  const resultadoPlataformas = crearResultadoPlataformas({ salida, exportaciones, plataformas });
   const planAudio = crearPlanAudio({ analisisAudio: entendimiento.analisis?.audio || {} }, { usarMusicaBaja: true });
   const sujeto = detectarSujeto({ video: { width: plataformaBase.width, height: plataformaBase.height } });
   const rostro = detectarRostro({}, sujeto);
@@ -108,6 +109,7 @@ export async function crearIntegracionModularAutoVideoJeff({ entrada = {}, enten
     perfil,
     plataformas,
     exportaciones,
+    resultadoPlataformas,
     audio: planAudio,
     subtitulosPorPlataforma,
     textos: textosPantalla,
