@@ -19,6 +19,7 @@ const SCRIPTS = [
   'scripts/verificar-bloque-14-autovideo.js',
   'scripts/verificar-bloque-15-autovideo.js',
   'scripts/verificar-bloque-16-autovideo.js',
+  'scripts/verificar-bloque-17-autovideo.js',
   'scripts/verificar-diagnostico-modular.js',
   'scripts/verificar-estructura-modular.js',
   'scripts/verificar-integracion-modular-final.js'
