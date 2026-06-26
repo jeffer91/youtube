@@ -5,6 +5,7 @@ import { procesarTranscripcion } from '../transcripcion/transcripcion.conexion.j
 import { procesarEdicionDinamica } from '../editar/edicion-dinamica/edicion-dinamica.conexion.js';
 import { editarVideo } from '../editar/editar.conexion.js';
 import { prepararSalida } from '../salida/salida.conexion.js';
+import { crearIntegracionModularAutoVideoJeff } from './flujo-modular-autovideo.service.js';
 
 const PLATAFORMA_PREDETERMINADA = 'tiktok';
 const MODO_VIDEO_PREDETERMINADO = 'cuadrado-centro';
@@ -42,8 +43,45 @@ function normalizarModoVideo(valor) {
   return modo;
 }
 
+function normalizarLista(valor, defecto = []) {
+  if (Array.isArray(valor)) return valor.filter(Boolean);
+  if (typeof valor === 'string' && valor.trim()) return valor.split(',').map((item) => item.trim()).filter(Boolean);
+  return defecto;
+}
+
 function normalizarOpciones(opciones = {}) {
-  return { ...opciones, plataforma: normalizarTexto(opciones?.plataforma, PLATAFORMA_PREDETERMINADA).toLowerCase(), modo: normalizarModoVideo(opciones?.modo), mejorarAudio: convertirBooleano(opciones?.mejorarAudio, true), modoAudio: normalizarTexto(opciones?.modoAudio, MODO_AUDIO_PREDETERMINADO).toLowerCase(), crearTranscripcion: convertirBooleano(opciones?.crearTranscripcion, true), agregarSubtitulos: convertirBooleano(opciones?.agregarSubtitulos, true), agregarTextosFlotantes: convertirBooleano(opciones?.agregarTextosFlotantes, true), usarGemini: convertirBooleano(opciones?.usarGemini, false), edicionDinamica: convertirBooleano(opciones?.edicionDinamica ?? opciones?.activarEdicionDinamica ?? opciones?.usarEdicionDinamica, true), activarEdicionDinamica: true, usarEdicionDinamica: true, cortarSilencios: convertirBooleano(opciones?.cortarSilencios, true), modoSeguroEdicionDinamica: convertirBooleano(opciones?.modoSeguroEdicionDinamica, true), intensidadEdicion: normalizarTexto(opciones?.intensidadEdicion || opciones?.modoEdicionDinamica, 'automatica'), modoEdicionDinamica: normalizarTexto(opciones?.modoEdicionDinamica || opciones?.intensidadEdicion, 'automatica'), agregarEfectosVisualesDinamicos: convertirBooleano(opciones?.agregarEfectosVisualesDinamicos, true), agregarZooms: convertirBooleano(opciones?.agregarZooms, true), agregarPunchIn: convertirBooleano(opciones?.agregarPunchIn, true), agregarBarraProgreso: convertirBooleano(opciones?.agregarBarraProgreso, true), agregarEtiquetasVisuales: convertirBooleano(opciones?.agregarEtiquetasVisuales, true), agregarSonidosEdicion: convertirBooleano(opciones?.agregarSonidosEdicion, true), modoSonidosEdicion: normalizarTexto(opciones?.modoSonidosEdicion, 'normal'), volumenSonidosEdicion: opciones?.volumenSonidosEdicion ?? 0.24, separacionMinimaSonidos: opciones?.separacionMinimaSonidos ?? 1.2, cantidadMaximaSonidos: opciones?.cantidadMaximaSonidos ?? 16 };
+  const plataforma = normalizarTexto(opciones?.plataforma, PLATAFORMA_PREDETERMINADA).toLowerCase();
+  return {
+    ...opciones,
+    plataforma,
+    plataformas: normalizarLista(opciones?.plataformas, [plataforma]),
+    perfil: normalizarTexto(opciones?.perfil, 'general'),
+    modoEdicion: normalizarTexto(opciones?.modoEdicion, 'revision_completa'),
+    modo: normalizarModoVideo(opciones?.modo),
+    mejorarAudio: convertirBooleano(opciones?.mejorarAudio, true),
+    modoAudio: normalizarTexto(opciones?.modoAudio, MODO_AUDIO_PREDETERMINADO).toLowerCase(),
+    crearTranscripcion: convertirBooleano(opciones?.crearTranscripcion, true),
+    agregarSubtitulos: convertirBooleano(opciones?.agregarSubtitulos, true),
+    agregarTextosFlotantes: convertirBooleano(opciones?.agregarTextosFlotantes, true),
+    usarGemini: convertirBooleano(opciones?.usarGemini, false),
+    edicionDinamica: convertirBooleano(opciones?.edicionDinamica ?? opciones?.activarEdicionDinamica ?? opciones?.usarEdicionDinamica, true),
+    activarEdicionDinamica: true,
+    usarEdicionDinamica: true,
+    cortarSilencios: convertirBooleano(opciones?.cortarSilencios, true),
+    modoSeguroEdicionDinamica: convertirBooleano(opciones?.modoSeguroEdicionDinamica, true),
+    intensidadEdicion: normalizarTexto(opciones?.intensidadEdicion || opciones?.modoEdicionDinamica, 'automatica'),
+    modoEdicionDinamica: normalizarTexto(opciones?.modoEdicionDinamica || opciones?.intensidadEdicion, 'automatica'),
+    agregarEfectosVisualesDinamicos: convertirBooleano(opciones?.agregarEfectosVisualesDinamicos, true),
+    agregarZooms: convertirBooleano(opciones?.agregarZooms, true),
+    agregarPunchIn: convertirBooleano(opciones?.agregarPunchIn, true),
+    agregarBarraProgreso: convertirBooleano(opciones?.agregarBarraProgreso, true),
+    agregarEtiquetasVisuales: convertirBooleano(opciones?.agregarEtiquetasVisuales, true),
+    agregarSonidosEdicion: convertirBooleano(opciones?.agregarSonidosEdicion, true),
+    modoSonidosEdicion: normalizarTexto(opciones?.modoSonidosEdicion, 'normal'),
+    volumenSonidosEdicion: opciones?.volumenSonidosEdicion ?? 0.24,
+    separacionMinimaSonidos: opciones?.separacionMinimaSonidos ?? 1.2,
+    cantidadMaximaSonidos: opciones?.cantidadMaximaSonidos ?? 16
+  };
 }
 
 async function reportarProgreso(progreso, evento) {
@@ -51,7 +89,7 @@ async function reportarProgreso(progreso, evento) {
   try { return await progreso(evento); } catch (error) { console.warn('[progreso] No se pudo reportar evento:', error.message); return null; }
 }
 
-function crearMensajeFinal({ salida, audio, edicion, transcripcion, edicionDinamica }) {
+function crearMensajeFinal({ salida, audio, edicion, transcripcion, edicionDinamica, modular }) {
   const modo = edicion?.modo || salida?.modo || MODO_VIDEO_PREDETERMINADO;
   const audioUsado = salida?.audio?.tipo || audio?.tipo || 'original';
   const capas = transcripcion?.capasVideo;
@@ -60,6 +98,7 @@ function crearMensajeFinal({ salida, audio, edicion, transcripcion, edicionDinam
   partes.push(audioUsado === 'sonidos-edicion' ? 'con efectos de sonido' : audioUsado === 'mejorado' ? 'con audio mejorado' : 'con audio procesado');
   if (capas?.usarSubtitulos || edicion?.transcripcion?.capasAplicadas) partes.push('subtítulos/textos');
   if (salida?.antesDespues?.ok) partes.push('antes/después');
+  if (modular?.ok) partes.push('módulos nuevos conectados');
   return `${partes.join(', ')}.`;
 }
 
@@ -71,7 +110,7 @@ export async function ejecutarFlujoPrincipal(solicitud) {
 
   try {
     await reportarProgreso(progreso, { etapa: 'inicio', porcentaje: 3, titulo: 'Preparando video', detalle: 'Solicitud recibida por el motor principal.' });
-    historial.push(crearRegistroHistorial('inicio', 'Solicitud recibida por el motor principal.', { nombreOriginal: solicitud.nombreOriginal, plataforma: opciones.plataforma, modo: opciones.modo, mejorarAudio: opciones.mejorarAudio, modoAudio: opciones.modoAudio, crearTranscripcion: opciones.crearTranscripcion, edicionDinamica: opciones.edicionDinamica, intensidadEdicion: opciones.intensidadEdicion }));
+    historial.push(crearRegistroHistorial('inicio', 'Solicitud recibida por el motor principal.', { nombreOriginal: solicitud.nombreOriginal, plataforma: opciones.plataforma, plataformas: opciones.plataformas, perfil: opciones.perfil, modo: opciones.modo, mejorarAudio: opciones.mejorarAudio, modoAudio: opciones.modoAudio, crearTranscripcion: opciones.crearTranscripcion, edicionDinamica: opciones.edicionDinamica, intensidadEdicion: opciones.intensidadEdicion }));
 
     etapaActual = 'entrada';
     await reportarProgreso(progreso, { etapa: 'entrada', porcentaje: 10, titulo: 'Copiando video', detalle: 'Guardando el archivo dentro del proyecto.' });
@@ -119,7 +158,12 @@ export async function ejecutarFlujoPrincipal(solicitud) {
     validarResultadoEtapa('salida', salida);
     historial.push(crearRegistroHistorial('salida', 'Video exportado correctamente con antes/después.', { nombreExportado: salida.nombreExportado || null, urlPublica: salida.urlPublica || null, antesDespues: Boolean(salida.antesDespues?.ok), modo: salida.modo || edicion.modo || opciones.modo, audioUsado: salida.audio?.tipo || null }));
 
-    return { ok: true, estado: 'VIDEO_PROCESADO', mensaje: crearMensajeFinal({ salida, audio, edicion, transcripcion, edicionDinamica }), proyecto: entrada.proyecto, video: entrada.video, entendimiento, audio, transcripcion, edicionDinamica, edicion, resultado: salida, historial };
+    etapaActual = 'modular';
+    await reportarProgreso(progreso, { etapa: 'modular', porcentaje: 96, titulo: 'Conectando módulos nuevos', detalle: 'Preparando producción, perfiles, exportaciones, Gemini y aprendizaje.' });
+    const modular = await crearIntegracionModularAutoVideoJeff({ entrada, entendimiento, audio, transcripcion, edicionDinamica, edicion, salida, opciones });
+    historial.push(crearRegistroHistorial('modular', 'Módulos nuevos conectados al flujo principal.', { perfil: modular.perfil?.id || opciones.perfil, plataformas: modular.plataformas, elementosProduccion: modular.produccion?.elementos?.length || 0, exportaciones: modular.exportaciones?.length || 0 }));
+
+    return { ok: true, estado: 'VIDEO_PROCESADO', mensaje: crearMensajeFinal({ salida, audio, edicion, transcripcion, edicionDinamica, modular }), proyecto: entrada.proyecto, video: entrada.video, entendimiento, audio, transcripcion, edicionDinamica, edicion, modular, produccion: modular.produccion, exportaciones: modular.exportaciones, resultado: salida, historial };
   } catch (error) {
     const mensaje = error?.message || 'Error desconocido en el flujo principal.';
     error.etapa = error.etapa || etapaActual;
