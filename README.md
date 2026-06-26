@@ -20,6 +20,7 @@ La app ya tiene:
 - Exportacion final con FFmpeg.
 - Modulos opcionales blindados para continuar si fallan.
 - Comparacion antes/despues al terminar la exportacion.
+- Verificacion de variables, botones y conexiones UI.
 - Archivos BAT para abrir, actualizar, verificar y crear instalador.
 - Configuracion para generar instalador de Windows.
 
@@ -59,6 +60,8 @@ npm start
 ## Comandos utiles
 
 ```bash
+npm run check:ui
+npm run check:funcional
 npm run check:bloque1
 npm run check:bloque2
 npm run check:bloque3
@@ -147,6 +150,7 @@ antes/despues
 | Bloque 2 - Modulos blindados | Completado |
 | Bloque 3 - Antes/despues | Completado |
 | Bloque 4 - Entrega final | Completado |
+| Bloque 5 - Verificacion y correccion | Completado |
 
 ## Documentacion de avance
 
@@ -155,9 +159,10 @@ docs/bloque-1-estado.md
 docs/bloque-2-estado.md
 docs/bloque-3-estado.md
 docs/bloque-4-estado.md
+docs/bloque-5-verificacion-correccion.md
 docs/guia-uso-diario.md
 ```
 
 ## Version
 
-Version actual declarada en `package.json`: **0.3.6**.
+Version actual declarada en `package.json`: **0.3.7**.
