@@ -7,6 +7,16 @@ function obtenerDocumento() {
   return typeof document === 'undefined' ? null : document;
 }
 
+function asegurarEstilosHistorial() {
+  const doc = obtenerDocumento();
+  if (!doc || doc.getElementById('historyProjectsStyles')) return;
+  const link = doc.createElement('link');
+  link.id = 'historyProjectsStyles';
+  link.rel = 'stylesheet';
+  link.href = './historial-proyectos.css';
+  doc.head.appendChild(link);
+}
+
 function escapar(texto = '') {
   return String(texto).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 }
@@ -75,6 +85,7 @@ async function cargarProyectos({ crearUrlApi } = {}) {
 export async function recargarHistorialProyectosUI({ crearUrlApi } = {}) {
   const doc = obtenerDocumento();
   if (!doc) return false;
+  asegurarEstilosHistorial();
   const lista = doc.getElementById('historyProjectsList');
   const resumen = doc.getElementById('historyProjectsSummary');
   const estado = doc.getElementById('historyProjectsStatus');
@@ -98,6 +109,7 @@ export async function recargarHistorialProyectosUI({ crearUrlApi } = {}) {
 export function inicializarHistorialProyectosUI({ crearUrlApi } = {}) {
   const doc = obtenerDocumento();
   if (!doc) return false;
+  asegurarEstilosHistorial();
 
   doc.addEventListener('click', (evento) => {
     const boton = evento.target.closest('[data-history-action="reload"]');
