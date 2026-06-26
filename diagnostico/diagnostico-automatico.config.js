@@ -1,5 +1,5 @@
 export const DIAGNOSTICO_AUTOMATICO_CONFIG = Object.freeze({
-  version: '1.4.0',
+  version: '1.5.0',
   bloquearSiFfmpegFalla: true,
   bloquearSiCarpetasFallan: true,
   bloquearSiModulosCriticosFallan: true,
@@ -13,7 +13,6 @@ export const DIAGNOSTICO_AUTOMATICO_CONFIG = Object.freeze({
     'app/app.js',
     'app/styles.css',
     'motor/motor.conexion.js',
-    'motor/flujo-principal.js',
     'entrada/entrada.conexion.js',
     'entender/entender.conexion.js',
     'audio/audio.conexion.js',
@@ -29,6 +28,7 @@ export const DIAGNOSTICO_AUTOMATICO_CONFIG = Object.freeze({
     'entrega/entrega.conexion.js',
     'progreso/progreso.conexion.js',
     'progreso/progreso-registro.js',
+    'scripts/verificar-ui-conexiones.js',
     'scripts/verificar-bloque-1.js',
     'scripts/verificar-bloque-2.js',
     'scripts/verificar-bloque-3.js',
