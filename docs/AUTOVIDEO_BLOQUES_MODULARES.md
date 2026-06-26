@@ -61,14 +61,17 @@ Acciones de revision en Produccion: aprobar, no usar, pendiente y guardar cambio
 ### Bloque 16
 Biblioteca real en pantalla: buscar, filtrar y guardar recursos locales o por URL.
 
+### Bloque 17
+Reemplazar recursos desde Produccion y guardar aprendizaje de la correccion.
+
 ## Comandos principales
 
 ```bash
 npm run check:autovideo
-npm run check:bloque16-autovideo
+npm run check:bloque17-autovideo
 npm start
 ```
 
 ## Nota importante
 
-La app mantiene render base funcional, permite seleccionar perfil y plataformas desde la interfaz, carga proyectos recientes desde el historial local, muestra el ultimo plan de Produccion, permite marcar sus elementos, muestra la biblioteca general en pantalla y ahora intenta generar tambien las plataformas adicionales. Si el video base no existe o FFmpeg falla en una plataforma, la app debe marcar ese formato como pendiente o error controlado sin romper todo el flujo.
+La app mantiene render base funcional, permite seleccionar perfil y plataformas desde la interfaz, carga proyectos recientes desde el historial local, muestra el ultimo plan de Produccion, permite marcar y reemplazar sus elementos, registra aprendizaje por correcciones, muestra la biblioteca general en pantalla y ahora intenta generar tambien las plataformas adicionales. Si el video base no existe o FFmpeg falla en una plataforma, la app debe marcar ese formato como pendiente o error controlado sin romper todo el flujo.
