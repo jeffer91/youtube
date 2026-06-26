@@ -11,6 +11,7 @@ import { limpiarResultadoPlataformasUI, mostrarResultadoPlataformasUI } from './
 import { inicializarConfiguracionProyectoUI, aplicarOpcionesProyectoAFormulario, bloquearControlesConfiguracionProyecto } from './configuracion-proyecto-ui.js';
 import { inicializarHistorialProyectosUI, recargarHistorialProyectosUI } from './historial-proyectos-ui.js';
 import { inicializarProduccionRevisionUI, guardarUltimaProduccion } from './produccion-revision-ui.js';
+import { inicializarBibliotecaUI } from './biblioteca-ui.js';
 
 const elementos = {
   serverStatus: document.getElementById('serverStatus'),
@@ -323,6 +324,7 @@ function iniciarInterfaz() {
   inicializarConfiguracionProyectoUI();
   inicializarHistorialProyectosUI({ crearUrlApi });
   inicializarProduccionRevisionUI({ crearUrlApi });
+  inicializarBibliotecaUI({ crearUrlApi });
   inicializarGeminiPopup();
   inicializarTranscripcionUI();
   inicializarModalErrorEdicion();
