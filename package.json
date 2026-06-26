@@ -28,6 +28,7 @@
     "check:produccion": "node scripts/verificar-produccion.js",
     "check:aprendizaje": "node scripts/verificar-aprendizaje.js",
     "check:navegacion-ui": "node scripts/verificar-navegacion-ui.js",
+    "check:menu-compacto-ui": "node scripts/verificar-menu-compacto-ui.js",
     "check:configuracion-proyecto-ui": "node scripts/verificar-configuracion-proyecto-ui.js",
     "check:historial-proyectos-ui": "node scripts/verificar-historial-proyectos-ui.js",
     "check:produccion-revision-ui": "node scripts/verificar-produccion-revision-ui.js",
