@@ -1,6 +1,6 @@
 {
   "name": "auto-video-jeff",
-  "version": "0.4.5",
+  "version": "0.4.6",
   "description": "App modular para editar videos automaticamente.",
   "type": "module",
   "main": "main.js",
@@ -20,6 +20,7 @@
     "check:labels": "node scripts/verificar-textos-relevantes.js",
     "check:visual": "node scripts/verificar-visual.js",
     "check:biblioteca": "node scripts/verificar-biblioteca.js",
+    "check:biblioteca-ui": "node scripts/verificar-biblioteca-ui.js",
     "check:biblioteca-proyecto": "node scripts/verificar-biblioteca-proyecto.js",
     "check:recursos-externos": "node scripts/verificar-recursos-externos.js",
     "check:gemini": "node scripts/verificar-gemini.js",
@@ -57,6 +58,7 @@
     "check:bloque13-autovideo": "node scripts/verificar-bloque-13-autovideo.js",
     "check:bloque14-autovideo": "node scripts/verificar-bloque-14-autovideo.js",
     "check:bloque15-autovideo": "node scripts/verificar-bloque-15-autovideo.js",
+    "check:bloque16-autovideo": "node scripts/verificar-bloque-16-autovideo.js",
     "check:bloques-autovideo": "node scripts/verificar-bloques-autovideo.js",
     "check:autovideo": "npm run check:package-autovideo && npm run check:bloques-autovideo",
     "check:diagnostico": "node scripts/verificar-diagnostico-automatico.js",
