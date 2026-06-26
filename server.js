@@ -9,6 +9,7 @@ import { asegurarCarpeta, obtenerRutaRaiz, asegurarCarpetasBase as asegurarCarpe
 import { crearDiagnosticoAutomatico, diagnosticoEsBloqueante } from './diagnostico/diagnostico-automatico.service.js';
 import { crearTrabajoProgreso, crearJobId, suscribirClienteProgreso, emitirEventoProgreso } from './progreso/progreso-registro.js';
 import { crearReporteroProgreso, reportarErrorProgreso, reportarFinalizadoProgreso } from './progreso/progreso.conexion.js';
+import { registrarRutasModulares } from './server/rutas-modulares.service.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -47,6 +48,12 @@ function normalizarModoVideo(valor) {
   if (['cuadrado-centro', 'tiktok-cuadrado-centro', 'square-center'].includes(modo)) return 'cuadrado-centro';
   if (['simple', 'tiktok-simple'].includes(modo)) return 'simple';
   return modo;
+}
+
+function normalizarLista(valor, defecto = []) {
+  if (Array.isArray(valor)) return valor.map((item) => String(item).trim()).filter(Boolean);
+  if (typeof valor === 'string' && valor.trim()) return valor.split(',').map((item) => item.trim()).filter(Boolean);
+  return defecto;
 }
 
 function obtenerRutasBase() {
@@ -101,8 +108,13 @@ function crearErrorHttp(res, codigo, mensaje, detalle = null) {
 }
 
 function normalizarOpcionesDesdeBody(body = {}) {
+  const plataforma = normalizarPlataforma(body.plataforma);
   return {
-    plataforma: normalizarPlataforma(body.plataforma),
+    perfil: normalizarTexto(body.perfil, 'general'),
+    plataformas: normalizarLista(body.plataformas, [plataforma]),
+    modoEdicion: normalizarTexto(body.modoEdicion, 'revision_completa'),
+    funcionesEdicion: normalizarLista(body.funcionesEdicion, ['audio', 'subtitulos', 'textos', 'visual', 'gemini', 'produccion']),
+    plataforma,
     modo: normalizarModoVideo(body.modo),
     mejorarAudio: convertirBooleano(body.mejorarAudio, true),
     modoAudio: normalizarModoAudio(body.modoAudio),
@@ -179,7 +191,7 @@ function crearAplicacionExpress({ modoElectron = false } = {}) {
   app.get('/api/estado', async (_req, res) => {
     aplicarCabecerasSinCache(res);
     const diagnostico = await crearDiagnosticoSeguro({ guardarReporte: false });
-    res.json({ ok: true, app: 'AutoVideoJeff', estado: diagnosticoEsBloqueante(diagnostico) ? 'SERVIDOR_CON_DIAGNOSTICO_PENDIENTE' : 'SERVIDOR_ACTIVO', modo: modoElectron ? 'electron' : 'web', predeterminados: { plataforma: PLATAFORMA_PREDETERMINADA, modoVideo: MODO_VIDEO_PREDETERMINADO, modoAudio: MODO_AUDIO_PREDETERMINADO, crearTranscripcion: true, agregarSubtitulos: true, agregarTextosFlotantes: true, edicionDinamica: true, cortarSilencios: true, visualDinamico: true, sonidosEdicion: true, intensidadEdicion: 'automatica' }, diagnostico, rutas: { raizDatos: rutasBase.raizDatos, videosExportados: rutasBase.videosExportados, audiosMejorados: rutasBase.audiosMejorados }, fecha: new Date().toISOString() });
+    res.json({ ok: true, app: 'AutoVideoJeff', estado: diagnosticoEsBloqueante(diagnostico) ? 'SERVIDOR_CON_DIAGNOSTICO_PENDIENTE' : 'SERVIDOR_ACTIVO', modo: modoElectron ? 'electron' : 'web', predeterminados: { plataforma: PLATAFORMA_PREDETERMINADA, plataformas: ['tiktok', 'reels', 'shorts', 'youtube'], perfil: 'general', modoEdicion: 'revision_completa', modoVideo: MODO_VIDEO_PREDETERMINADO, modoAudio: MODO_AUDIO_PREDETERMINADO, crearTranscripcion: true, agregarSubtitulos: true, agregarTextosFlotantes: true, edicionDinamica: true, cortarSilencios: true, visualDinamico: true, sonidosEdicion: true, intensidadEdicion: 'automatica' }, modulosNuevos: ['proyectos', 'perfiles', 'exportacion', 'biblioteca', 'gemini', 'produccion', 'aprendizaje'], diagnostico, rutas: { raizDatos: rutasBase.raizDatos, videosExportados: rutasBase.videosExportados, audiosMejorados: rutasBase.audiosMejorados }, fecha: new Date().toISOString() });
   });
 
   app.get('/api/diagnostico', async (_req, res) => {
@@ -187,6 +199,8 @@ function crearAplicacionExpress({ modoElectron = false } = {}) {
     const diagnostico = await crearDiagnosticoSeguro({ guardarReporte: true });
     res.status(diagnosticoEsBloqueante(diagnostico) ? 503 : 200).json({ ok: !diagnosticoEsBloqueante(diagnostico), diagnostico, fecha: new Date().toISOString() });
   });
+
+  registrarRutasModulares(app, { rutasBase, aplicarCabecerasSinCache });
 
   app.get('/api/progreso/:jobId', (req, res) => {
     const jobId = normalizarTexto(req.params.jobId, '');
@@ -233,7 +247,7 @@ function crearAplicacionExpress({ modoElectron = false } = {}) {
 
       reportarFinalizadoProgreso(jobId, { detalle: resultado.mensaje || 'Video procesado correctamente.', datos: { urlPublica: resultado.resultado?.urlPublica || null, nombreExportado: resultado.resultado?.nombreExportado || null } });
 
-      return res.json({ ok: true, mensaje: resultado.mensaje || 'Video procesado correctamente.', diagnostico, jobId, resultado: resultado.resultado, proyecto: resultado.proyecto, video: resultado.video, entendimiento: resultado.entendimiento, audio: resultado.audio, transcripcion: resultado.transcripcion, edicionDinamica: resultado.edicionDinamica, edicion: resultado.edicion, historial: resultado.historial || [], fecha: new Date().toISOString() });
+      return res.json({ ok: true, mensaje: resultado.mensaje || 'Video procesado correctamente.', diagnostico, jobId, resultado: resultado.resultado, proyecto: resultado.proyecto, video: resultado.video, entendimiento: resultado.entendimiento, audio: resultado.audio, transcripcion: resultado.transcripcion, edicionDinamica: resultado.edicionDinamica, edicion: resultado.edicion, modular: resultado.modular || null, produccion: resultado.produccion || null, exportaciones: resultado.exportaciones || [], historial: resultado.historial || [], fecha: new Date().toISOString() });
     } catch (error) {
       console.error('[Servidor] Error procesando video:', error);
       reportarErrorProgreso(jobId, error, { etapa: error?.etapa || null, archivo: null });
