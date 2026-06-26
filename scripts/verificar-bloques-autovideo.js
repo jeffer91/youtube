@@ -1,5 +1,3 @@
-/* Verificacion Bloque 14: ejecutar verificaciones agrupadas de AutoVideoJeff. */
-
 import { spawnSync } from 'child_process';
 
 const SCRIPTS = [
@@ -19,6 +17,7 @@ const SCRIPTS = [
   'scripts/verificar-bloque-12-autovideo.js',
   'scripts/verificar-bloque-13-autovideo.js',
   'scripts/verificar-bloque-14-autovideo.js',
+  'scripts/verificar-bloque-15-autovideo.js',
   'scripts/verificar-diagnostico-modular.js',
   'scripts/verificar-estructura-modular.js',
   'scripts/verificar-integracion-modular-final.js'
@@ -26,18 +25,12 @@ const SCRIPTS = [
 
 function ejecutar(script) {
   const resultado = spawnSync(process.execPath, [script], { stdio: 'inherit', shell: false });
-  if (resultado.status !== 0) {
-    throw new Error(`Fallo ${script}`);
-  }
-}
-
-function main() {
-  SCRIPTS.forEach(ejecutar);
-  console.log('OK todos los bloques AutoVideoJeff:', SCRIPTS.length, 'verificaciones');
+  if (resultado.status !== 0) throw new Error(`Fallo ${script}`);
 }
 
 try {
-  main();
+  SCRIPTS.forEach(ejecutar);
+  console.log('OK todos los bloques AutoVideoJeff:', SCRIPTS.length, 'verificaciones');
 } catch (error) {
   console.error('ERROR bloques AutoVideoJeff:', error.message);
   process.exit(1);
