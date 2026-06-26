@@ -56,6 +56,12 @@ http://localhost:3000
 ## Comandos utiles
 
 ```bash
+npm run check:bloque1
+```
+
+Revisa el estado base del Bloque 1.
+
+```bash
 npm run check:todo
 ```
 
@@ -172,6 +178,14 @@ salida
 - Preparar pruebas finales.
 - Dejar la app lista para uso diario.
 
+## Documentacion de avance
+
+El resumen corto del Bloque 1 queda en:
+
+```txt
+docs/bloque-1-estado.md
+```
+
 ## Version
 
-Version actual declarada en `package.json`: **0.3.2**.
+Version actual declarada en `package.json`: **0.3.3**.
