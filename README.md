@@ -8,7 +8,7 @@ La idea principal es que Jeff pueda cargar un video, procesarlo con un clic y ob
 
 Estado del proyecto: **en desarrollo avanzado**.
 
-La app ya tiene una base funcional:
+La app ya tiene:
 
 - Modo escritorio con Electron.
 - Servidor local con Express.
@@ -19,11 +19,11 @@ La app ya tiene una base funcional:
 - Modulos de entrada, entendimiento, audio, transcripcion, edicion dinamica, edicion y salida.
 - Exportacion final con FFmpeg.
 - Modulos opcionales blindados para continuar si fallan.
+- Comparacion antes/despues al terminar la exportacion.
 
 Todavia falta cerrar:
 
 - Pruebas finales con videos reales.
-- Mejorar la exportacion con vista antes/despues.
 - Preparar instalador de Windows.
 - Preparar proceso para APK Android.
 - Ajustar documentacion final para usuario no programador.
@@ -58,39 +58,10 @@ http://localhost:3000
 
 ```bash
 npm run check:bloque1
-```
-
-Revisa el estado base del Bloque 1, archivos obligatorios, limite de 1000 lineas, diagnostico, integracion y progreso.
-
-```bash
 npm run check:bloque2
-```
-
-Revisa que los modulos opcionales esten blindados: audio, transcripcion, edicion dinamica y visual dinamico.
-
-```bash
+npm run check:bloque3
 npm run check:todo
 ```
-
-Revisa diagnostico, integracion final y progreso real.
-
-```bash
-npm run check:diagnostico
-```
-
-Revisa FFmpeg, carpetas y modulos criticos.
-
-```bash
-npm run check:integracion-final
-```
-
-Revisa que las conexiones principales existan.
-
-```bash
-npm run check:progreso
-```
-
-Revisa que el progreso real este conectado.
 
 ## Estructura principal
 
@@ -106,7 +77,7 @@ AutoVideoJeff/
 ├── entender/            Analisis tecnico del video
 ├── motor/               Flujo principal
 ├── progreso/            Barra y eventos de progreso
-├── salida/              Exportacion final
+├── salida/              Exportacion final y antes/despues
 ├── scripts/             Verificaciones manuales
 └── transcripcion/       Subtitulos, textos flotantes y Gemini opcional
 ```
@@ -123,6 +94,7 @@ entrada/entrada.conexion.js
 entender/entender.conexion.js
 editar/editar.conexion.js
 salida/salida.conexion.js
+salida/antes-despues/antes-despues.conexion.js
 transcripcion/transcripcion.conexion.js
 ```
 
@@ -144,6 +116,8 @@ edicion dinamica
 editar
   ↓
 salida
+  ↓
+antes/despues
 ```
 
 ## Reglas del proyecto
@@ -154,32 +128,32 @@ salida
 4. Cada funcionalidad debe tener su archivo de conexion.
 5. Si una funcionalidad falla, no debe romper innecesariamente toda la app.
 6. La exportacion final debe conservar el video original y el video editado.
-7. En la siguiente etapa se agregara una vista clara de antes y despues.
+7. Al exportar debe mostrarse una comparacion antes/despues.
 
 ## Plan de cierre en 4 bloques
 
 ### Bloque 1: Base ordenada
 
-- Actualizar documentacion.
-- Revisar conexiones principales.
-- Fortalecer diagnostico automatico.
-- Dejar claro que existe y que falta.
+Estado: completado.
 
 ### Bloque 2: Modulos blindados
 
-- Hacer que entrada, audio, transcripcion, edicion y salida fallen de forma controlada.
-- Evitar que un modulo opcional detenga todo si existe alternativa.
-- Mejorar mensajes de error.
-- Estado: completado para audio, transcripcion, edicion dinamica y visual dinamico.
+Estado: completado para audio, transcripcion, edicion dinamica y visual dinamico.
 
 ### Bloque 3: Exportacion profesional
 
-- Guardar video original.
-- Guardar video final.
-- Crear reporte de cambios.
-- Crear comparacion antes/despues.
+Estado: completado.
+
+Incluye:
+
+- Video original visible como Antes.
+- Video final visible como Despues.
+- Reporte `antes-despues.json`.
+- Resumen de cambios aplicados.
 
 ### Bloque 4: Entrega final
+
+Pendiente:
 
 - Preparar instalador.
 - Preparar proceso de actualizacion.
@@ -188,13 +162,12 @@ salida
 
 ## Documentacion de avance
 
-Resumenes cortos por bloque:
-
 ```txt
 docs/bloque-1-estado.md
 docs/bloque-2-estado.md
+docs/bloque-3-estado.md
 ```
 
 ## Version
 
-Version actual declarada en `package.json`: **0.3.4**.
+Version actual declarada en `package.json`: **0.3.5**.
