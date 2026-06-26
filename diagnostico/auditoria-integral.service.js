@@ -17,12 +17,14 @@ const ARCHIVOS_CRITICOS = Object.freeze([
   'app/historial-proyectos-ui.js',
   'app/produccion-revision-ui.js',
   'app/diagnostico-fuerte-ui.js',
+  'app/auditoria-integral-ui.js',
   'app/error-modal.js',
   'server.js',
   'server/rutas-modulares.service.js',
   'motor/flujo-principal.js',
   'motor/flujo-modular-autovideo.service.js',
   'diagnostico/diagnostico-fuerte.service.js',
+  'diagnostico/auditoria-integral.service.js',
   'diagnostico/reintento-etapa.service.js',
   'gemini/cliente-gemini.service.js',
   'exportacion/renderizar-plataformas-pendientes.service.js',
@@ -30,7 +32,7 @@ const ARCHIVOS_CRITICOS = Object.freeze([
 ]);
 
 const IDS_REQUERIDOS = Object.freeze([
-  'serverStatus', 'videoForm', 'videoInput', 'fileName', 'processButton', 'progressArea', 'progressText', 'progressTitle', 'progressPercent', 'progressBar', 'progressHistory', 'messageBox', 'resultPanel', 'resultVideo', 'downloadLink', 'improveAudio', 'audioMode', 'platformInput', 'modeInput', 'editingSummary', 'audioSummary', 'transcriptionSummary', 'modularSummary', 'productionSummary', 'resultPlatformsPanel', 'resultPlatformsSummary', 'resultPlatformsList', 'beforeAfterPanel', 'beforeAfterSummary', 'beforeVideo', 'afterVideo', 'errorModal', 'errorModalTitle', 'errorModalStage', 'errorModalDetail', 'errorModalFile', 'errorModalRecommendation', 'closeErrorModal', 'mainNavigation', 'pantallaDinamica', 'profileSelect', 'editModeSelect', 'exportMultiplatform', 'projectSettingsSummary', 'historyProjectsList', 'historyProjectsSummary', 'historyProjectsStatus', 'productionProjectIdInput', 'productionReviewList', 'productionReviewSummary', 'productionReviewStatus', 'libraryResourcesList', 'libraryResourcesSummary', 'libraryStatus', 'strongDiagnosticResult', 'strongDiagnosticStatus'
+  'serverStatus', 'videoForm', 'videoInput', 'fileName', 'processButton', 'progressArea', 'progressText', 'progressTitle', 'progressPercent', 'progressBar', 'progressHistory', 'messageBox', 'resultPanel', 'resultVideo', 'downloadLink', 'improveAudio', 'audioMode', 'platformInput', 'modeInput', 'editingSummary', 'audioSummary', 'transcriptionSummary', 'modularSummary', 'productionSummary', 'resultPlatformsPanel', 'resultPlatformsSummary', 'resultPlatformsList', 'beforeAfterPanel', 'beforeAfterSummary', 'beforeVideo', 'afterVideo', 'errorModal', 'errorModalTitle', 'errorModalStage', 'errorModalDetail', 'errorModalFile', 'errorModalRecommendation', 'closeErrorModal', 'mainNavigation', 'pantallaDinamica', 'profileSelect', 'editModeSelect', 'exportMultiplatform', 'projectSettingsSummary', 'historyProjectsList', 'historyProjectsSummary', 'historyProjectsStatus', 'productionProjectIdInput', 'productionReviewList', 'productionReviewSummary', 'productionReviewStatus', 'libraryResourcesList', 'libraryResourcesSummary', 'libraryStatus', 'strongDiagnosticResult', 'strongDiagnosticStatus', 'integralAuditResult', 'integralAuditStatus'
 ]);
 
 const CAMPOS_FORMULARIO = Object.freeze([
@@ -45,6 +47,7 @@ const RUTAS_API_REQUERIDAS = Object.freeze([
   '/api/autovideo/biblioteca',
   '/api/autovideo/biblioteca/categorias',
   '/api/autovideo/diagnostico/fuerte',
+  '/api/autovideo/diagnostico/auditoria-integral',
   '/api/autovideo/reintento/plan',
   '/api/autovideo/aprendizaje',
   '/api/autovideo/gemini/config'
@@ -61,6 +64,7 @@ const ACCIONES_REQUERIDAS = Object.freeze([
   'data-library-action="reload"',
   'data-library-action="save"',
   'data-diagnostic-action="strong"',
+  'data-diagnostic-action="audit"',
   'data-platform-option'
 ]);
 
@@ -74,29 +78,16 @@ function listarArchivos(dir, salida = []) {
   return salida;
 }
 
-function leer(relativo) {
-  return fs.readFileSync(path.join(obtenerRutaRaiz(), relativo), 'utf-8');
-}
-
-function relativo(ruta) {
-  return path.relative(obtenerRutaRaiz(), ruta).replace(/\\/g, '/');
-}
-
-function existeRelativo(ruta) {
-  return fs.existsSync(path.join(obtenerRutaRaiz(), ruta));
-}
-
-function obtenerArchivosTexto() {
-  return listarArchivos(obtenerRutaRaiz()).filter((archivo) => /\.(js|html|css|json|md)$/.test(archivo));
-}
+function leer(relativo) { return fs.readFileSync(path.join(obtenerRutaRaiz(), relativo), 'utf-8'); }
+function relativo(ruta) { return path.relative(obtenerRutaRaiz(), ruta).replace(/\\/g, '/'); }
+function existeRelativo(ruta) { return fs.existsSync(path.join(obtenerRutaRaiz(), ruta)); }
+function obtenerArchivosTexto() { return listarArchivos(obtenerRutaRaiz()).filter((archivo) => /\.(js|html|css|json|md)$/.test(archivo)); }
+function obtenerArchivosApp() { return obtenerArchivosTexto().filter((archivo) => relativo(archivo).startsWith('app/')); }
 
 function extraerIds(contenido) {
   const ids = new Set();
   const regexes = [/id=["']([^"']+)["']/g, /\.id\s*=\s*["']([^"']+)["']/g];
-  regexes.forEach((regex) => {
-    let match;
-    while ((match = regex.exec(contenido))) ids.add(match[1]);
-  });
+  regexes.forEach((regex) => { let match; while ((match = regex.exec(contenido))) ids.add(match[1]); });
   return ids;
 }
 
@@ -142,7 +133,7 @@ function auditarImports() {
 }
 
 function auditarIds() {
-  const archivos = obtenerArchivosTexto();
+  const archivos = obtenerArchivosApp();
   const idsDeclarados = new Set();
   const idsUsados = new Set();
   archivos.forEach((archivo) => {
@@ -162,17 +153,13 @@ function auditarScriptsIndex() {
   const regex = /(?:src|href)=["']\.\/([^"']+)["']/g;
   let match;
   while ((match = regex.exec(html))) refs.push(match[1]);
-  refs.forEach((ref) => {
-    if (!fs.existsSync(path.join(obtenerRutaRaiz(), 'app', ref))) faltantes.push(ref);
-  });
+  refs.forEach((ref) => { if (!fs.existsSync(path.join(obtenerRutaRaiz(), 'app', ref))) faltantes.push(ref); });
   return { ok: faltantes.length === 0, referencias: refs.length, faltantes };
 }
 
 function auditarFormularioYServidor() {
-  const app = leer('app/app.js');
-  const config = leer('app/configuracion-proyecto-ui.js');
+  const fuenteFormulario = obtenerArchivosApp().filter((archivo) => archivo.endsWith('.js')).map((archivo) => fs.readFileSync(archivo, 'utf-8')).join('\n');
   const server = leer('server.js');
-  const fuenteFormulario = `${app}\n${config}`;
   const faltanEnFormulario = CAMPOS_FORMULARIO.filter((campo) => campo !== 'video' && !fuenteFormulario.includes(`'${campo}'`) && !fuenteFormulario.includes(`"${campo}"`));
   const faltanEnServidor = CAMPOS_FORMULARIO.filter((campo) => campo === 'video' ? false : !server.includes(campo));
   return { ok: faltanEnFormulario.length === 0 && faltanEnServidor.length === 0, campos: CAMPOS_FORMULARIO.length, faltanEnFormulario, faltanEnServidor };
@@ -185,7 +172,7 @@ function auditarRutasApi() {
 }
 
 function auditarAccionesBotones() {
-  const fuente = obtenerArchivosTexto().filter((archivo) => archivo.startsWith(path.join(obtenerRutaRaiz(), 'app'))).map((archivo) => fs.readFileSync(archivo, 'utf-8')).join('\n');
+  const fuente = obtenerArchivosApp().map((archivo) => fs.readFileSync(archivo, 'utf-8')).join('\n');
   const faltantes = ACCIONES_REQUERIDAS.filter((accion) => !fuente.includes(accion));
   const manejadores = ['data-history-action', 'data-production-action', 'data-production-mark', 'data-production-replace', 'data-library-action', 'data-diagnostic-action', 'data-platform-option'].filter((accion) => fuente.includes(accion));
   return { ok: faltantes.length === 0 && manejadores.length >= 7, total: ACCIONES_REQUERIDAS.length, manejadores: manejadores.length, faltantes };
