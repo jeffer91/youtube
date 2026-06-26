@@ -1,6 +1,6 @@
 {
   "name": "auto-video-jeff",
-  "version": "0.3.5",
+  "version": "0.3.6",
   "description": "App modular para editar videos automaticamente.",
   "type": "module",
   "main": "main.js",
@@ -13,11 +13,14 @@
     "check:bloque1": "node scripts/verificar-bloque-1.js",
     "check:bloque2": "node scripts/verificar-bloque-2.js",
     "check:bloque3": "node scripts/verificar-bloque-3.js",
+    "check:bloque4": "node scripts/verificar-bloque-4.js",
     "check:diagnostico": "node scripts/verificar-diagnostico-automatico.js",
     "check:integracion-final": "node scripts/verificar-integracion-final.js",
     "check:progreso": "node scripts/verificar-progreso-real.js",
     "check:todo": "node scripts/verificar-todo.js",
     "check:transcripcion": "node scripts/verificar-integracion-transcripcion.js",
+    "pack": "electron-builder --dir",
+    "dist:win": "electron-builder --win --x64",
     "test:transcripcion-manual": "node scripts/probar-transcripcion-manual.js",
     "test:gemini-fallback": "node scripts/probar-fallback-gemini.js",
     "test:drawtext": "node scripts/probar-drawtext.js"
@@ -43,6 +46,52 @@
     "multer": "^1.4.5-lts.1"
   },
   "devDependencies": {
-    "electron": "^31.0.0"
+    "electron": "^31.0.0",
+    "electron-builder": "^24.13.3"
+  },
+  "build": {
+    "appId": "com.jeff.autovideojeff",
+    "productName": "AutoVideoJeff",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "app/**/*",
+      "audio/**/*",
+      "biblioteca/**/*",
+      "comun/**/*",
+      "diagnostico/**/*",
+      "editar/**/*",
+      "entrada/**/*",
+      "entender/**/*",
+      "entrega/**/*",
+      "motor/**/*",
+      "progreso/**/*",
+      "salida/**/*",
+      "scripts/**/*",
+      "transcripcion/**/*",
+      "main.js",
+      "preload.js",
+      "server.js",
+      "package.json"
+    ],
+    "extraResources": [
+      {
+        "from": "docs",
+        "to": "docs"
+      }
+    ],
+    "win": {
+      "target": [
+        "nsis"
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true
+    }
   }
 }
