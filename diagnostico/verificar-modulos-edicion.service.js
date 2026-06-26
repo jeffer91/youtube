@@ -4,11 +4,19 @@ import { pathToFileURL } from 'url';
 import { obtenerRutaProyecto } from '../comun/archivos.js';
 import { DIAGNOSTICO_AUTOMATICO_CONFIG } from './diagnostico-automatico.config.js';
 
+function normalizarRuta(rutaRelativa) {
+  return rutaRelativa.replace(/\\/g, '/');
+}
+
 function esArchivoSoloPresencia(rutaRelativa) {
-  const normalizada = rutaRelativa.replace(/\\/g, '/');
+  const normalizada = normalizarRuta(rutaRelativa);
   const extension = path.extname(normalizada).toLowerCase();
 
   return (
+    normalizada === 'main.js' ||
+    normalizada === 'server.js' ||
+    normalizada === 'preload.js' ||
+    normalizada.startsWith('app/') ||
     normalizada.startsWith('scripts/') ||
     normalizada.startsWith('docs/') ||
     ['.html', '.css', '.json', '.md', '.bat', '.cmd', '.txt'].includes(extension)
