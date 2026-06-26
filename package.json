@@ -52,6 +52,7 @@
   "build": {
     "appId": "com.jeff.autovideojeff",
     "productName": "AutoVideoJeff",
+    "asar": false,
     "directories": {
       "output": "release"
     },
