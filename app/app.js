@@ -7,6 +7,7 @@ import { validarVideoSeleccionado } from './validar-formulario.js';
 import { obtenerOpcionesEdicionAutomatica, aplicarModoAutomaticoVisual } from './edicion-automatica-ui.js';
 import { inicializarModalErrorEdicion, mostrarModalErrorEdicion } from './error-modal.js';
 import { crearJobIdFrontend, prepararProgresoReal, conectarProgresoReal, actualizarProgresoReal } from './progreso-real-ui.js';
+import { limpiarResultadoPlataformasUI, mostrarResultadoPlataformasUI } from './resultado-plataformas-ui.js';
 
 const elementos = {
   serverStatus: document.getElementById('serverStatus'),
@@ -31,6 +32,11 @@ const elementos = {
   editingSummary: document.getElementById('editingSummary'),
   audioSummary: document.getElementById('audioSummary'),
   transcriptionSummary: document.getElementById('transcriptionSummary'),
+  modularSummary: document.getElementById('modularSummary'),
+  productionSummary: document.getElementById('productionSummary'),
+  resultPlatformsPanel: document.getElementById('resultPlatformsPanel'),
+  resultPlatformsSummary: document.getElementById('resultPlatformsSummary'),
+  resultPlatformsList: document.getElementById('resultPlatformsList'),
   beforeAfterPanel: document.getElementById('beforeAfterPanel'),
   beforeAfterSummary: document.getElementById('beforeAfterSummary'),
   beforeVideo: document.getElementById('beforeVideo'),
@@ -93,6 +99,7 @@ function reiniciarResultado() {
   elementos.audioSummary.textContent = '';
   elementos.transcriptionSummary.hidden = true;
   elementos.transcriptionSummary.textContent = '';
+  limpiarResultadoPlataformasUI(elementos);
 }
 
 function bloquearFormulario(bloquear) {
@@ -188,6 +195,9 @@ function crearFormularioProcesamiento(jobId) {
   formulario.append('video', archivo);
   formulario.append('jobId', jobId);
   formulario.append('plataforma', elementos.platformInput.value || 'tiktok');
+  formulario.append('plataformas', 'tiktok,reels,shorts,youtube');
+  formulario.append('perfil', 'general');
+  formulario.append('modoEdicion', 'revision_completa');
   formulario.append('modo', elementos.modeInput.value || 'cuadrado-centro');
   formulario.append('mejorarAudio', elementos.improveAudio.checked ? 'true' : 'false');
   formulario.append('modoAudio', elementos.audioMode.value || 'limpieza-simple');
@@ -221,7 +231,19 @@ async function mostrarAntesDespues(antesDespues, urlExportada) {
   elementos.afterVideo.src = urlDespues;
 }
 
-async function mostrarResultado(datos) {
+async function normalizarUrlsPlataformas(datos) {
+  const resultadoPlataformas = datos.resultadoPlataformas || datos.modular?.resultadoPlataformas;
+  if (!resultadoPlataformas?.resultados) return datos;
+  const resultados = [];
+  for (const item of resultadoPlataformas.resultados) {
+    resultados.push({ ...item, urlPublica: item.urlPublica ? await crearUrlPublica(item.urlPublica) : '' });
+  }
+  const actualizado = { ...resultadoPlataformas, resultados };
+  return { ...datos, resultadoPlataformas: actualizado, modular: datos.modular ? { ...datos.modular, resultadoPlataformas: actualizado } : datos.modular };
+}
+
+async function mostrarResultado(datosEntrada) {
+  const datos = await normalizarUrlsPlataformas(datosEntrada);
   const urlExportada = await crearUrlPublica(datos.resultado?.urlPublica || datos.resultado?.exportUrl || '');
   elementos.resultPanel.hidden = false;
   elementos.editingSummary.hidden = false;
@@ -230,6 +252,7 @@ async function mostrarResultado(datos) {
   elementos.audioSummary.textContent = obtenerResumenAudio(datos, elementos.improveAudio.checked);
   elementos.transcriptionSummary.hidden = false;
   elementos.transcriptionSummary.textContent = obtenerResumenTranscripcion(datos);
+  mostrarResultadoPlataformasUI(datos, elementos);
   if (urlExportada) {
     elementos.resultVideo.hidden = false;
     elementos.resultVideo.src = urlExportada;
