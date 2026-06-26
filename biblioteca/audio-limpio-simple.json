@@ -1,50 +1,77 @@
 {
-  "nombre": "audio-limpio-simple",
-  "descripcion": "Preset reforzado para reducir ruido de fondo, mejorar claridad de voz y normalizar volumen para videos hablados.",
+  "nombre": "audio-voz-al-frente",
+  "descripcion": "Preset profesional para voz hablada: acerca la voz, mejora nitidez, controla ruido y deja volumen fuerte para redes sociales.",
   "tipo": "limpieza-audio",
-  "version": "1.1.0",
+  "version": "2.0.0",
   "activoPorDefecto": true,
   "audio": {
     "codecAudio": "aac",
-    "audioBitrate": "192k",
+    "audioBitrate": "224k",
     "frecuenciaMuestreo": 48000,
     "canales": 2,
     "extension": ".m4a"
   },
   "filtros": {
-    "highpassHz": 120,
-    "lowpassHz": 9000,
+    "highpassHz": 95,
+    "lowpassHz": 14500,
     "reduccionRuido": {
       "activo": true,
-      "noiseFloor": -30,
+      "noiseFloor": -26,
       "noiseType": "w"
+    },
+    "realceVoz": {
+      "activo": true,
+      "graves": {
+        "frecuencia": 180,
+        "ganancia": -1.5,
+        "ancho": 1.0
+      },
+      "cuerpo": {
+        "frecuencia": 420,
+        "ganancia": 1.2,
+        "ancho": 1.1
+      },
+      "presencia": {
+        "frecuencia": 2600,
+        "ganancia": 4.5,
+        "ancho": 1.0
+      },
+      "claridad": {
+        "frecuencia": 5200,
+        "ganancia": 3.2,
+        "ancho": 1.0
+      }
     },
     "compresor": {
       "activo": true,
-      "threshold": -24,
-      "ratio": 4,
-      "attack": 5,
-      "release": 180,
-      "makeup": 5
+      "threshold": -28,
+      "ratio": 5.5,
+      "attack": 4,
+      "release": 140,
+      "makeup": 7
     },
     "normalizacionDinamica": {
       "activo": true,
-      "frameLen": 120,
-      "gaussianSize": 15,
-      "peak": 0.9,
-      "maxGain": 12
+      "frameLen": 90,
+      "gaussianSize": 11,
+      "peak": 0.95,
+      "maxGain": 18
+    },
+    "volumenFinal": {
+      "activo": true,
+      "ganancia": 1.18
     },
     "normalizacionFinal": {
       "activo": true,
-      "integratedLoudness": -14,
+      "integratedLoudness": -12.5,
       "truePeak": -1,
-      "loudnessRange": 8
+      "loudnessRange": 7
     }
   },
   "notas": [
-    "Este preset usa filtros nativos de FFmpeg; no necesita IA externa ni conexión a internet.",
-    "Está pensado para voz hablada en videos de redes sociales.",
-    "Esta versión refuerza claridad, compresión y volumen para que el cambio sea más notorio.",
-    "Si un video no tiene pista de audio, el módulo se omite sin romper el flujo."
+    "Este preset no solo limpia: tambien coloca la voz mas cerca y mas clara.",
+    "Realza presencia y claridad para que la voz no se escuche lejana.",
+    "El audio queda mas fuerte y uniforme para videos hablados de redes sociales.",
+    "Si un video no tiene pista de audio, el modulo se omite sin romper el flujo."
   ]
 }
