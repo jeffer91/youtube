@@ -8,19 +8,20 @@ export const SONIDOS_EDICION = Object.freeze({
 });
 
 export const CONFIG_SONIDOS_EDICION = Object.freeze({
-  volumenPredeterminado: 0.24,
-  volumenMaximo: 0.48,
+  volumenPredeterminado: 0.2,
+  volumenMaximo: 0.4,
   separacionMinimaSegundos: 1.2,
+  inicioSeguroSegundos: 0.45,
   cantidadMaximaEventos: 16,
   carpetaGenerados: 'generados',
   nombreAudioFinal: 'audio-con-sonidos-edicion.m4a',
   sonidosBase: {
-    pop: { frecuencia: 920, duracion: 0.075, volumen: 0.22 },
-    click: { frecuencia: 1350, duracion: 0.045, volumen: 0.18 },
-    whoosh: { frecuencia: 520, duracion: 0.18, volumen: 0.16 },
-    hit: { frecuencia: 190, duracion: 0.11, volumen: 0.24 },
-    intro: { frecuencia: 700, duracion: 0.22, volumen: 0.2 },
-    outro: { frecuencia: 420, duracion: 0.25, volumen: 0.18 }
+    pop: { frecuencia: 920, duracion: 0.075, volumen: 0.18 },
+    click: { frecuencia: 1350, duracion: 0.045, volumen: 0.15 },
+    whoosh: { frecuencia: 520, duracion: 0.18, volumen: 0.13 },
+    hit: { frecuencia: 190, duracion: 0.11, volumen: 0.2 },
+    intro: { frecuencia: 700, duracion: 0.22, volumen: 0.16 },
+    outro: { frecuencia: 420, duracion: 0.25, volumen: 0.16 }
   }
 });
 
@@ -49,6 +50,7 @@ export function obtenerConfigSonidosEdicion(opciones = {}) {
   const activo = normalizarBooleano(opciones.agregarSonidosEdicion ?? opciones.sonidosEdicion ?? opciones.efectosSonido, true);
   const volumen = limitarNumero(opciones.volumenSonidosEdicion, 0.04, CONFIG_SONIDOS_EDICION.volumenMaximo, CONFIG_SONIDOS_EDICION.volumenPredeterminado);
   const separacionMinimaSegundos = limitarNumero(opciones.separacionMinimaSonidos, 0.5, 4, CONFIG_SONIDOS_EDICION.separacionMinimaSegundos);
+  const inicioSeguroSegundos = limitarNumero(opciones.inicioSeguroSonidos, 0, 1.5, CONFIG_SONIDOS_EDICION.inicioSeguroSegundos);
   const cantidadMaximaEventos = Math.round(limitarNumero(opciones.cantidadMaximaSonidos, 1, 32, CONFIG_SONIDOS_EDICION.cantidadMaximaEventos));
   const modo = String(opciones.modoSonidosEdicion || 'normal').trim().toLowerCase();
 
@@ -57,6 +59,7 @@ export function obtenerConfigSonidosEdicion(opciones = {}) {
     modo,
     volumen,
     separacionMinimaSegundos,
+    inicioSeguroSegundos,
     cantidadMaximaEventos,
     volumenMaximo: CONFIG_SONIDOS_EDICION.volumenMaximo,
     carpetaGenerados: CONFIG_SONIDOS_EDICION.carpetaGenerados,
