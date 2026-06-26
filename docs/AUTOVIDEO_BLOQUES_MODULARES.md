@@ -64,14 +64,17 @@ Biblioteca real en pantalla: buscar, filtrar y guardar recursos locales o por UR
 ### Bloque 17
 Reemplazar recursos desde Produccion y guardar aprendizaje de la correccion.
 
+### Bloque 18
+Gemini real conectado por perfil, con instrucciones especificas y fallback local seguro.
+
 ## Comandos principales
 
 ```bash
 npm run check:autovideo
-npm run check:bloque17-autovideo
+npm run check:bloque18-autovideo
 npm start
 ```
 
 ## Nota importante
 
-La app mantiene render base funcional, permite seleccionar perfil y plataformas desde la interfaz, carga proyectos recientes desde el historial local, muestra el ultimo plan de Produccion, permite marcar y reemplazar sus elementos, registra aprendizaje por correcciones, muestra la biblioteca general en pantalla y ahora intenta generar tambien las plataformas adicionales. Si el video base no existe o FFmpeg falla en una plataforma, la app debe marcar ese formato como pendiente o error controlado sin romper todo el flujo.
+La app mantiene render base funcional, permite seleccionar perfil y plataformas desde la interfaz, carga proyectos recientes desde el historial local, muestra el ultimo plan de Produccion, permite marcar y reemplazar sus elementos, registra aprendizaje por correcciones, muestra la biblioteca general en pantalla y ejecuta Gemini por perfil cuando hay credencial. Si Gemini no esta activo o falla, la app usa fallback local y no debe romper el flujo.
