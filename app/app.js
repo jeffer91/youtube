@@ -10,6 +10,7 @@ import { crearJobIdFrontend, prepararProgresoReal, conectarProgresoReal, actuali
 import { limpiarResultadoPlataformasUI, mostrarResultadoPlataformasUI } from './resultado-plataformas-ui.js';
 import { inicializarConfiguracionProyectoUI, aplicarOpcionesProyectoAFormulario, bloquearControlesConfiguracionProyecto } from './configuracion-proyecto-ui.js';
 import { inicializarHistorialProyectosUI, recargarHistorialProyectosUI } from './historial-proyectos-ui.js';
+import { inicializarProduccionRevisionUI, guardarUltimaProduccion } from './produccion-revision-ui.js';
 
 const elementos = {
   serverStatus: document.getElementById('serverStatus'),
@@ -244,6 +245,7 @@ async function normalizarUrlsPlataformas(datos) {
 
 async function mostrarResultado(datosEntrada) {
   const datos = await normalizarUrlsPlataformas(datosEntrada);
+  guardarUltimaProduccion(datos);
   const urlExportada = await crearUrlPublica(datos.resultado?.urlPublica || datos.resultado?.exportUrl || '');
   elementos.resultPanel.hidden = false;
   elementos.editingSummary.hidden = false;
@@ -320,6 +322,7 @@ function iniciarInterfaz() {
   reiniciarResultado();
   inicializarConfiguracionProyectoUI();
   inicializarHistorialProyectosUI({ crearUrlApi });
+  inicializarProduccionRevisionUI({ crearUrlApi });
   inicializarGeminiPopup();
   inicializarTranscripcionUI();
   inicializarModalErrorEdicion();
