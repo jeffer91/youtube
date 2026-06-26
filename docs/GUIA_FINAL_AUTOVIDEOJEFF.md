@@ -12,11 +12,12 @@ npm install
 ## 2. Verificar la app completa
 
 ```bash
-npm run check:bloque20-autovideo
+npm run check:auditoria-integral-autovideo
+npm run check:bloque21-autovideo
 npm run check:autovideo
 ```
 
-Si esos comandos pasan, la estructura principal esta lista.
+Si esos comandos pasan, la estructura principal, variables, conexiones, botones, entradas y salidas estan listas para prueba real.
 
 ## 3. Abrir la app
 
@@ -39,6 +40,7 @@ npm start
 11. Ir a Biblioteca y cargar recursos.
 12. Ir a Historial y actualizar.
 13. Ir a Diagnostico y ejecutar diagnostico fuerte.
+14. En Diagnostico ejecutar Auditoria integral.
 
 ## 5. Crear instalador para Windows
 
@@ -52,6 +54,7 @@ El instalador se genera en la carpeta `release`.
 
 ```bash
 npm run check:diagnostico-fuerte
+npm run check:auditoria-integral-autovideo
 npm run check:gemini-real-perfil
 npm run check:render-plataformas
 npm run check:cierre-final-autovideo
@@ -69,9 +72,10 @@ npm run check:cierre-final-autovideo
 - Ver Historial.
 - Gestionar Biblioteca.
 - Ejecutar diagnostico fuerte.
+- Ejecutar auditoria integral.
 - Reintentar etapa fallida desde ventana de error.
 - Empaquetar instalador Windows.
 
 ## 8. Despues del cierre
 
-Luego del Bloque 20 no se deben agregar bloques grandes a esta version. Lo correcto es probar en la PC y corregir errores puntuales segun lo que aparezca en consola o en la ventana de diagnostico.
+Luego del Bloque 21 no se deben agregar bloques grandes a esta version. Lo correcto es probar en la PC y corregir errores puntuales segun lo que aparezca en consola, auditoria integral o diagnostico fuerte.
