@@ -1,4 +1,4 @@
-/* Verificacion Bloque 10: ejecutar verificaciones agrupadas de AutoVideoJeff. */
+/* Verificacion Bloque 11: ejecutar verificaciones agrupadas de AutoVideoJeff. */
 
 import { spawnSync } from 'child_process';
 
@@ -14,6 +14,8 @@ const SCRIPTS = [
   'scripts/verificar-bloque-7-autovideo.js',
   'scripts/verificar-bloque-8-autovideo.js',
   'scripts/verificar-bloque-9-autovideo.js',
+  'scripts/verificar-bloque-10-autovideo.js',
+  'scripts/verificar-bloque-11-autovideo.js',
   'scripts/verificar-diagnostico-modular.js',
   'scripts/verificar-estructura-modular.js',
   'scripts/verificar-integracion-modular-final.js'
