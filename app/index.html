@@ -6,6 +6,7 @@
   <title>AutoVideoJeff</title>
   <link rel="stylesheet" href="./styles.css" />
   <link rel="stylesheet" href="./navegacion/navegacion.css" />
+  <link rel="stylesheet" href="./resultado-plataformas.css" />
 </head>
 <body>
   <main class="app-shell">
@@ -103,6 +104,18 @@
         <p id="editingSummary" class="editing-summary" hidden></p>
         <p id="audioSummary" class="audio-summary" hidden></p>
         <p id="transcriptionSummary" class="transcription-summary" hidden></p>
+        <p id="modularSummary" class="result-extra-summary" hidden></p>
+        <p id="productionSummary" class="result-extra-summary" hidden></p>
+        <section id="resultPlatformsPanel" class="result-platforms-panel" hidden>
+          <div class="result-platforms-header">
+            <div>
+              <p class="eyebrow">Exportaciones</p>
+              <h2>Resultado por plataforma</h2>
+            </div>
+            <p id="resultPlatformsSummary" class="result-platforms-summary"></p>
+          </div>
+          <div id="resultPlatformsList" class="result-platforms-list"></div>
+        </section>
         <section id="beforeAfterPanel" class="before-after-panel" hidden>
           <div class="before-after-header">
             <div>
