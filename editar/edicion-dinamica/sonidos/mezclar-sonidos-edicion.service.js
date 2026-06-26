@@ -50,19 +50,19 @@ function construirEntradasSonidos(eventos, sonidosBase) {
 
 function construirFiltroAudio(eventosConRuta) {
   const filtroVoz = crearFiltroVozAlFrente();
-  const filtros = [`[0:a]${filtroVoz},volume=1.08[a0]`];
+  const filtros = [`[0:a]${filtroVoz},volume=1.04[a0]`];
   const etiquetas = ['[a0]'];
 
   eventosConRuta.forEach((evento, index) => {
     const entradaIndex = index + 1;
     const etiqueta = `a${entradaIndex}`;
     const delay = msDelay(evento.tiempo);
-    const volumen = Number(evento.volumen || 0.18).toFixed(3);
+    const volumen = Number(evento.volumen || 0.16).toFixed(3);
     filtros.push(`[${entradaIndex}:a]adelay=${delay}|${delay},volume=${volumen}[${etiqueta}]`);
     etiquetas.push(`[${etiqueta}]`);
   });
 
-  filtros.push(`${etiquetas.join('')}amix=inputs=${etiquetas.length}:duration=first:dropout_transition=0,alimiter=limit=0.95,loudnorm=I=-12.5:TP=-1:LRA=7[aout]`);
+  filtros.push(`${etiquetas.join('')}amix=inputs=${etiquetas.length}:duration=first:dropout_transition=0,loudnorm=I=-12.5:TP=-1:LRA=7,afade=t=in:st=0:d=0.28[aout]`);
   return filtros.join(';');
 }
 
@@ -115,7 +115,7 @@ export async function mezclarSonidosEdicion({ rutaVideoBase, rutaAudioBase = nul
     filtroAudio,
     pesoBytes: stats.size,
     ffmpeg: { ...ffmpeg, duracionMs: Date.now() - inicio },
-    mensaje: 'Audio con voz al frente y efectos de sonido mezclado correctamente.'
+    mensaje: 'Audio con voz al frente, inicio limpio y efectos de sonido mezclado correctamente.'
   };
 }
 
