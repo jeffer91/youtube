@@ -1,0 +1,51 @@
+/* Verificacion Bloque 10: package.json preparado para app modular. */
+
+import fs from 'fs';
+
+const SCRIPTS_REQUERIDOS = [
+  'check:bloque1-autovideo',
+  'check:bloque2-autovideo',
+  'check:bloque3-autovideo',
+  'check:bloque4-autovideo',
+  'check:bloque5-autovideo',
+  'check:bloque6-autovideo',
+  'check:bloque7-autovideo',
+  'check:bloque8-autovideo',
+  'check:bloque9-autovideo',
+  'check:bloque10-autovideo',
+  'check:autovideo'
+];
+
+const BUILD_REQUERIDOS = [
+  'aprendizaje/**/*',
+  'biblioteca-proyecto/**/*',
+  'gemini/**/*',
+  'produccion/**/*',
+  'recursos-externos/**/*',
+  'server/**/*',
+  'subtitulos/**/*',
+  'textos/**/*',
+  'visual/**/*'
+];
+
+function main() {
+  const pkg = JSON.parse(fs.readFileSync('package.json', 'utf-8'));
+  const scripts = pkg.scripts || {};
+  const files = pkg.build?.files || [];
+
+  const faltanScripts = SCRIPTS_REQUERIDOS.filter((script) => !scripts[script]);
+  const faltanBuild = BUILD_REQUERIDOS.filter((item) => !files.includes(item));
+
+  if (faltanScripts.length || faltanBuild.length) {
+    throw new Error(`Faltan scripts: ${faltanScripts.join(', ') || 'ninguno'} | Faltan build files: ${faltanBuild.join(', ') || 'ninguno'}`);
+  }
+
+  console.log('OK package AutoVideoJeff:', pkg.version, SCRIPTS_REQUERIDOS.length, 'scripts clave');
+}
+
+try {
+  main();
+} catch (error) {
+  console.error('ERROR package AutoVideoJeff:', error.message);
+  process.exit(1);
+}
