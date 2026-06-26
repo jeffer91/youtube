@@ -59,7 +59,7 @@ http://localhost:3000
 npm run check:bloque1
 ```
 
-Revisa el estado base del Bloque 1.
+Revisa el estado base del Bloque 1, archivos obligatorios, limite de 1000 lineas, diagnostico, integracion y progreso.
 
 ```bash
 npm run check:todo
