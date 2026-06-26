@@ -8,6 +8,7 @@ import { obtenerOpcionesEdicionAutomatica, aplicarModoAutomaticoVisual } from '.
 import { inicializarModalErrorEdicion, mostrarModalErrorEdicion } from './error-modal.js';
 import { crearJobIdFrontend, prepararProgresoReal, conectarProgresoReal, actualizarProgresoReal } from './progreso-real-ui.js';
 import { limpiarResultadoPlataformasUI, mostrarResultadoPlataformasUI } from './resultado-plataformas-ui.js';
+import { inicializarConfiguracionProyectoUI, aplicarOpcionesProyectoAFormulario, bloquearControlesConfiguracionProyecto } from './configuracion-proyecto-ui.js';
 
 const elementos = {
   serverStatus: document.getElementById('serverStatus'),
@@ -109,6 +110,7 @@ function bloquearFormulario(bloquear) {
   elementos.audioMode.disabled = bloquear;
   bloquearControlesTranscripcion(bloquear);
   bloquearControlesGemini(bloquear);
+  bloquearControlesConfiguracionProyecto(bloquear);
   elementos.processButton.textContent = bloquear ? 'Editando automáticamente...' : 'Procesar automáticamente';
 }
 
@@ -194,10 +196,7 @@ function crearFormularioProcesamiento(jobId) {
   const formulario = new FormData();
   formulario.append('video', archivo);
   formulario.append('jobId', jobId);
-  formulario.append('plataforma', elementos.platformInput.value || 'tiktok');
-  formulario.append('plataformas', 'tiktok,reels,shorts,youtube');
-  formulario.append('perfil', 'general');
-  formulario.append('modoEdicion', 'revision_completa');
+  aplicarOpcionesProyectoAFormulario(formulario);
   formulario.append('modo', elementos.modeInput.value || 'cuadrado-centro');
   formulario.append('mejorarAudio', elementos.improveAudio.checked ? 'true' : 'false');
   formulario.append('modoAudio', elementos.audioMode.value || 'limpieza-simple');
@@ -317,6 +316,7 @@ function iniciarInterfaz() {
   ocultarProgreso();
   ocultarMensaje();
   reiniciarResultado();
+  inicializarConfiguracionProyectoUI();
   inicializarGeminiPopup();
   inicializarTranscripcionUI();
   inicializarModalErrorEdicion();
