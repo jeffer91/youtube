@@ -70,14 +70,17 @@ Gemini real conectado por perfil, con instrucciones especificas y fallback local
 ### Bloque 19
 Diagnostico fuerte y reintento de etapa fallida desde la ventana de error.
 
+### Bloque 20
+Cierre version 1.0.0: prueba final, guia final, limpieza, verificacion y empaquetado Windows.
+
 ## Comandos principales
 
 ```bash
 npm run check:autovideo
-npm run check:bloque19-autovideo
-npm start
+npm run check:bloque20-autovideo
+npm run release:win
 ```
 
 ## Nota importante
 
-La app mantiene render base funcional, permite seleccionar perfil y plataformas desde la interfaz, carga proyectos recientes desde el historial local, muestra el ultimo plan de Produccion, permite marcar y reemplazar sus elementos, registra aprendizaje por correcciones, muestra la biblioteca general en pantalla, ejecuta Gemini por perfil cuando hay credencial, y ahora incluye diagnostico fuerte con reintento de etapa fallida. Si una etapa falla, la app muestra una accion de reintento mientras el video siga seleccionado.
+La version 1.0.0 queda cerrada para prueba local. La app mantiene render base funcional, permite seleccionar perfil y plataformas, carga historial, revisa Produccion, aprende de reemplazos, muestra Biblioteca, ejecuta Gemini con fallback, incluye diagnostico fuerte y prepara empaquetado Windows. Desde este punto conviene hacer pruebas reales en la PC y corregir solo errores puntuales.
