@@ -73,14 +73,17 @@ Diagnostico fuerte y reintento de etapa fallida desde la ventana de error.
 ### Bloque 20
 Cierre version 1.0.0: prueba final, guia final, limpieza, verificacion y empaquetado Windows.
 
+### Bloque 21
+Auditoria integral: variables, imports, conexiones, botones, entradas, salidas, rutas API e IDs de interfaz.
+
 ## Comandos principales
 
 ```bash
+npm run check:auditoria-integral-autovideo
+npm run check:bloque21-autovideo
 npm run check:autovideo
-npm run check:bloque20-autovideo
-npm run release:win
 ```
 
 ## Nota importante
 
-La version 1.0.0 queda cerrada para prueba local. La app mantiene render base funcional, permite seleccionar perfil y plataformas, carga historial, revisa Produccion, aprende de reemplazos, muestra Biblioteca, ejecuta Gemini con fallback, incluye diagnostico fuerte y prepara empaquetado Windows. Desde este punto conviene hacer pruebas reales en la PC y corregir solo errores puntuales.
+La version 1.0.0 queda cerrada para prueba local, pero el Bloque 21 agrega una auditoria fuerte para revisar que las piezas principales concuerden antes de probar con videos reales. Desde este punto conviene correr la auditoria, abrir la app en la PC y corregir solo errores puntuales que aparezcan en consola o diagnostico.
