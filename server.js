@@ -112,6 +112,7 @@ function normalizarOpcionesDesdeBody(body = {}) {
   return {
     perfil: normalizarTexto(body.perfil, 'general'),
     plataformas: normalizarLista(body.plataformas, [plataforma]),
+    exportarMultiplataforma: convertirBooleano(body.exportarMultiplataforma, true),
     modoEdicion: normalizarTexto(body.modoEdicion, 'revision_completa'),
     funcionesEdicion: normalizarLista(body.funcionesEdicion, ['audio', 'subtitulos', 'textos', 'visual', 'gemini', 'produccion']),
     plataforma,
@@ -191,7 +192,7 @@ function crearAplicacionExpress({ modoElectron = false } = {}) {
   app.get('/api/estado', async (_req, res) => {
     aplicarCabecerasSinCache(res);
     const diagnostico = await crearDiagnosticoSeguro({ guardarReporte: false });
-    res.json({ ok: true, app: 'AutoVideoJeff', estado: diagnosticoEsBloqueante(diagnostico) ? 'SERVIDOR_CON_DIAGNOSTICO_PENDIENTE' : 'SERVIDOR_ACTIVO', modo: modoElectron ? 'electron' : 'web', predeterminados: { plataforma: PLATAFORMA_PREDETERMINADA, plataformas: ['tiktok', 'reels', 'shorts', 'youtube'], perfil: 'general', modoEdicion: 'revision_completa', modoVideo: MODO_VIDEO_PREDETERMINADO, modoAudio: MODO_AUDIO_PREDETERMINADO, crearTranscripcion: true, agregarSubtitulos: true, agregarTextosFlotantes: true, edicionDinamica: true, cortarSilencios: true, visualDinamico: true, sonidosEdicion: true, intensidadEdicion: 'automatica' }, modulosNuevos: ['proyectos', 'perfiles', 'exportacion', 'biblioteca', 'gemini', 'produccion', 'aprendizaje'], diagnostico, rutas: { raizDatos: rutasBase.raizDatos, videosExportados: rutasBase.videosExportados, audiosMejorados: rutasBase.audiosMejorados }, fecha: new Date().toISOString() });
+    res.json({ ok: true, app: 'AutoVideoJeff', estado: diagnosticoEsBloqueante(diagnostico) ? 'SERVIDOR_CON_DIAGNOSTICO_PENDIENTE' : 'SERVIDOR_ACTIVO', modo: modoElectron ? 'electron' : 'web', predeterminados: { plataforma: PLATAFORMA_PREDETERMINADA, plataformas: ['tiktok', 'reels', 'shorts', 'youtube'], perfil: 'general', modoEdicion: 'revision_completa', exportarMultiplataforma: true, modoVideo: MODO_VIDEO_PREDETERMINADO, modoAudio: MODO_AUDIO_PREDETERMINADO, crearTranscripcion: true, agregarSubtitulos: true, agregarTextosFlotantes: true, edicionDinamica: true, cortarSilencios: true, visualDinamico: true, sonidosEdicion: true, intensidadEdicion: 'automatica' }, modulosNuevos: ['proyectos', 'perfiles', 'exportacion', 'biblioteca', 'gemini', 'produccion', 'aprendizaje'], diagnostico, rutas: { raizDatos: rutasBase.raizDatos, videosExportados: rutasBase.videosExportados, audiosMejorados: rutasBase.audiosMejorados }, fecha: new Date().toISOString() });
   });
 
   app.get('/api/diagnostico', async (_req, res) => {
@@ -247,7 +248,7 @@ function crearAplicacionExpress({ modoElectron = false } = {}) {
 
       reportarFinalizadoProgreso(jobId, { detalle: resultado.mensaje || 'Video procesado correctamente.', datos: { urlPublica: resultado.resultado?.urlPublica || null, nombreExportado: resultado.resultado?.nombreExportado || null } });
 
-      return res.json({ ok: true, mensaje: resultado.mensaje || 'Video procesado correctamente.', diagnostico, jobId, resultado: resultado.resultado, proyecto: resultado.proyecto, video: resultado.video, entendimiento: resultado.entendimiento, audio: resultado.audio, transcripcion: resultado.transcripcion, edicionDinamica: resultado.edicionDinamica, edicion: resultado.edicion, modular: resultado.modular || null, produccion: resultado.produccion || null, exportaciones: resultado.exportaciones || [], historial: resultado.historial || [], fecha: new Date().toISOString() });
+      return res.json({ ok: true, mensaje: resultado.mensaje || 'Video procesado correctamente.', diagnostico, jobId, resultado: resultado.resultado, resultadoPlataformas: resultado.resultadoPlataformas || resultado.modular?.resultadoPlataformas || null, proyecto: resultado.proyecto, video: resultado.video, entendimiento: resultado.entendimiento, audio: resultado.audio, transcripcion: resultado.transcripcion, edicionDinamica: resultado.edicionDinamica, edicion: resultado.edicion, modular: resultado.modular || null, produccion: resultado.produccion || null, exportaciones: resultado.exportaciones || [], historial: resultado.historial || [], fecha: new Date().toISOString() });
     } catch (error) {
       console.error('[Servidor] Error procesando video:', error);
       reportarErrorProgreso(jobId, error, { etapa: error?.etapa || null, archivo: null });
