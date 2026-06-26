@@ -9,6 +9,10 @@ echo ========================================
 npm install
 if errorlevel 1 goto error
 
+echo Verificando variables, botones y conexiones...
+npm run check:ui
+if errorlevel 1 goto error
+
 npm run check:bloque1
 if errorlevel 1 goto error
 
@@ -19,6 +23,9 @@ npm run check:bloque3
 if errorlevel 1 goto error
 
 npm run check:bloque4
+if errorlevel 1 goto error
+
+npm run check:todo
 if errorlevel 1 goto error
 
 echo.
