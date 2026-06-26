@@ -1,14 +1,14 @@
 import path from 'path';
-import { asegurarCarpeta, escribirJson } from '../../comun/archivos.js';
+import { asegurarCarpeta, copiarArchivoSeguro, escribirJson, normalizarNombreArchivo, obtenerRutaRaiz } from '../../comun/archivos.js';
 
-function crearUrlOriginal(rutaOriginal) {
-  if (!rutaOriginal) return null;
-  return `/originales/${encodeURIComponent(path.basename(rutaOriginal))}`;
+function crearUrlExport(nombreArchivo) {
+  if (!nombreArchivo) return null;
+  return `/exports/${encodeURIComponent(nombreArchivo)}`;
 }
 
 function crearUrlFinal(salida) {
   if (salida?.urlPublica) return salida.urlPublica;
-  if (salida?.nombreExportado) return `/exports/${encodeURIComponent(salida.nombreExportado)}`;
+  if (salida?.nombreExportado) return crearUrlExport(salida.nombreExportado);
   return null;
 }
 
@@ -39,12 +39,33 @@ function validarBase({ entrada, salida }) {
   if (!entrada?.rutas?.carpetaProyecto) throw new Error('No se puede crear antes/después porque falta la carpeta del proyecto.');
 }
 
+async function prepararOriginalParaVista(entrada) {
+  const raiz = obtenerRutaRaiz();
+  const carpetaExportados = path.join(raiz, 'datos', 'videos-exportados');
+  asegurarCarpeta(carpetaExportados);
+
+  const nombreSeguro = normalizarNombreArchivo(entrada.video.nombreSeguro || entrada.video.nombreOriginal || path.basename(entrada.video.rutaOriginal));
+  const extension = path.extname(nombreSeguro) || '.mp4';
+  const base = path.basename(nombreSeguro, extension);
+  const nombreOriginalVista = `${base}-ANTES${extension}`;
+  const rutaOriginalVista = path.join(carpetaExportados, nombreOriginalVista);
+
+  await copiarArchivoSeguro(entrada.video.rutaOriginal, rutaOriginalVista);
+
+  return {
+    nombre: nombreOriginalVista,
+    ruta: rutaOriginalVista,
+    urlPublica: crearUrlExport(nombreOriginalVista)
+  };
+}
+
 export async function crearAntesDespues({ entrada, salida, audio = null, transcripcion = null, edicionDinamica = null, edicion = null, opciones = {} } = {}) {
   validarBase({ entrada, salida });
 
   const carpetaAntesDespues = path.join(entrada.rutas.carpetaProyecto, 'antes-despues');
   asegurarCarpeta(carpetaAntesDespues);
 
+  const originalVista = await prepararOriginalParaVista(entrada);
   const cambios = crearCambios({ audio, transcripcion, edicionDinamica, edicion });
   const resumen = crearResumenCambios(cambios);
   const nombreReporte = 'antes-despues.json';
@@ -59,7 +80,7 @@ export async function crearAntesDespues({ entrada, salida, audio = null, transcr
       etiqueta: 'Antes',
       nombre: entrada.video.nombreOriginal || entrada.video.nombreSeguro || path.basename(entrada.video.rutaOriginal),
       ruta: entrada.video.rutaOriginal,
-      urlPublica: crearUrlOriginal(entrada.video.rutaOriginal)
+      copiaVista: originalVista
     },
     final: {
       etiqueta: 'Después',
