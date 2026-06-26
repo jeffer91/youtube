@@ -21,6 +21,7 @@ La app ya tiene:
 - Modulos opcionales blindados para continuar si fallan.
 - Comparacion antes/despues al terminar la exportacion.
 - Verificacion de variables, botones y conexiones UI.
+- Audio profesional con voz al frente.
 - Archivos BAT para abrir, actualizar, verificar y crear instalador.
 - Configuracion para generar instalador de Windows.
 
@@ -132,6 +133,19 @@ salida
 antes/despues
 ```
 
+## Audio profesional
+
+Desde el Bloque 6, el audio ya no solo se limpia.
+
+Ahora la app intenta:
+
+- Reducir ruido.
+- Acercar la voz.
+- Aumentar claridad.
+- Reforzar presencia.
+- Normalizar volumen para redes sociales.
+- Mezclar sonidos sobre audio mejorado cuando es seguro.
+
 ## Reglas del proyecto
 
 1. Ningun archivo debe pasar de 1000 lineas.
@@ -151,6 +165,7 @@ antes/despues
 | Bloque 3 - Antes/despues | Completado |
 | Bloque 4 - Entrega final | Completado |
 | Bloque 5 - Verificacion y correccion | Completado |
+| Bloque 6 - Audio profesional | Completado |
 
 ## Documentacion de avance
 
@@ -160,9 +175,10 @@ docs/bloque-2-estado.md
 docs/bloque-3-estado.md
 docs/bloque-4-estado.md
 docs/bloque-5-verificacion-correccion.md
+docs/bloque-6-audio-profesional.md
 docs/guia-uso-diario.md
 ```
 
 ## Version
 
-Version actual declarada en `package.json`: **0.3.7**.
+Version actual declarada en `package.json`: **0.3.11**.
