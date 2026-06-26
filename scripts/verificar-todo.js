@@ -2,6 +2,7 @@ import { crearDiagnosticoAutomatico } from '../diagnostico/diagnostico-automatic
 import { verificarIntegracionFinal } from '../diagnostico/verificar-integracion-final.service.js';
 import { verificarProgresoReal } from '../diagnostico/verificar-progreso-real.service.js';
 import { verificarEntregaFinal } from '../entrega/entrega.conexion.js';
+import { execFileSync } from 'child_process';
 
 function resumir(nombre, resultado) {
   return {
@@ -13,13 +14,25 @@ function resumir(nombre, resultado) {
   };
 }
 
+function verificarUiConexiones() {
+  try {
+    const salida = execFileSync(process.execPath, ['scripts/verificar-ui-conexiones.js'], { encoding: 'utf8' });
+    const datos = JSON.parse(salida);
+    return { ok: datos.ok, mensaje: datos.mensaje, errores: datos.errores || [], advertencias: [] };
+  } catch (error) {
+    return { ok: false, mensaje: 'Error al verificar UI y conexiones.', errores: [error.message], advertencias: [] };
+  }
+}
+
 async function main() {
+  const ui = verificarUiConexiones();
   const diagnostico = await crearDiagnosticoAutomatico({ guardarReporte: true });
   const integracion = await verificarIntegracionFinal();
   const progreso = await verificarProgresoReal();
   const entrega = verificarEntregaFinal();
 
   const resultados = [
+    resumir('ui-conexiones', ui),
     resumir('diagnostico', diagnostico),
     resumir('integracion-final', integracion),
     resumir('progreso-real', progreso),
