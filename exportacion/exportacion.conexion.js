@@ -10,3 +10,4 @@ export { crearPlanExportacionVertical } from './exportar-vertical.service.js';
 export { crearPlanExportacionHorizontal } from './exportar-horizontal.service.js';
 export { crearPlanExportacionCuadrado } from './exportar-cuadrado.service.js';
 export { validarExportacion, validarExportaciones } from './validar-exportacion.service.js';
+export { crearResultadoPlataformas } from './resultado-plataformas.service.js';
