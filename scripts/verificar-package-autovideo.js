@@ -16,6 +16,8 @@ const SCRIPTS_REQUERIDOS = [
   'check:bloque13-autovideo',
   'check:bloque14-autovideo',
   'check:bloque15-autovideo',
+  'check:bloque16-autovideo',
+  'check:biblioteca-ui',
   'check:render-plataformas',
   'check:configuracion-proyecto-ui',
   'check:historial-proyectos-ui',
@@ -27,6 +29,7 @@ const SCRIPTS_REQUERIDOS = [
 const BUILD_REQUERIDOS = [
   'app/**/*',
   'aprendizaje/**/*',
+  'biblioteca/**/*',
   'biblioteca-proyecto/**/*',
   'exportacion/**/*',
   'gemini/**/*',
