@@ -1,6 +1,6 @@
 {
   "name": "auto-video-jeff",
-  "version": "0.3.6",
+  "version": "0.3.7",
   "description": "App modular para editar videos automaticamente.",
   "type": "module",
   "main": "main.js",
@@ -10,6 +10,8 @@
     "dev": "electron .",
     "server": "node server.js",
     "web": "node server.js",
+    "check:ui": "node scripts/verificar-ui-conexiones.js",
+    "check:funcional": "npm run check:ui && npm run check:todo",
     "check:bloque1": "node scripts/verificar-bloque-1.js",
     "check:bloque2": "node scripts/verificar-bloque-2.js",
     "check:bloque3": "node scripts/verificar-bloque-3.js",
