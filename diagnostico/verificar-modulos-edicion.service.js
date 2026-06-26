@@ -4,6 +4,17 @@ import { pathToFileURL } from 'url';
 import { obtenerRutaProyecto } from '../comun/archivos.js';
 import { DIAGNOSTICO_AUTOMATICO_CONFIG } from './diagnostico-automatico.config.js';
 
+function esArchivoSoloPresencia(rutaRelativa) {
+  const normalizada = rutaRelativa.replace(/\\/g, '/');
+  const extension = path.extname(normalizada).toLowerCase();
+
+  return (
+    normalizada.startsWith('scripts/') ||
+    normalizada.startsWith('docs/') ||
+    ['.html', '.css', '.json', '.md', '.bat', '.cmd', '.txt'].includes(extension)
+  );
+}
+
 function esModuloJavascript(rutaRelativa) {
   return ['.js', '.mjs'].includes(path.extname(rutaRelativa).toLowerCase());
 }
@@ -46,9 +57,11 @@ async function verificarModuloJavascript(rutaRelativa, rutaAbsoluta) {
 
 async function verificarModulo(rutaRelativa) {
   const rutaAbsoluta = path.join(obtenerRutaProyecto(), rutaRelativa);
-  if (!esModuloJavascript(rutaRelativa)) {
+
+  if (esArchivoSoloPresencia(rutaRelativa) || !esModuloJavascript(rutaRelativa)) {
     return await verificarArchivoEstatico(rutaRelativa, rutaAbsoluta);
   }
+
   return await verificarModuloJavascript(rutaRelativa, rutaAbsoluta);
 }
 
