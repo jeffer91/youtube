@@ -1,6 +1,6 @@
 /*
   Modulo UI: navegacion
-  Funcion: renderizar menu y pantalla activa.
+  Funcion: renderizar menu compacto y pantalla activa.
 */
 
 import { MENU_PRINCIPAL, obtenerItemMenu } from './menu.config.js';
@@ -33,7 +33,7 @@ const VISTAS = Object.freeze({
 });
 
 function renderBotonMenu(item, activo) {
-  return `<button class="aj-menu-btn ${activo ? 'is-active' : ''}" type="button" data-pantalla="${item.id}"><strong>${item.titulo}</strong><small>${item.descripcion}</small></button>`;
+  return `<button class="aj-menu-btn ${activo ? 'is-active' : ''}" type="button" data-pantalla="${item.id}" title="${item.descripcion || item.titulo}" aria-label="Abrir ${item.titulo}"><strong>${item.titulo}</strong></button>`;
 }
 
 function emitirEventoNavegacion(item) {
