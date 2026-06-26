@@ -36,6 +36,17 @@ function renderBotonMenu(item, activo) {
   return `<button class="aj-menu-btn ${activo ? 'is-active' : ''}" type="button" data-pantalla="${item.id}"><strong>${item.titulo}</strong><small>${item.descripcion}</small></button>`;
 }
 
+function emitirEventoNavegacion(item) {
+  if (typeof document === 'undefined') return;
+  document.dispatchEvent(new CustomEvent('autovideo:navegacion', {
+    detail: {
+      pantallaId: item.id,
+      titulo: item.titulo,
+      fecha: new Date().toISOString()
+    }
+  }));
+}
+
 export function renderizarMenuPrincipal(contenedor, pantallaActiva = 'inicio') {
   if (!contenedor) return;
   contenedor.innerHTML = `<nav class="aj-main-menu" aria-label="Menu principal AutoVideoJeff">${MENU_PRINCIPAL.map((item) => renderBotonMenu(item, item.id === pantallaActiva)).join('')}</nav>`;
@@ -47,6 +58,7 @@ export function renderizarPantalla(contenedor, pantallaId = 'inicio') {
   const render = VISTAS[item.id] || VISTAS.inicio;
   contenedor.innerHTML = `${render()}${renderizarSubmenu(item.id)}`;
   guardarPantallaActiva(item.id);
+  emitirEventoNavegacion(item);
 }
 
 export function cambiarPantalla({ pantallaId, contenedorMenu, contenedorVista }) {
