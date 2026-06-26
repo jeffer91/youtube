@@ -7,6 +7,7 @@
   <link rel="stylesheet" href="./styles.css" />
   <link rel="stylesheet" href="./navegacion/navegacion.css" />
   <link rel="stylesheet" href="./resultado-plataformas.css" />
+  <link rel="stylesheet" href="./configuracion-proyecto.css" />
 </head>
 <body>
   <main class="app-shell">
@@ -47,6 +48,49 @@
             <span>Visuales</span>
             <span>Sonidos</span>
           </div>
+        </section>
+
+        <section class="form-section project-config-card">
+          <div class="options-header">
+            <div>
+              <p class="eyebrow">Configuración del proyecto</p>
+              <h2>Perfil y plataformas</h2>
+              <p>Elige el estilo del video y los formatos finales antes de procesar.</p>
+            </div>
+          </div>
+          <div class="project-config-grid">
+            <label class="select-row" for="profileSelect">
+              <span>Perfil</span>
+              <select id="profileSelect" name="perfil">
+                <option value="general" selected>General</option>
+                <option value="11-contra-11">11 contra 11</option>
+                <option value="jeff-isekai">Jeff Isekai</option>
+                <option value="creciaula">Creciaula</option>
+                <option value="institucional">Institucional</option>
+                <option value="el-don-historia">El Don Historia</option>
+                <option value="jeff-verso">Jeff Verso</option>
+              </select>
+            </label>
+            <label class="select-row" for="editModeSelect">
+              <span>Modo de edición</span>
+              <select id="editModeSelect" name="modoEdicion">
+                <option value="revision_completa" selected>Revisión completa</option>
+                <option value="automatico_rapido">Automático rápido</option>
+              </select>
+            </label>
+            <label class="toggle-row" for="exportMultiplatform">
+              <input id="exportMultiplatform" name="exportarMultiplataforma" type="checkbox" checked />
+              <span><strong>Exportar todas las plataformas</strong><small>Genera formatos 9:16, 16:9 y 1:1 cuando sea posible.</small></span>
+            </label>
+          </div>
+          <div class="platform-checks" aria-label="Plataformas de exportación">
+            <label class="platform-check"><input type="checkbox" data-platform-option value="tiktok" checked /><span>TikTok<small>9:16</small></span></label>
+            <label class="platform-check"><input type="checkbox" data-platform-option value="reels" checked /><span>Reels<small>9:16</small></span></label>
+            <label class="platform-check"><input type="checkbox" data-platform-option value="shorts" checked /><span>Shorts<small>9:16</small></span></label>
+            <label class="platform-check"><input type="checkbox" data-platform-option value="youtube" checked /><span>YouTube<small>16:9</small></span></label>
+            <label class="platform-check"><input type="checkbox" data-platform-option value="instagram" /><span>Instagram<small>1:1</small></span></label>
+          </div>
+          <p id="projectSettingsSummary" class="project-summary">Perfil: General · Plataformas: TikTok, Reels, Shorts, YouTube · Modo: revisión completa</p>
         </section>
 
         <input type="hidden" id="platformInput" name="plataforma" value="tiktok" />
