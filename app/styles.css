@@ -97,7 +97,14 @@ h2 { font-size: 1.08rem; }
 .editing-summary { background: #f5f3ff; color: #5b21b6; border: 1px solid #ddd6fe; }
 .audio-summary { background: #f0fdf4; color: #166534; border: 1px solid #bbf7d0; }
 .transcription-summary { background: #eff6ff; color: #1e40af; border: 1px solid #bfdbfe; }
-.result-video { display: block; width: 100%; max-height: 560px; background: #000000; border-radius: var(--radius-md); outline: 1px solid var(--line); }
+.before-after-panel { display: grid; gap: 12px; margin: 14px 0; padding: 14px; border: 1px solid #c7d2fe; border-radius: var(--radius-lg); background: linear-gradient(135deg, #eef2ff, #ffffff); }
+.before-after-header { display: flex; justify-content: space-between; gap: 14px; align-items: flex-start; }
+.before-after-summary { margin: 0; color: var(--muted); font-weight: 800; line-height: 1.45; max-width: 520px; }
+.before-after-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+.compare-card { display: grid; gap: 8px; padding: 10px; border: 1px solid var(--line); border-radius: var(--radius-md); background: #ffffff; }
+.compare-card strong { font-size: 0.9rem; color: var(--text); }
+.compare-video, .result-video { display: block; width: 100%; max-height: 560px; background: #000000; border-radius: var(--radius-md); outline: 1px solid var(--line); }
+.compare-video { max-height: 420px; }
 .modal-backdrop { position: fixed; inset: 0; background: rgba(15, 23, 42, 0.54); display: grid; place-items: center; padding: 20px; z-index: 50; }
 .modal-card { width: min(720px, 100%); max-height: calc(100vh - 40px); overflow: auto; background: #ffffff; border-radius: var(--radius-xl); box-shadow: var(--shadow); border: 1px solid var(--line); padding: 22px; display: grid; gap: 14px; }
 .error-modal-card { border-color: #fecaca; }
@@ -110,7 +117,8 @@ h2 { font-size: 1.08rem; }
 @media (max-width: 720px) {
   .app-shell { width: min(100% - 20px, 1040px); padding: 16px 0; }
   .hero-card { padding: 16px; border-radius: 22px; }
-  .hero-top, .result-header, .toggle-row, .select-row, .static-option, .options-header, .modal-header, .auto-card, .progress-topline { flex-direction: column; align-items: stretch; grid-template-columns: 1fr; }
+  .hero-top, .result-header, .toggle-row, .select-row, .static-option, .options-header, .modal-header, .auto-card, .progress-topline, .before-after-header { flex-direction: column; align-items: stretch; grid-template-columns: 1fr; }
+  .before-after-grid { grid-template-columns: 1fr; }
   .auto-pills { justify-content: flex-start; }
   .server-status, .download-link, .secondary-button { width: 100%; text-align: center; }
   .select-row select, .select-row input, .textarea-row input, .textarea-row textarea { width: 100%; min-width: 0; }
