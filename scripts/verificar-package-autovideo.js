@@ -24,6 +24,7 @@ const SCRIPTS_REQUERIDOS = [
   'check:bloque21-autovideo',
   'check:cierre-final-autovideo',
   'check:auditoria-integral-autovideo',
+  'check:menu-compacto-ui',
   'check:diagnostico-fuerte',
   'check:biblioteca-ui',
   'check:produccion-reemplazo-ui',
