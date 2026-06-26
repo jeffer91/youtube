@@ -6,6 +6,7 @@
     - Reducir ruido de fondo con filtros nativos.
     - Mejorar claridad de voz con highpass, lowpass, ecualización, compresor y normalización.
     - Colocar la voz más cerca y más nítida para redes sociales.
+    - Evitar golpe o ruido inicial con inicio seguro.
     - Guardar el audio mejorado en datos/audios-mejorados/.
     - Guardar audio-limpio-simple.json dentro del proyecto.
   Con qué se conecta:
@@ -48,17 +49,9 @@ async function leerPresetAudioLimpio() {
   const rutaPreset = obtenerRutaPreset();
   const preset = await leerJsonSiExiste(rutaPreset, null);
 
-  if (!preset) {
-    throw new Error(`No se encontró el preset de audio requerido: ${rutaPreset}`);
-  }
-
-  if (!preset.audio || typeof preset.audio !== 'object') {
-    throw new Error('El preset de audio no tiene configuración audio.');
-  }
-
-  if (!preset.filtros || typeof preset.filtros !== 'object') {
-    throw new Error('El preset de audio no tiene configuración de filtros.');
-  }
+  if (!preset) throw new Error(`No se encontró el preset de audio requerido: ${rutaPreset}`);
+  if (!preset.audio || typeof preset.audio !== 'object') throw new Error('El preset de audio no tiene configuración audio.');
+  if (!preset.filtros || typeof preset.filtros !== 'object') throw new Error('El preset de audio no tiene configuración de filtros.');
 
   return {
     ...preset,
@@ -82,11 +75,17 @@ function crearEcualizadorBanda(banda, valoresPorDefecto) {
 function agregarRealceVoz(partes, filtros) {
   const realce = filtros.realceVoz || {};
   if (realce.activo === false) return;
-
   partes.push(crearEcualizadorBanda(realce.graves, { frecuencia: 180, ganancia: -1.5, ancho: 1.0 }));
   partes.push(crearEcualizadorBanda(realce.cuerpo, { frecuencia: 420, ganancia: 1.2, ancho: 1.1 }));
   partes.push(crearEcualizadorBanda(realce.presencia, { frecuencia: 2600, ganancia: 4.5, ancho: 1.0 }));
   partes.push(crearEcualizadorBanda(realce.claridad, { frecuencia: 5200, ganancia: 3.2, ancho: 1.0 }));
+}
+
+function agregarInicioSeguro(partes, filtros) {
+  const inicioSeguro = filtros.inicioSeguro || {};
+  if (inicioSeguro.activo === false) return;
+  const duracion = numeroValido(inicioSeguro.duracionFadeIn, 0.28);
+  if (duracion > 0) partes.push(`afade=t=in:st=0:d=${duracion}`);
 }
 
 export function crearFiltroVozAlFrente(preset) {
@@ -122,7 +121,7 @@ export function crearFiltroVozAlFrente(preset) {
   }
 
   if (filtros.volumenFinal?.activo !== false) {
-    const ganancia = numeroValido(filtros.volumenFinal?.ganancia, 1.18);
+    const ganancia = numeroValido(filtros.volumenFinal?.ganancia, 1.15);
     partes.push(`volume=${ganancia}`);
   }
 
@@ -133,6 +132,7 @@ export function crearFiltroVozAlFrente(preset) {
     partes.push(`loudnorm=I=${integratedLoudness}:TP=${truePeak}:LRA=${loudnessRange}`);
   }
 
+  agregarInicioSeguro(partes, filtros);
   return partes.join(',');
 }
 
@@ -199,15 +199,7 @@ export async function limpiarAudioSimple({ entrada, entendimiento, opciones = {}
   const rutaAudioMejorado = path.join(carpetaAudiosMejorados, nombreAudioMejorado);
   const rutaResumenAudio = path.join(entrada.rutas.carpetaProyecto, 'audio-limpio-simple.json');
 
-  await limpiarAudioConFfmpeg({
-    rutaEntrada: entrada.video.rutaOriginal,
-    rutaSalida: rutaAudioMejorado,
-    filtroAudio,
-    codecAudio: preset.audio.codecAudio,
-    audioBitrate: preset.audio.audioBitrate,
-    frecuenciaMuestreo: preset.audio.frecuenciaMuestreo,
-    canales: preset.audio.canales
-  });
+  await limpiarAudioConFfmpeg({ rutaEntrada: entrada.video.rutaOriginal, rutaSalida: rutaAudioMejorado, filtroAudio, codecAudio: preset.audio.codecAudio, audioBitrate: preset.audio.audioBitrate, frecuenciaMuestreo: preset.audio.frecuenciaMuestreo, canales: preset.audio.canales });
 
   const stats = await validarAudioGenerado(rutaAudioMejorado);
   const resultado = {
@@ -216,7 +208,7 @@ export async function limpiarAudioSimple({ entrada, entendimiento, opciones = {}
     tipo: 'voz-al-frente',
     omitido: false,
     usarAudioMejorado: true,
-    mensaje: 'Voz mejorada correctamente: más cercana, más nítida y con volumen reforzado.',
+    mensaje: 'Voz mejorada correctamente: más cercana, más nítida, con volumen reforzado e inicio limpio.',
     rutaAudioMejorado,
     nombreAudioMejorado,
     pesoBytes: stats.size,
