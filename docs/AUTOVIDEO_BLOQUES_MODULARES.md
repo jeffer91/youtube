@@ -43,14 +43,17 @@ Resultado, comparativa y exportaciones por plataforma.
 ### Bloque 10
 Diagnostico final, pruebas agrupadas y package actualizado.
 
+### Bloque 11
+Render final real por plataforma: 9:16, 16:9 y 1:1.
+
 ## Comandos principales
 
 ```bash
 npm run check:autovideo
-npm run check:bloque10-autovideo
+npm run check:bloque11-autovideo
 npm start
 ```
 
 ## Nota importante
 
-La app mantiene render base funcional. Las plataformas adicionales pueden quedar como pendientes de render especifico hasta conectar el render final real por formato.
+La app mantiene render base funcional y ahora intenta generar tambien las plataformas adicionales. Si el video base no existe o FFmpeg falla en una plataforma, la app debe marcar ese formato como pendiente o error controlado sin romper todo el flujo.
