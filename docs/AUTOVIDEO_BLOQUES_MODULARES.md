@@ -46,14 +46,17 @@ Diagnostico final, pruebas agrupadas y package actualizado.
 ### Bloque 11
 Render final real por plataforma: 9:16, 16:9 y 1:1.
 
+### Bloque 12
+Selector real de perfil, plataformas, modo de edicion y exportacion multiplataforma desde la interfaz.
+
 ## Comandos principales
 
 ```bash
 npm run check:autovideo
-npm run check:bloque11-autovideo
+npm run check:bloque12-autovideo
 npm start
 ```
 
 ## Nota importante
 
-La app mantiene render base funcional y ahora intenta generar tambien las plataformas adicionales. Si el video base no existe o FFmpeg falla en una plataforma, la app debe marcar ese formato como pendiente o error controlado sin romper todo el flujo.
+La app mantiene render base funcional, permite seleccionar perfil y plataformas desde la interfaz, y ahora intenta generar tambien las plataformas adicionales. Si el video base no existe o FFmpeg falla en una plataforma, la app debe marcar ese formato como pendiente o error controlado sin romper todo el flujo.
