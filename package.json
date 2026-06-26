@@ -1,6 +1,6 @@
 {
   "name": "auto-video-jeff",
-  "version": "0.4.6",
+  "version": "0.4.7",
   "description": "App modular para editar videos automaticamente.",
   "type": "module",
   "main": "main.js",
@@ -31,6 +31,7 @@
     "check:historial-proyectos-ui": "node scripts/verificar-historial-proyectos-ui.js",
     "check:produccion-revision-ui": "node scripts/verificar-produccion-revision-ui.js",
     "check:produccion-acciones-ui": "node scripts/verificar-produccion-acciones-ui.js",
+    "check:produccion-reemplazo-ui": "node scripts/verificar-produccion-reemplazo-ui.js",
     "check:servidor-modular": "node scripts/verificar-servidor-modular.js",
     "check:flujo-modular": "node scripts/verificar-flujo-modular.js",
     "check:resultado-plataformas": "node scripts/verificar-resultado-plataformas.js",
@@ -59,6 +60,7 @@
     "check:bloque14-autovideo": "node scripts/verificar-bloque-14-autovideo.js",
     "check:bloque15-autovideo": "node scripts/verificar-bloque-15-autovideo.js",
     "check:bloque16-autovideo": "node scripts/verificar-bloque-16-autovideo.js",
+    "check:bloque17-autovideo": "node scripts/verificar-bloque-17-autovideo.js",
     "check:bloques-autovideo": "node scripts/verificar-bloques-autovideo.js",
     "check:autovideo": "npm run check:package-autovideo && npm run check:bloques-autovideo",
     "check:diagnostico": "node scripts/verificar-diagnostico-automatico.js",
@@ -100,53 +102,12 @@
     "appId": "com.jeff.autovideojeff",
     "productName": "AutoVideoJeff",
     "asar": false,
-    "directories": {
-      "output": "release"
-    },
+    "directories": { "output": "release" },
     "files": [
-      "app/**/*",
-      "aprendizaje/**/*",
-      "audio/**/*",
-      "biblioteca/**/*",
-      "biblioteca-proyecto/**/*",
-      "comun/**/*",
-      "diagnostico/**/*",
-      "docs/**/*",
-      "editar/**/*",
-      "entrada/**/*",
-      "entender/**/*",
-      "entrega/**/*",
-      "exportacion/**/*",
-      "gemini/**/*",
-      "motor/**/*",
-      "perfiles/**/*",
-      "produccion/**/*",
-      "progreso/**/*",
-      "proyectos/**/*",
-      "recursos-externos/**/*",
-      "salida/**/*",
-      "scripts/**/*",
-      "server/**/*",
-      "subtitulos/**/*",
-      "textos/**/*",
-      "transcripcion/**/*",
-      "visual/**/*",
-      "main.js",
-      "preload.js",
-      "server.js",
-      "package.json"
+      "app/**/*", "aprendizaje/**/*", "audio/**/*", "biblioteca/**/*", "biblioteca-proyecto/**/*", "comun/**/*", "diagnostico/**/*", "docs/**/*", "editar/**/*", "entrada/**/*", "entender/**/*", "entrega/**/*", "exportacion/**/*", "gemini/**/*", "motor/**/*", "perfiles/**/*", "produccion/**/*", "progreso/**/*", "proyectos/**/*", "recursos-externos/**/*", "salida/**/*", "scripts/**/*", "server/**/*", "subtitulos/**/*", "textos/**/*", "transcripcion/**/*", "visual/**/*", "main.js", "preload.js", "server.js", "package.json"
     ],
-    "extraResources": [
-      {
-        "from": "docs",
-        "to": "docs"
-      }
-    ],
-    "win": {
-      "target": [
-        "nsis"
-      ]
-    },
+    "extraResources": [{ "from": "docs", "to": "docs" }],
+    "win": { "target": ["nsis"] },
     "nsis": {
       "oneClick": false,
       "perMachine": false,
