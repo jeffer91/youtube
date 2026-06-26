@@ -5,6 +5,7 @@
     - Arrancar AutoVideoJeff en modo Electron.
     - Iniciar el servidor local Express sin abrir navegador externo.
     - Crear una ventana segura de escritorio.
+    - Evitar que errores de GPU impidan mostrar la ventana.
     - Cerrar el servidor cuando se cierre la app.
 */
 
@@ -15,9 +16,21 @@ import { iniciarServidor, detenerServidor } from './server.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+const TIEMPO_MAXIMO_ESPERA_VENTANA_MS = 3500;
 
 let ventanaPrincipal = null;
 let servidorLocal = null;
+let cerrandoAplicacion = false;
+
+function prepararElectronSeguro() {
+  electronApp.disableHardwareAcceleration();
+  electronApp.commandLine.appendSwitch('disable-gpu');
+  electronApp.commandLine.appendSwitch('disable-gpu-compositing');
+  electronApp.commandLine.appendSwitch('disable-software-rasterizer');
+  electronApp.commandLine.appendSwitch('no-sandbox');
+}
+
+prepararElectronSeguro();
 
 function configurarRutasDeDatos() {
   /*
@@ -29,8 +42,20 @@ function configurarRutasDeDatos() {
 }
 
 function obtenerIconoSeguro() {
-  const posibleIcono = path.join(__dirname, 'assets', 'icon.png');
-  return posibleIcono;
+  return path.join(__dirname, 'assets', 'icon.png');
+}
+
+function mostrarVentanaSiExiste() {
+  if (!ventanaPrincipal || ventanaPrincipal.isDestroyed()) return;
+  if (!ventanaPrincipal.isVisible()) ventanaPrincipal.show();
+  ventanaPrincipal.focus();
+}
+
+function mostrarErrorCarga(error) {
+  const mensaje = error?.message || String(error || 'Error desconocido al cargar la interfaz.');
+  console.error('[Electron] Error al cargar la ventana:', mensaje);
+  if (ventanaPrincipal && !ventanaPrincipal.isDestroyed()) mostrarVentanaSiExiste();
+  dialog.showErrorBox('AutoVideoJeff no pudo abrir la ventana', mensaje);
 }
 
 function crearVentana(urlServidor) {
@@ -40,7 +65,7 @@ function crearVentana(urlServidor) {
     minWidth: 960,
     minHeight: 640,
     show: false,
-    backgroundColor: '#101827',
+    backgroundColor: '#eef3fb',
     icon: obtenerIconoSeguro(),
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
@@ -51,9 +76,28 @@ function crearVentana(urlServidor) {
     }
   });
 
+  const mostrarPorSeguridad = setTimeout(() => {
+    mostrarVentanaSiExiste();
+  }, TIEMPO_MAXIMO_ESPERA_VENTANA_MS);
+
   ventanaPrincipal.once('ready-to-show', () => {
-    if (ventanaPrincipal) {
-      ventanaPrincipal.show();
+    clearTimeout(mostrarPorSeguridad);
+    mostrarVentanaSiExiste();
+  });
+
+  ventanaPrincipal.webContents.on('did-finish-load', () => {
+    clearTimeout(mostrarPorSeguridad);
+    mostrarVentanaSiExiste();
+  });
+
+  ventanaPrincipal.webContents.on('did-fail-load', (_event, codigoError, descripcionError, urlFallida) => {
+    mostrarErrorCarga(new Error(`No se pudo cargar ${urlFallida}. Código ${codigoError}: ${descripcionError}`));
+  });
+
+  ventanaPrincipal.webContents.on('render-process-gone', (_event, detalles) => {
+    console.error('[Electron] El proceso visual se cerró:', detalles);
+    if (!cerrandoAplicacion) {
+      mostrarErrorCarga(new Error(`La ventana se cerró por un problema visual: ${detalles?.reason || 'sin detalle'}`));
     }
   });
 
@@ -64,7 +108,6 @@ function crearVentana(urlServidor) {
 
   ventanaPrincipal.webContents.on('will-navigate', (event, url) => {
     const esUrlInterna = url.startsWith(urlServidor);
-
     if (!esUrlInterna) {
       event.preventDefault();
       shell.openExternal(url);
@@ -72,10 +115,13 @@ function crearVentana(urlServidor) {
   });
 
   ventanaPrincipal.on('closed', () => {
+    clearTimeout(mostrarPorSeguridad);
     ventanaPrincipal = null;
   });
 
-  ventanaPrincipal.loadURL(urlServidor);
+  ventanaPrincipal.loadURL(urlServidor).catch((error) => {
+    mostrarErrorCarga(error);
+  });
 }
 
 async function iniciarAplicacion() {
@@ -106,12 +152,7 @@ electronApp.whenReady().then(async () => {
     await iniciarAplicacion();
   } catch (error) {
     console.error('[Electron] No se pudo iniciar AutoVideoJeff:', error);
-
-    dialog.showErrorBox(
-      'AutoVideoJeff no pudo iniciar',
-      error?.message || 'Error desconocido al iniciar la aplicación.'
-    );
-
+    dialog.showErrorBox('AutoVideoJeff no pudo iniciar', error?.message || 'Error desconocido al iniciar la aplicación.');
     electronApp.quit();
   }
 
@@ -123,6 +164,7 @@ electronApp.whenReady().then(async () => {
 });
 
 electronApp.on('window-all-closed', async () => {
+  cerrandoAplicacion = true;
   await detenerServidor();
 
   if (process.platform !== 'darwin') {
@@ -131,6 +173,7 @@ electronApp.on('window-all-closed', async () => {
 });
 
 electronApp.on('before-quit', async () => {
+  cerrandoAplicacion = true;
   await detenerServidor();
 });
 
