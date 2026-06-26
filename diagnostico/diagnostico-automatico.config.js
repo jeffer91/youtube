@@ -1,5 +1,5 @@
 export const DIAGNOSTICO_AUTOMATICO_CONFIG = Object.freeze({
-  version: '1.3.0',
+  version: '1.4.0',
   bloquearSiFfmpegFalla: true,
   bloquearSiCarpetasFallan: true,
   bloquearSiModulosCriticosFallan: true,
@@ -25,14 +25,24 @@ export const DIAGNOSTICO_AUTOMATICO_CONFIG = Object.freeze({
     'salida/salida.conexion.js',
     'salida/exportar-simple/exportar.service.js',
     'salida/antes-despues/antes-despues.conexion.js',
+    'entrega/entrega.config.js',
+    'entrega/entrega.conexion.js',
     'progreso/progreso.conexion.js',
     'progreso/progreso-registro.js',
     'scripts/verificar-bloque-1.js',
     'scripts/verificar-bloque-2.js',
     'scripts/verificar-bloque-3.js',
+    'scripts/verificar-bloque-4.js',
+    'scripts/verificar-todo.js',
     'docs/bloque-1-estado.md',
     'docs/bloque-2-estado.md',
-    'docs/bloque-3-estado.md'
+    'docs/bloque-3-estado.md',
+    'docs/bloque-4-estado.md',
+    'docs/guia-uso-diario.md',
+    'abrir_app.bat',
+    'actualizar_y_abrir.bat',
+    'verificar_app.bat',
+    'crear_instalador_windows.bat'
   ]
 });
 
