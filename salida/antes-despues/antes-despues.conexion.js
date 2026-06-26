@@ -17,11 +17,14 @@ function crearCambio(etiqueta, activo, detalle) {
 }
 
 function crearCambios({ audio, transcripcion, edicionDinamica, edicion }) {
+  const tieneTextos = Boolean((transcripcion && !transcripcion.omitido) || edicion?.transcripcion?.capasAplicadas);
+  const tieneDinamica = Boolean((edicionDinamica?.activo && !edicionDinamica?.omitido) || edicion?.edicionDinamica?.activa);
+
   return [
     crearCambio('Formato final', true, `Se generó un video en modo ${edicion?.modo || 'tiktok'}.`),
     crearCambio('Audio', audio && !audio.omitido, audio?.mensaje || 'Se mantuvo el audio original.'),
-    crearCambio('Subtítulos y textos', transcripcion && !transcripcion.omitido, transcripcion?.mensaje || 'No se aplicaron textos automáticos.'),
-    crearCambio('Cortes dinámicos', edicionDinamica?.activo && !edicionDinamica?.omitido, edicionDinamica?.diagnostico?.mensaje || edicionDinamica?.motivo || 'No se aplicaron cortes dinámicos.'),
+    crearCambio('Subtítulos y textos', tieneTextos, transcripcion?.mensaje || edicion?.transcripcion?.mensaje || 'No se aplicaron textos automáticos.'),
+    crearCambio('Cortes dinámicos', tieneDinamica, edicionDinamica?.diagnostico?.mensaje || edicionDinamica?.motivo || edicion?.edicionDinamica?.mensaje || 'No se aplicaron cortes dinámicos.'),
     crearCambio('Visuales dinámicos', edicion?.visualDinamico && !edicion.visualDinamico.omitido, edicion?.visualDinamico?.mensaje || 'No se aplicaron visuales dinámicos.'),
     crearCambio('Sonidos de edición', edicion?.sonidos && !edicion.sonidos.omitido, edicion?.sonidos?.mensaje || 'No se aplicaron sonidos de edición.')
   ];
