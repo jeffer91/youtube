@@ -55,14 +55,17 @@ Historial real de proyectos recientes conectado a la pantalla Historial.
 ### Bloque 14
 Revision visual del plan de Produccion desde la pantalla Produccion.
 
+### Bloque 15
+Acciones de revision en Produccion: aprobar, no usar, pendiente y guardar cambios.
+
 ## Comandos principales
 
 ```bash
 npm run check:autovideo
-npm run check:bloque14-autovideo
+npm run check:bloque15-autovideo
 npm start
 ```
 
 ## Nota importante
 
-La app mantiene render base funcional, permite seleccionar perfil y plataformas desde la interfaz, carga proyectos recientes desde el historial local, muestra el ultimo plan de Produccion y ahora intenta generar tambien las plataformas adicionales. Si el video base no existe o FFmpeg falla en una plataforma, la app debe marcar ese formato como pendiente o error controlado sin romper todo el flujo.
+La app mantiene render base funcional, permite seleccionar perfil y plataformas desde la interfaz, carga proyectos recientes desde el historial local, muestra el ultimo plan de Produccion, permite marcar sus elementos y ahora intenta generar tambien las plataformas adicionales. Si el video base no existe o FFmpeg falla en una plataforma, la app debe marcar ese formato como pendiente o error controlado sin romper todo el flujo.
