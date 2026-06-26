@@ -1,6 +1,6 @@
 {
   "name": "auto-video-jeff",
-  "version": "0.3.11",
+  "version": "0.3.12",
   "description": "App modular para editar videos automaticamente.",
   "type": "module",
   "main": "main.js",
