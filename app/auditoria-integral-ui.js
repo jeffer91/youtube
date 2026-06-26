@@ -6,6 +6,16 @@
 function obtenerDocumento() { return typeof document === 'undefined' ? null : document; }
 function escapar(texto = '') { return String(texto).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c])); }
 
+function asegurarEstilosAuditoria() {
+  const doc = obtenerDocumento();
+  if (!doc || doc.getElementById('integralAuditStyles')) return;
+  const link = doc.createElement('link');
+  link.id = 'integralAuditStyles';
+  link.rel = 'stylesheet';
+  link.href = './auditoria-integral.css';
+  doc.head.appendChild(link);
+}
+
 async function obtenerBaseApi() {
   const apiElectron = window.AutoVideoJeff?.servidor?.obtenerEstado;
   if (typeof apiElectron === 'function') {
@@ -53,6 +63,7 @@ export function renderAuditoriaIntegral(auditoria = {}) {
 export async function ejecutarAuditoriaIntegralUI() {
   const doc = obtenerDocumento();
   if (!doc) return false;
+  asegurarEstilosAuditoria();
   const contenedor = doc.getElementById('integralAuditResult');
   const estado = doc.getElementById('integralAuditStatus');
   if (!contenedor) return false;
@@ -74,6 +85,7 @@ export async function ejecutarAuditoriaIntegralUI() {
 export function inicializarAuditoriaIntegralUI() {
   const doc = obtenerDocumento();
   if (!doc) return false;
+  asegurarEstilosAuditoria();
   doc.addEventListener('click', (evento) => {
     if (evento.target.closest('[data-diagnostic-action="audit"]')) ejecutarAuditoriaIntegralUI();
   });
