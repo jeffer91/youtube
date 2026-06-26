@@ -15,5 +15,6 @@ export function listarPerfiles() {
 }
 
 export function existePerfil(perfilId) {
-  return Boolean(PERFILES_EDICION[normalizarPerfilId(perfilId)]);
+  const id = String(perfilId || '').trim().toLowerCase();
+  return Boolean(PERFILES_EDICION[id]);
 }
