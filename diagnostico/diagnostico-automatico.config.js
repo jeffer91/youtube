@@ -1,5 +1,5 @@
 export const DIAGNOSTICO_AUTOMATICO_CONFIG = Object.freeze({
-  version: '1.2.0',
+  version: '1.3.0',
   bloquearSiFfmpegFalla: true,
   bloquearSiCarpetasFallan: true,
   bloquearSiModulosCriticosFallan: true,
@@ -11,6 +11,7 @@ export const DIAGNOSTICO_AUTOMATICO_CONFIG = Object.freeze({
     'preload.js',
     'app/index.html',
     'app/app.js',
+    'app/styles.css',
     'motor/motor.conexion.js',
     'motor/flujo-principal.js',
     'entrada/entrada.conexion.js',
@@ -23,12 +24,15 @@ export const DIAGNOSTICO_AUTOMATICO_CONFIG = Object.freeze({
     'editar/edicion-dinamica/sonidos/sonidos.conexion.js',
     'salida/salida.conexion.js',
     'salida/exportar-simple/exportar.service.js',
+    'salida/antes-despues/antes-despues.conexion.js',
     'progreso/progreso.conexion.js',
     'progreso/progreso-registro.js',
     'scripts/verificar-bloque-1.js',
     'scripts/verificar-bloque-2.js',
+    'scripts/verificar-bloque-3.js',
     'docs/bloque-1-estado.md',
-    'docs/bloque-2-estado.md'
+    'docs/bloque-2-estado.md',
+    'docs/bloque-3-estado.md'
   ]
 });
 
