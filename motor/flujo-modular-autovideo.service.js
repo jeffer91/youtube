@@ -1,5 +1,5 @@
 /*
-  Bloque 8 y 9
+  Bloques 8, 9 y 18
   Funcion: conectar los modulos nuevos al resultado del flujo actual sin romper el render existente.
 */
 
@@ -19,16 +19,12 @@ import {
   crearPlanEfectos,
   crearPlanEncuadreDinamico
 } from '../visual/visual.conexion.js';
-import { crearPaqueteGeminiEdicion, crearAnalisisTranscripcionFallback } from '../gemini/gemini.conexion.js';
+import { crearPaqueteGeminiEdicion, crearAnalisisTranscripcionFallback, ejecutarPaqueteGeminiEdicion } from '../gemini/gemini.conexion.js';
 import { crearPlanProduccion } from '../produccion/produccion.conexion.js';
 import { obtenerReglasAplicables } from '../aprendizaje/aprendizaje.conexion.js';
 
 function extraerSegmentos(transcripcion = {}) {
-  return transcripcion.transcripcion?.segmentos
-    || transcripcion.segmentos
-    || transcripcion.transcripcion?.segments
-    || transcripcion.segments
-    || [];
+  return transcripcion.transcripcion?.segmentos || transcripcion.segmentos || transcripcion.transcripcion?.segments || transcripcion.segments || [];
 }
 
 function normalizarPlataformas(opciones = {}) {
@@ -62,12 +58,17 @@ function crearMomentosDesdeSegmentos(segmentos = []) {
   })).filter((momento) => momento.texto);
 }
 
+function obtenerMomentosGemini(gemini = {}, fallback = []) {
+  const data = gemini.resultados?.analisis?.data || {};
+  return Array.isArray(data.momentosImportantes) && data.momentosImportantes.length ? data.momentosImportantes : fallback;
+}
+
 export async function crearIntegracionModularAutoVideoJeff({ entrada = {}, entendimiento = {}, audio = {}, transcripcion = {}, edicionDinamica = {}, edicion = {}, salida = {}, opciones = {} } = {}) {
   const proyecto = crearProyectoModular({ entrada, opciones });
   const perfil = obtenerPerfil(proyecto.perfil);
   const plataformas = proyecto.plataformas;
   const segmentos = extraerSegmentos(transcripcion);
-  const momentos = crearMomentosDesdeSegmentos(segmentos);
+  const momentosFallback = crearMomentosDesdeSegmentos(segmentos);
   const plataformaBase = { formato: salida.formato || '9:16', width: 1080, height: 1920, zonaSegura: { top: 170, bottom: 280, left: 80, right: 80 } };
 
   const exportaciones = prepararExportaciones({ ...proyecto, videoEditado: salida.rutaExportada || salida.rutaVideo || '', rutas: proyecto.rutas });
@@ -78,17 +79,20 @@ export async function crearIntegracionModularAutoVideoJeff({ entrada = {}, enten
   const zonasSeguras = detectarZonasSeguras({ plataforma: plataformaBase, sujeto, rostro });
   const removerFondo = crearPlanRemoverFondo({ perfil: perfil.id, sujeto, opciones });
   const fondo = crearPlanFondo({ perfil: perfil.id, removerFondo });
-  const zooms = crearPlanZoom({ momentos, perfil: perfil.id, sujeto });
-  const animaciones = crearPlanAnimaciones({ elementos: momentos, perfil: perfil.id });
-  const efectos = crearPlanEfectos({ momentos, perfil: perfil.id });
-  const encuadre = crearPlanEncuadreDinamico({ perfil: perfil.id, plataforma: plataformaBase, sujeto, rostro });
 
   const subtitulosPorPlataforma = crearSubtitulosMultiplataforma({ plataformas, segmentos, sujeto, perfil: perfil.id });
   const textosDetectados = detectarTextosRelevantes({ segmentos, perfil: perfil.id });
   const textosPantalla = generarTextosPantalla({ textos: textosDetectados.textos, perfil: perfil.id, plataforma: plataformas[0] || 'tiktok' });
 
   const analisisGeminiFallback = crearAnalisisTranscripcionFallback({ transcripcion: { segmentos }, perfil: perfil.id });
-  const gemini = crearPaqueteGeminiEdicion({ proyecto, perfil, transcripcion: { segmentos }, analisis: analisisGeminiFallback, plataformas });
+  const paqueteGemini = crearPaqueteGeminiEdicion({ proyecto, perfil, transcripcion: { segmentos }, analisis: analisisGeminiFallback, plataformas, opciones });
+  const gemini = await ejecutarPaqueteGeminiEdicion({ paquete: paqueteGemini, opciones });
+  const momentos = obtenerMomentosGemini(gemini, momentosFallback);
+
+  const zooms = crearPlanZoom({ momentos, perfil: perfil.id, sujeto });
+  const animaciones = crearPlanAnimaciones({ elementos: momentos, perfil: perfil.id });
+  const efectos = crearPlanEfectos({ momentos, perfil: perfil.id });
+  const encuadre = crearPlanEncuadreDinamico({ perfil: perfil.id, plataforma: plataformaBase, sujeto, rostro });
   const reglasAprendizaje = await obtenerReglasAplicables({ perfil: perfil.id, texto: segmentos.map((seg) => seg.texto || seg.text).join(' ') });
 
   const planProduccion = crearPlanProduccion({
@@ -99,12 +103,13 @@ export async function crearIntegracionModularAutoVideoJeff({ entrada = {}, enten
     graficos: [],
     tablas: [],
     visual: { fondo, zooms, efectos, animaciones, encuadre, zonasSeguras },
-    audio: planAudio
+    audio: planAudio,
+    gemini
   });
 
   return {
     ok: true,
-    version: '1.0.0',
+    version: '1.1.0',
     proyecto,
     perfil,
     plataformas,
@@ -117,7 +122,7 @@ export async function crearIntegracionModularAutoVideoJeff({ entrada = {}, enten
     gemini,
     produccion: planProduccion,
     aprendizaje: { reglasAplicables: reglasAprendizaje },
-    estado: 'MODULOS_CONECTADOS',
+    estado: gemini.estado || 'MODULOS_CONECTADOS',
     creadoEn: new Date().toISOString()
   };
 }
