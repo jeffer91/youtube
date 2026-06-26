@@ -26,8 +26,6 @@ function prepararElectronSeguro() {
   electronApp.disableHardwareAcceleration();
   electronApp.commandLine.appendSwitch('disable-gpu');
   electronApp.commandLine.appendSwitch('disable-gpu-compositing');
-  electronApp.commandLine.appendSwitch('disable-software-rasterizer');
-  electronApp.commandLine.appendSwitch('no-sandbox');
 }
 
 prepararElectronSeguro();
