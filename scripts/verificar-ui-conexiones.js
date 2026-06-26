@@ -1,6 +1,6 @@
 import fs from 'fs';
 import path from 'path';
-import { fileURLToPath } from 'url';
+import { fileURLToPath, pathToFileURL } from 'url';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -93,7 +93,7 @@ function verificarPackage() {
   };
 }
 
-function main() {
+export function verificarUiConexiones() {
   const resultados = [
     { nombre: 'ids-ui', ...verificarIds() },
     { nombre: 'motor-salida', ...verificarConexionMotorSalida() },
@@ -104,8 +104,21 @@ function main() {
   const ok = resultados.every((item) => item.ok);
   const errores = resultados.filter((item) => !item.ok).map((item) => `${item.nombre}: ${item.mensaje}`);
 
-  console.log(JSON.stringify({ ok, etapa: 'verificacion-ui-conexiones', mensaje: ok ? 'Variables, botones y conexiones principales verificados.' : 'Hay errores en variables, botones o conexiones.', resultados, errores }, null, 2));
-  process.exit(ok ? 0 : 1);
+  return {
+    ok,
+    etapa: 'verificacion-ui-conexiones',
+    mensaje: ok ? 'Variables, botones y conexiones principales verificados.' : 'Hay errores en variables, botones o conexiones.',
+    resultados,
+    errores
+  };
 }
 
-main();
+function esEjecucionDirecta() {
+  return import.meta.url === pathToFileURL(process.argv[1] || '').href;
+}
+
+if (esEjecucionDirecta()) {
+  const resultado = verificarUiConexiones();
+  console.log(JSON.stringify(resultado, null, 2));
+  process.exit(resultado.ok ? 0 : 1);
+}
