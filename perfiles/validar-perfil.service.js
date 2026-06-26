@@ -12,6 +12,7 @@ export function validarPerfil(perfilId) {
   const validacion = validarPerfilModelo(perfil);
   return {
     ok: validacion.ok,
+    perfilId: perfil.id,
     perfil,
     errores: validacion.errores
   };
@@ -19,8 +20,8 @@ export function validarPerfil(perfilId) {
 
 export function validarTodosLosPerfiles() {
   const perfiles = listarPerfiles();
-  const resultados = perfiles.map((perfil) => ({ perfil: perfil.id, ...validarPerfil(perfil.id) }));
-  const errores = resultados.flatMap((resultado) => resultado.errores.map((error) => `${resultado.perfil}: ${error}`));
+  const resultados = perfiles.map((perfil) => validarPerfil(perfil.id));
+  const errores = resultados.flatMap((resultado) => resultado.errores.map((error) => `${resultado.perfilId}: ${error}`));
   return {
     ok: errores.length === 0 && perfiles.length === obtenerIdsPerfiles().length,
     total: perfiles.length,
