@@ -32,6 +32,7 @@
     "check:menu-compacto-ui": "node scripts/verificar-menu-compacto-ui.js",
     "check:opcion-a-pantallas-ui": "node scripts/verificar-opcion-a-pantallas-ui.js",
     "check:nuevo-proyecto-ui": "node scripts/verificar-nuevo-proyecto-ui.js",
+    "check:funcionamiento-completo-autovideo": "node scripts/verificar-funcionamiento-completo-autovideo.js",
     "check:configuracion-proyecto-ui": "node scripts/verificar-configuracion-proyecto-ui.js",
     "check:historial-proyectos-ui": "node scripts/verificar-historial-proyectos-ui.js",
     "check:produccion-revision-ui": "node scripts/verificar-produccion-revision-ui.js",
