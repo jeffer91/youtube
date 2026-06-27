@@ -1,9 +1,10 @@
 /*
-  Bloque 10: Optimización y seguridad del motor de efectos
-  Función: generar un plan de efectos con Gemini/local y optimizarlo antes del render.
+  Bloque 13: Aprendizaje de efectos por perfil
+  Función: generar un plan con Gemini/local, aplicar memoria por perfil y optimizar antes del render.
 */
 
 import { analizarContextoVideoEfectos } from '../analisis/index.js';
+import { aplicarAprendizajeEfectos } from '../aprendizaje/index.js';
 import { optimizarPlanEfectos } from '../optimizador/index.js';
 import { seleccionarEfectosLocal } from './seleccionar-efectos-local.service.js';
 import { seleccionarEfectosGemini } from './seleccionar-efectos-gemini.service.js';
@@ -28,7 +29,8 @@ export async function planificarEfectos({ entrada = null, entendimiento = null, 
   const contexto = analizarContextoVideoEfectos({ entrada, entendimiento, transcripcion, edicionDinamica, opciones });
   const maxEfectos = numero(opciones?.maxEfectosVisuales || opciones?.maxEfectos || contexto?.perfil?.maxEfectosPorVideo, contexto?.perfil?.maxEfectosPorVideo || 12);
   const { seleccion, fallbackLocal, intentoGemini } = await seleccionarPlanBase(contexto, { opciones, maxEfectos });
-  const optimizado = optimizarPlanEfectos(seleccion, contexto, { maxEfectos });
+  const aprendido = await aplicarAprendizajeEfectos(seleccion, contexto, { ...opciones, maxEfectosVisuales: maxEfectos });
+  const optimizado = optimizarPlanEfectos(aprendido, contexto, { maxEfectos });
   const validacion = validarPlanEfectos(optimizado, { duracionVideo: contexto.duracionSegundos, maxEfectos });
   const origen = seleccion?.origen || 'local';
 
@@ -37,6 +39,9 @@ export async function planificarEfectos({ entrada = null, entendimiento = null, 
     tipo: origen === 'gemini' ? 'plan-efectos-gemini' : 'plan-efectos-local',
     origen,
     fallbackLocal,
+    aprendizajeAplicado: Boolean(aprendido?.aprendizajeAplicado),
+    memoriaPerfil: aprendido?.memoriaPerfil || contexto?.perfil?.id || 'general',
+    favoritosAprendidos: aprendido?.totalFavoritosAgregados || 0,
     optimizado: true,
     intentoGemini: intentoGemini ? { ok: intentoGemini.ok, omitido: intentoGemini.omitido, motivo: intentoGemini.motivo || null, total: intentoGemini.total || 0 } : null,
     perfil: contexto.perfil,
@@ -46,11 +51,11 @@ export async function planificarEfectos({ entrada = null, entendimiento = null, 
     contexto,
     efectos: validacion.efectos,
     total: validacion.totalValido,
-    totalAntesOptimizar: optimizado.totalEntrada || seleccion?.efectos?.length || 0,
+    totalAntesOptimizar: optimizado.totalEntrada || aprendido?.efectos?.length || seleccion?.efectos?.length || 0,
     reglasOptimizacion: optimizado.reglas || null,
     advertencias: [...(optimizado?.advertencias || []), ...validacion.advertencias],
     errores: validacion.errores,
-    mensaje: validacion.ok ? `Plan ${origen} optimizado con ${validacion.totalValido} efectos.` : `Plan ${origen} con errores.`,
+    mensaje: validacion.ok ? `Plan ${origen} optimizado con aprendizaje y ${validacion.totalValido} efectos.` : `Plan ${origen} con errores.`,
     creadoEn: new Date().toISOString()
   };
 }
