@@ -5,6 +5,7 @@ import { procesarTranscripcion } from '../transcripcion/transcripcion.conexion.j
 import { procesarEdicionDinamica } from '../editar/edicion-dinamica/edicion-dinamica.conexion.js';
 import { editarVideo } from '../editar/editar.conexion.js';
 import { prepararSalida } from '../salida/salida.conexion.js';
+import { crearReporteFinalEdicion } from '../salida/reporte-final/reporte-final.service.js';
 import { renderizarPlataformasPendientes } from '../exportacion/exportacion.conexion.js';
 import { crearIntegracionModularAutoVideoJeff } from './flujo-modular-autovideo.service.js';
 
@@ -30,6 +31,16 @@ function normalizarOpciones(opciones = {}) {
 
 async function reportarProgreso(progreso, evento) { if (typeof progreso !== 'function') return null; try { return await progreso(evento); } catch (error) { console.warn('[progreso] No se pudo reportar evento:', error.message); return null; } }
 
+async function crearReporteFinalCompletoSeguro({ entrada, entendimiento, audio, transcripcion, edicion, salida, modular, opciones, progreso }) {
+  try {
+    await reportarProgreso(progreso, { etapa: 'reporte-final', porcentaje: 99, titulo: 'Creando reporte final', detalle: 'Consolidando efectos, textos, imágenes, animaciones, audio y diagnóstico.' });
+    return await crearReporteFinalEdicion({ entrada, entendimiento, audio, transcripcion, edicion, salida, modular, opciones });
+  } catch (error) {
+    console.warn('[reporte-final] No se pudo crear el reporte final completo:', error.message);
+    return { ok: false, mensaje: error.message, nombreArchivo: null, reporte: null };
+  }
+}
+
 function crearMensajeFinal({ salida, audio, edicion, transcripcion, edicionDinamica, modular }) {
   const modo = edicion?.modo || salida?.modo || MODO_VIDEO_PREDETERMINADO;
   const audioUsado = salida?.audio?.tipo || audio?.tipo || 'original';
@@ -39,6 +50,7 @@ function crearMensajeFinal({ salida, audio, edicion, transcripcion, edicionDinam
   partes.push(audioUsado === 'sonidos-edicion' ? 'con efectos de sonido' : audioUsado === 'mejorado' ? 'con audio mejorado' : 'con audio procesado');
   if (capas?.usarSubtitulos || edicion?.transcripcion?.capasAplicadas) partes.push('subtítulos/textos');
   if (transcripcion?.titulosGanchos && !transcripcion.titulosGanchos.omitido) partes.push('títulos/ganchos');
+  if (salida?.reporteFinal?.ok) partes.push('reporte final');
   if (salida?.antesDespues?.ok) partes.push('antes/después');
   if (modular?.resultadoPlataformas?.total) partes.push(`${modular.resultadoPlataformas.exportadas || 0}/${modular.resultadoPlataformas.total} plataforma(s) exportadas`);
   return `${partes.join(', ')}.`;
@@ -105,13 +117,16 @@ export async function ejecutarFlujoPrincipal(solicitud) {
       etapaActual = 'exportacion-plataformas';
       await reportarProgreso(progreso, { etapa: 'exportacion-plataformas', porcentaje: 94, titulo: 'Exportando plataformas', detalle: 'Preparando versiones por red social.' });
       const resultadoPlataformas = await renderizarPlataformasPendientes({ proyecto: entrada.proyecto, salida, opciones });
-      modular = crearIntegracionModularAutoVideoJeff({ entrada, entendimiento, audio, transcripcion, edicionDinamica, edicion, salida, resultadoPlataformas, opciones, historial });
+      modular = await crearIntegracionModularAutoVideoJeff({ entrada, entendimiento, audio, transcripcion, edicionDinamica, edicion, salida, resultadoPlataformas, opciones, historial });
     } else {
-      modular = crearIntegracionModularAutoVideoJeff({ entrada, entendimiento, audio, transcripcion, edicionDinamica, edicion, salida, resultadoPlataformas: null, opciones, historial });
+      modular = await crearIntegracionModularAutoVideoJeff({ entrada, entendimiento, audio, transcripcion, edicionDinamica, edicion, salida, resultadoPlataformas: null, opciones, historial });
     }
 
+    etapaActual = 'reporte-final';
+    salida.reporteFinal = await crearReporteFinalCompletoSeguro({ entrada, entendimiento, audio, transcripcion, edicion, salida, modular, opciones, progreso });
+
     const mensaje = crearMensajeFinal({ salida, audio, edicion, transcripcion, edicionDinamica, modular });
-    await reportarProgreso(progreso, { etapa: 'finalizado', porcentaje: 100, titulo: 'Video listo', detalle: mensaje, estado: 'finalizado', datos: { urlPublica: salida.urlPublica || null, plataformas: modular?.resultadoPlataformas || null } });
+    await reportarProgreso(progreso, { etapa: 'finalizado', porcentaje: 100, titulo: 'Video listo', detalle: mensaje, estado: 'finalizado', datos: { urlPublica: salida.urlPublica || null, plataformas: modular?.resultadoPlataformas || null, reporteFinal: salida.reporteFinal?.nombreArchivo || null } });
     return { ok: true, mensaje, etapa: 'finalizado', historial, entrada, entendimiento, audio, transcripcion, edicionDinamica, edicion, resultado: salida, modular };
   } catch (error) {
     const mensaje = `[flujo-principal:${etapaActual}] ${error.message}`;
