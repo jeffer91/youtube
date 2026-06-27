@@ -18,9 +18,22 @@ export function renderEntendimientoView() {
         <button id="entendimientoCargarBtn" class="secondary-button" type="button">Cargar entendimiento</button>
         <button id="entendimientoProcesarBtn" class="primary-button" type="button">Procesar entendimiento</button>
         <button id="entendimientoDiagnosticarMotoresBtn" class="secondary-button" type="button">Diagnosticar motores</button>
+        <button id="entendimientoInstalarMotoresBtn" class="secondary-button" type="button">Guía instalación</button>
       </div>
 
       <section id="entendimientoMensaje" class="entendimiento-message" hidden></section>
+
+      <section id="entendimientoInstalacionMotores" class="entendimiento-instalacion-motores" hidden>
+        <header>
+          <div>
+            <p class="eyebrow">Instalación guiada</p>
+            <h3>Modelos gratuitos/locales</h3>
+          </div>
+          <span id="entendimientoInstalacionMotoresEstado">Pendiente</span>
+        </header>
+        <div id="entendimientoInstalacionMotoresResumen" class="entendimiento-instalacion-resumen">Abre la guía para ver los pasos de instalación gratuitos.</div>
+        <div id="entendimientoInstalacionMotoresLista" class="entendimiento-instalacion-lista"></div>
+      </section>
 
       <section id="entendimientoDiagnosticoMotores" class="entendimiento-diagnostico-motores" hidden>
         <header>
