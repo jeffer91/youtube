@@ -2,6 +2,7 @@ import { spawnSync } from 'child_process';
 
 const SCRIPTS = Object.freeze([
   'scripts/verificar-catalogo-efectos.js',
+  'scripts/verificar-presets-efectos.js',
   'scripts/verificar-aprendizaje-efectos.js',
   'scripts/verificar-optimizador-efectos.js',
   'scripts/verificar-planificador-efectos.js',
@@ -13,7 +14,7 @@ const SCRIPTS = Object.freeze([
 
 function ejecutar(script) {
   const resultado = spawnSync(process.execPath, [script], { stdio: 'inherit', shell: false });
-  if (resultado.status !== 0) throw new Error(`Fallo ${script}`);
+  if (resultado.status !== 0) throw new Error(`Error en ${script}`);
 }
 
 try {
