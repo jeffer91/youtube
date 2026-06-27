@@ -14,8 +14,10 @@ import { inicializarHistorialProyectosUI, recargarHistorialProyectosUI } from '.
 import { inicializarProduccionRevisionUI, guardarUltimaProduccion } from './produccion-revision-ui.js';
 import { inicializarBibliotecaUI } from './biblioteca-ui.js';
 import { inicializarEfectosUI, obtenerOpcionesEfectos, bloquearControlesEfectos } from './efectos-ui.js';
+import { cambiarPantalla } from './navegacion/navegacion.service.js';
 
 const PANTALLA_PROCESADOR = 'nuevo-proyecto';
+const PANTALLA_PRODUCCION = 'produccion';
 
 const elementos = {
   serverStatus: document.getElementById('serverStatus'),
@@ -98,13 +100,17 @@ function limpiarVideo(video) {
   video.load();
 }
 
-function reiniciarResultado() {
-  elementos.resultPanel.hidden = true;
-  limpiarVideo(elementos.resultVideo);
+function limpiarComparacionNuevoProyecto() {
   limpiarVideo(elementos.beforeVideo);
   limpiarVideo(elementos.afterVideo);
   elementos.beforeAfterPanel.hidden = true;
   elementos.beforeAfterSummary.textContent = '';
+}
+
+function reiniciarResultado() {
+  elementos.resultPanel.hidden = true;
+  limpiarVideo(elementos.resultVideo);
+  limpiarComparacionNuevoProyecto();
   elementos.downloadLink.hidden = true;
   elementos.downloadLink.removeAttribute('href');
   elementos.editingSummary.hidden = true;
@@ -168,6 +174,17 @@ async function crearUrlPublica(ruta) {
   const base = await obtenerBaseApi();
   const rutaNormalizada = ruta.startsWith('/') ? ruta : `/${ruta}`;
   return `${base}${rutaNormalizada}`;
+}
+
+function navegarAProduccionDespuesDeProcesar() {
+  const contenedorMenu = document.getElementById('mainNavigation');
+  const contenedorVista = document.getElementById('pantallaDinamica');
+  if (!contenedorMenu || !contenedorVista) return false;
+  cambiarPantalla({ pantallaId: PANTALLA_PRODUCCION, contenedorMenu, contenedorVista });
+  setTimeout(() => {
+    document.getElementById('productionReviewStatus')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }, 80);
+  return true;
 }
 
 async function leerRespuestaJsonSegura(respuesta) {
@@ -246,19 +263,6 @@ async function iniciarProgresoReal(jobId) {
   actualizarProgresoReal({ titulo: 'Trabajo creado', detalle: 'Conectando barra de progreso real.', porcentaje: 1, estado: 'procesando', etapa: 'inicio' });
 }
 
-async function mostrarAntesDespues(antesDespues, urlExportada) {
-  const urlAntes = await crearUrlPublica(antesDespues?.original?.copiaVista?.urlPublica || antesDespues?.original?.urlPublica || '');
-  const urlDespues = await crearUrlPublica(antesDespues?.final?.urlPublica || urlExportada || '');
-  if (!urlAntes || !urlDespues) return;
-
-  elementos.beforeAfterPanel.hidden = false;
-  elementos.beforeAfterSummary.textContent = antesDespues?.resumen || 'Comparación generada correctamente.';
-  elementos.beforeVideo.hidden = false;
-  elementos.beforeVideo.src = urlAntes;
-  elementos.afterVideo.hidden = false;
-  elementos.afterVideo.src = urlDespues;
-}
-
 async function normalizarUrlsPlataformas(datos) {
   const resultadoPlataformas = datos.resultadoPlataformas || datos.modular?.resultadoPlataformas;
   if (!resultadoPlataformas?.resultados) return datos;
@@ -289,7 +293,8 @@ async function mostrarResultado(datosEntrada) {
     elementos.downloadLink.hidden = false;
     elementos.downloadLink.href = urlExportada;
   }
-  await mostrarAntesDespues(datos.resultado?.antesDespues, urlExportada);
+  limpiarComparacionNuevoProyecto();
+  return datos;
 }
 
 function construirErrorParaModal(datos, respaldoMensaje) {
@@ -325,10 +330,11 @@ async function procesarFormulario(evento) {
       throw new Error(mensaje);
     }
 
-    actualizarProgresoReal({ titulo: 'Video listo', detalle: datos.mensaje || 'Proceso completado correctamente.', porcentaje: 100, estado: 'finalizado', etapa: 'finalizado' });
+    actualizarProgresoReal({ titulo: 'Video listo', detalle: datos.mensaje || 'Proceso completado correctamente. Abriendo Producción.', porcentaje: 100, estado: 'finalizado', etapa: 'finalizado' });
     await mostrarResultado(datos);
     await recargarHistorialProyectosUI({ crearUrlApi });
-    mostrarMensaje(datos.mensaje || 'Proceso completado correctamente.', 'ok');
+    mostrarMensaje(datos.mensaje || 'Proceso completado correctamente. Revisa la línea de tiempo en Producción.', 'ok');
+    navegarAProduccionDespuesDeProcesar();
   } catch (error) {
     mostrarMensaje(error.message || 'Ocurrió un error al procesar el video.', 'error');
     if (!modalErrorMostrado) {
