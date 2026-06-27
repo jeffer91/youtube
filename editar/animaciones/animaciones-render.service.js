@@ -1,6 +1,6 @@
 /*
   Motor de animaciones renderizadas
-  Función: agregar animaciones visibles al filtro FFmpeg final, no solo al plan de Producción.
+  Función: agregar animaciones visibles al filtro FFmpeg final: zoom in, zoom out, impacto/explosión, barridos y transiciones.
 */
 
 function numero(valor, respaldo = 0) {
@@ -26,6 +26,10 @@ function construirEnable(inicio, fin) {
   return `enable='between(t\,${numero(inicio, 0).toFixed(3)}\,${numero(fin, inicio + 1).toFixed(3)})'`;
 }
 
+function exprBetween(inicio, fin) {
+  return `between(t\\,${inicio.toFixed(3)}\\,${fin.toFixed(3)})`;
+}
+
 function obtenerDuracion(entendimiento = {}, edicionDinamica = {}) {
   return numero(edicionDinamica?.mapaTiempo?.duracionEditada || edicionDinamica?.cortes?.resumen?.duracionEditada || entendimiento?.analisis?.duracionSegundos, 0);
 }
@@ -43,48 +47,79 @@ function extraerMomentos(transcripcion = {}, duracion = 0) {
     }))
     .filter((item) => item.inicio < item.fin);
 
-  if (fuente.length) return fuente.slice(0, 8);
+  if (fuente.length) return fuente.slice(0, 10);
   const base = duracion > 0 ? duracion : 30;
   return [
-    { id: 'gancho-inicial', inicio: 0.25, fin: Math.min(2.1, base), texto: 'gancho inicial' },
-    { id: 'refuerzo-1', inicio: Math.min(base * 0.22, base - 2), fin: Math.min(base * 0.22 + 1.4, base), texto: 'refuerzo visual' },
-    { id: 'refuerzo-2', inicio: Math.min(base * 0.50, base - 2), fin: Math.min(base * 0.50 + 1.4, base), texto: 'momento clave' },
+    { id: 'gancho-inicial', inicio: 0.20, fin: Math.min(2.0, base), texto: 'zoom gancho inicial' },
+    { id: 'transicion-1', inicio: Math.min(base * 0.18, base - 2), fin: Math.min(base * 0.18 + 1.1, base), texto: 'transición visual' },
+    { id: 'impacto-1', inicio: Math.min(base * 0.34, base - 2), fin: Math.min(base * 0.34 + 1.0, base), texto: 'impacto divertido' },
+    { id: 'zoom-out', inicio: Math.min(base * 0.52, base - 2), fin: Math.min(base * 0.52 + 1.3, base), texto: 'zoom out' },
+    { id: 'transicion-2', inicio: Math.min(base * 0.70, base - 2), fin: Math.min(base * 0.70 + 1.1, base), texto: 'corte visual' },
     { id: 'cierre', inicio: Math.max(0, base - 3.2), fin: Math.max(1, base - 1.0), texto: 'cierre visual' }
   ];
 }
 
 function elegirIntensidad(opciones = {}) {
-  const valor = String(opciones.intensidadAnimaciones || opciones.intensidadEfectos || opciones.intensidadEdicion || 'normal').toLowerCase();
-  if (['fuerte', 'alta', 'muy_dinamica', 'dinamica'].includes(valor)) return 'fuerte';
+  const valor = String(opciones.intensidadAnimaciones || opciones.intensidadEfectos || opciones.intensidadEdicion || 'fuerte').toLowerCase();
   if (['suave', 'baja', 'limpia'].includes(valor)) return 'suave';
-  return 'normal';
+  if (['normal', 'media', 'equilibrada', 'automatica'].includes(valor)) return 'normal';
+  return 'fuerte';
+}
+
+function expresionZoom(inicio, fin, tipo, fuerza) {
+  const duracion = Math.max(0.35, fin - inicio).toFixed(3);
+  const activo = exprBetween(inicio, fin);
+  if (tipo === 'zoom_out') return `if(${activo}\,1+${fuerza.toFixed(3)}*(1-((t-${inicio.toFixed(3)})/${duracion}))\,1)`;
+  if (tipo === 'explosion_pop') return `if(${activo}\,1+${fuerza.toFixed(3)}*sin(((t-${inicio.toFixed(3)})/${duracion})*PI)\,1)`;
+  return `if(${activo}\,1+${fuerza.toFixed(3)}*((t-${inicio.toFixed(3)})/${duracion})\,1)`;
+}
+
+function filtroZoomAnimado({ inicio, fin, tipo, width, height, fuerza }) {
+  const w = Math.round(width || 1080);
+  const h = Math.round(height || 1920);
+  const zoom = expresionZoom(inicio, fin, tipo, fuerza);
+  return `scale=w='${w}*${zoom}':h='${h}*${zoom}':eval=frame,crop=${w}:${h}:(iw-ow)/2:(ih-oh)/2`;
+}
+
+function filtroFlashExplosion({ inicio, fin, alpha }) {
+  return `drawbox=x=0:y=0:w=iw:h=ih:color=white@${alpha.toFixed(2)}:t=fill:${construirEnable(inicio, Math.min(fin, inicio + 0.24))}`;
+}
+
+function filtroBarrido({ inicio, fin, alpha }) {
+  return `drawbox=x='-iw*0.35+(t-${inicio.toFixed(3)})*iw*0.95':y=0:w=iw*0.30:h=ih:color=white@${alpha.toFixed(2)}:t=fill:${construirEnable(inicio, fin)}`;
+}
+
+function filtroCorteFlash({ inicio, alpha }) {
+  const fin = inicio + 0.18;
+  return `drawbox=x=0:y=0:w=iw:h=ih:color=white@${alpha.toFixed(2)}:t=fill:${construirEnable(inicio, fin)}`;
+}
+
+function filtroBordeImpacto({ inicio, fin, alpha, grosor }) {
+  return `drawbox=x=22:y=22:w=iw-44:h=ih-44:color=white@${alpha.toFixed(2)}:t=${grosor}:${construirEnable(inicio, fin)}`;
 }
 
 function crearAnimacionDesdeMomento(momento, indice, contexto) {
-  const duracion = Math.max(0.7, Math.min(1.8, numero(momento.fin, momento.inicio + 1.2) - numero(momento.inicio, 0)));
+  const duracion = Math.max(0.75, Math.min(1.55, numero(momento.fin, momento.inicio + 1.2) - numero(momento.inicio, 0)));
   const inicio = Math.max(0, numero(momento.inicio, indice * 4));
   const fin = inicio + duracion;
   const intensidad = contexto.intensidad;
-  const alpha = intensidad === 'fuerte' ? 0.30 : intensidad === 'suave' ? 0.16 : 0.22;
-  const grosor = intensidad === 'fuerte' ? 10 : intensidad === 'suave' ? 4 : 7;
-  const tipo = ['barrido_lateral', 'pulso_borde', 'flash_gancho', 'barra_inferior', 'acento_superior'][indice % 5];
-  let filtro = '';
+  const alpha = intensidad === 'fuerte' ? 0.34 : intensidad === 'suave' ? 0.17 : 0.25;
+  const fuerzaZoom = intensidad === 'fuerte' ? 0.13 : intensidad === 'suave' ? 0.055 : 0.085;
+  const grosor = intensidad === 'fuerte' ? 12 : intensidad === 'suave' ? 5 : 8;
+  const secuencia = ['zoom_in', 'corte_flash', 'explosion_pop', 'zoom_out', 'barrido_transicion', 'pulso_borde'];
+  const tipo = secuencia[indice % secuencia.length];
+  const filtros = [];
 
-  if (tipo === 'barrido_lateral') {
-    filtro = `drawbox=x='-iw*0.28+(t-${inicio.toFixed(3)})*iw*0.72':y=ih*0.18:w=iw*0.22:h=ih*0.64:color=white@${alpha.toFixed(2)}:t=fill:${construirEnable(inicio, fin)}`;
+  if (tipo === 'zoom_in') filtros.push(filtroZoomAnimado({ inicio, fin, tipo, width: contexto.width, height: contexto.height, fuerza: fuerzaZoom }));
+  if (tipo === 'zoom_out') filtros.push(filtroZoomAnimado({ inicio, fin, tipo, width: contexto.width, height: contexto.height, fuerza: fuerzaZoom }));
+  if (tipo === 'explosion_pop') {
+    filtros.push(filtroZoomAnimado({ inicio, fin, tipo, width: contexto.width, height: contexto.height, fuerza: fuerzaZoom * 1.35 }));
+    filtros.push(filtroFlashExplosion({ inicio, fin, alpha: alpha * 0.65 }));
+    filtros.push(filtroBordeImpacto({ inicio, fin: Math.min(fin, inicio + 0.55), alpha, grosor }));
   }
-  if (tipo === 'pulso_borde') {
-    filtro = `drawbox=x=24:y=24:w=iw-48:h=ih-48:color=white@${alpha.toFixed(2)}:t=${grosor}:${construirEnable(inicio, fin)}`;
-  }
-  if (tipo === 'flash_gancho') {
-    filtro = `drawbox=x=0:y=0:w=iw:h=ih:color=white@${(alpha * 0.55).toFixed(2)}:t=fill:${construirEnable(inicio, Math.min(fin, inicio + 0.42))}`;
-  }
-  if (tipo === 'barra_inferior') {
-    filtro = `drawbox=x='iw*0.08':y='ih*0.82':w='iw*0.84':h=18:color=white@${alpha.toFixed(2)}:t=fill:${construirEnable(inicio, fin)}`;
-  }
-  if (tipo === 'acento_superior') {
-    filtro = `drawbox=x='iw*0.08+(t-${inicio.toFixed(3)})*80':y='ih*0.10':w='iw*0.42':h=14:color=white@${alpha.toFixed(2)}:t=fill:${construirEnable(inicio, fin)}`;
-  }
+  if (tipo === 'barrido_transicion') filtros.push(filtroBarrido({ inicio, fin, alpha: alpha * 0.75 }));
+  if (tipo === 'corte_flash') filtros.push(filtroCorteFlash({ inicio, alpha: alpha * 0.65 }));
+  if (tipo === 'pulso_borde') filtros.push(filtroBordeImpacto({ inicio, fin, alpha, grosor }));
 
   return {
     id: `render-animacion-${indice + 1}`,
@@ -94,7 +129,8 @@ function crearAnimacionDesdeMomento(momento, indice, contexto) {
     intensidad,
     momentoId: momento.id || null,
     texto: momento.texto || '',
-    filtro
+    filtros,
+    filtro: filtros.join(',')
   };
 }
 
@@ -107,15 +143,16 @@ export function aplicarAnimacionesRender({ filtroBase = '', entendimiento = {}, 
   const duracion = obtenerDuracion(entendimiento, edicionDinamica) || 30;
   const intensidad = elegirIntensidad(opciones);
   const momentos = extraerMomentos(transcripcion, duracion);
-  const cantidadMaxima = Math.round(limitar(numero(opciones.maxAnimacionesVisuales, intensidad === 'fuerte' ? 8 : 6), 3, 10));
-  const animaciones = momentos.slice(0, cantidadMaxima).map((momento, indice) => crearAnimacionDesdeMomento(momento, indice, { intensidad, width: salida.width || 1080, height: salida.height || 1920 })).filter((item) => item.filtro);
+  const cantidadMaxima = Math.round(limitar(numero(opciones.maxAnimacionesVisuales, intensidad === 'fuerte' ? 9 : 7), 4, 12));
+  const contexto = { intensidad, width: salida.width || 1080, height: salida.height || 1920 };
+  const animaciones = momentos.slice(0, cantidadMaxima).map((momento, indice) => crearAnimacionDesdeMomento(momento, indice, contexto)).filter((item) => item.filtro);
 
-  const filtrosAnimacion = animaciones.map((item) => item.filtro);
+  const filtrosAnimacion = animaciones.flatMap((item) => item.filtros || [item.filtro]).filter(Boolean);
   const filtroVideo = [filtroBase, ...filtrosAnimacion].filter(Boolean).join(',');
   return {
     ok: true,
     omitido: animaciones.length === 0,
-    mensaje: animaciones.length ? `${animaciones.length} animación(es) renderizadas en el video final.` : 'No se generaron animaciones renderizables.',
+    mensaje: animaciones.length ? `${animaciones.length} animación(es) visibles: zoom in/out, explosión, barridos y transiciones.` : 'No se generaron animaciones renderizables.',
     filtroVideo,
     filtroBase,
     animaciones,
