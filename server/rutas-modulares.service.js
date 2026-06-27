@@ -1,6 +1,6 @@
 /*
-  Bloque 21
-  Funcion: registrar rutas API para modulos, diagnostico fuerte, auditoria integral y reintento.
+  Bloque 11
+  Funcion: registrar rutas API para modulos, diagnostico, auditoria, reintento y efectos.
 */
 
 import { listarPerfiles, obtenerPerfil } from '../perfiles/perfiles.conexion.js';
@@ -14,6 +14,8 @@ import { GEMINI_CONFIG } from '../gemini/gemini.conexion.js';
 import { crearDiagnosticoFuerte } from '../diagnostico/diagnostico-fuerte.service.js';
 import { crearAuditoriaIntegral } from '../diagnostico/auditoria-integral.service.js';
 import { crearPlanReintento } from '../diagnostico/reintento-etapa.service.js';
+import { listarEfectosCatalogo, listarPerfilesEfectos, TOTAL_EFECTOS_CATALOGO } from '../editar/efectos/catalogo/index.js';
+import { previsualizarEfectos } from '../editar/efectos/previsualizacion/index.js';
 
 function responderOk(res, datos = {}) { return res.json({ ok: true, ...datos, fecha: new Date().toISOString() }); }
 function responderError(res, error, codigo = 500) { return res.status(codigo).json({ ok: false, mensaje: error?.message || 'Error en rutas modulares.', fecha: new Date().toISOString() }); }
@@ -22,7 +24,7 @@ function normalizarProyectoSimple(datos = {}) { return { nombre: datos.nombre ||
 export function registrarRutasModulares(app, opciones = {}) {
   const aplicarCabeceras = opciones.aplicarCabecerasSinCache || (() => {});
 
-  app.get('/api/autovideo/modulos', (_req, res) => { aplicarCabeceras(res); return responderOk(res, { modulos: ['proyectos', 'perfiles', 'exportacion', 'audio', 'subtitulos', 'textos', 'visual', 'biblioteca', 'gemini', 'produccion', 'aprendizaje', 'diagnostico-fuerte', 'auditoria-integral', 'reintento-etapa'], flujo: ['subida_configuracion', 'procesado', 'produccion', 'resultado_comparativa'], bibliotecaExternaAlFlujo: true }); });
+  app.get('/api/autovideo/modulos', (_req, res) => { aplicarCabeceras(res); return responderOk(res, { modulos: ['proyectos', 'perfiles', 'exportacion', 'audio', 'subtitulos', 'textos', 'visual', 'efectos', 'biblioteca', 'gemini', 'produccion', 'aprendizaje', 'diagnostico-fuerte', 'auditoria-integral', 'reintento-etapa'], flujo: ['subida_configuracion', 'procesado', 'produccion', 'resultado_comparativa'], bibliotecaExternaAlFlujo: true }); });
   app.get('/api/autovideo/diagnostico/fuerte', async (_req, res) => { try { aplicarCabeceras(res); const diagnostico = await crearDiagnosticoFuerte({ guardarReporte: true }); return responderOk(res, { diagnostico }); } catch (error) { return responderError(res, error, 500); } });
   app.get('/api/autovideo/diagnostico/auditoria-integral', async (_req, res) => { try { aplicarCabeceras(res); const auditoria = await crearAuditoriaIntegral({ guardarReporte: true }); return responderOk(res, { auditoria }); } catch (error) { return responderError(res, error, 500); } });
   app.post('/api/autovideo/reintento/plan', (req, res) => { try { aplicarCabeceras(res); return responderOk(res, { reintento: crearPlanReintento(req.body || {}) }); } catch (error) { return responderError(res, error, 400); } });
@@ -30,6 +32,9 @@ export function registrarRutasModulares(app, opciones = {}) {
   app.get('/api/autovideo/perfiles', (_req, res) => { aplicarCabeceras(res); return responderOk(res, { perfiles: listarPerfiles() }); });
   app.get('/api/autovideo/perfiles/:perfilId', (req, res) => { aplicarCabeceras(res); return responderOk(res, { perfil: obtenerPerfil(req.params.perfilId) }); });
   app.get('/api/autovideo/plataformas', (_req, res) => { aplicarCabeceras(res); const plataformas = obtenerIdsPlataformas().map((id) => obtenerPlataformaExportacion(id)); return responderOk(res, { plataformas }); });
+
+  app.get('/api/autovideo/efectos/catalogo', (_req, res) => { aplicarCabeceras(res); return responderOk(res, { total: TOTAL_EFECTOS_CATALOGO, perfiles: listarPerfilesEfectos(), efectos: listarEfectosCatalogo() }); });
+  app.post('/api/autovideo/efectos/previsualizar', async (req, res) => { try { aplicarCabeceras(res); const previsualizacion = await previsualizarEfectos(req.body || {}); return responderOk(res, { previsualizacion }); } catch (error) { return responderError(res, error, 400); } });
 
   app.post('/api/autovideo/exportaciones/preparar', (req, res) => { try { aplicarCabeceras(res); const proyecto = req.body?.proyecto || req.body || {}; return responderOk(res, { exportaciones: prepararExportaciones(proyecto) }); } catch (error) { return responderError(res, error, 400); } });
   app.get('/api/autovideo/proyectos', async (_req, res) => { try { aplicarCabeceras(res); return responderOk(res, { proyectos: await listarProyectos() }); } catch (error) { return responderError(res, error); } });
