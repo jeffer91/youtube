@@ -369,7 +369,7 @@ function iniciarInterfaz() {
   inicializarBibliotecaUI({ crearUrlApi });
   inicializarGeminiPopup();
   inicializarTranscripcionUI();
-  inicializarEfectosUI();
+  inicializarEfectosUI({ crearUrlApi });
   inicializarModalErrorEdicion();
   aplicarModoAutomaticoVisual();
   registrarEventosProcesador();
