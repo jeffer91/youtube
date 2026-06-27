@@ -65,11 +65,17 @@ function crearEntradaEntendimiento({ proyectoId, estado, video, carpetaProyecto 
 }
 
 function crearResumenEntendimiento(resultado) {
+  const transcripcionesPorMotor = Array.isArray(resultado?.transcripcionesPorMotor) ? resultado.transcripcionesPorMotor : [];
+  const resumenTranscripcion = resultado?.resumenTranscripcion || resultado?.transcripcion?.resumenTranscripcion || null;
+  const motorPrincipal = resultado?.resumen?.motorTranscripcionPrincipal || resultado?.transcripcionPrincipal?.motor || resultado?.transcripcion?.motor || null;
   return {
     orientacion: resultado?.resumen?.orientacion || resultado?.analisis?.orientacion || 'desconocida',
     duracionSegundos: resultado?.resumen?.duracionSegundos || resultado?.analisis?.duracionSegundos || null,
     tieneAudio: Boolean(resultado?.analisis?.tieneAudio),
     tieneTranscripcionReal: Boolean(resultado?.resumen?.tieneTranscripcionReal),
+    motorTranscripcionPrincipal: motorPrincipal,
+    transcripcionesGeneradas: transcripcionesPorMotor.length,
+    resumenTranscripcion,
     fotogramasExtraidos: resultado?.resumen?.fotogramasExtraidos || 0,
     listoParaEditar: Boolean(resultado?.resumen?.listoParaEditar),
     momentosClave: Array.isArray(resultado?.analisisVideo?.momentosClave) ? resultado.analisisVideo.momentosClave.length : 0,
@@ -106,8 +112,8 @@ export async function procesarEntendimientoProyectoEtapa({ proyectoId, opciones 
         resumenEtapa: resumen
       },
       metadata: {
-        bloque: 6,
-        tipo: 'entendimiento-backend-independiente',
+        bloque: 7,
+        tipo: 'entendimiento-backend-multimotor',
         origen: 'POST /api/proyectos/:proyectoId/entendimiento/procesar'
       }
     });
