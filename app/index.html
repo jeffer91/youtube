@@ -44,29 +44,9 @@
               </div>
             </div>
             <div class="project-config-grid">
-              <label class="select-row" for="profileSelect">
-                <span>Perfil</span>
-                <select id="profileSelect" name="perfil">
-                  <option value="general" selected>General</option>
-                  <option value="11-contra-11">11 contra 11</option>
-                  <option value="jeff-isekai">Jeff Isekai</option>
-                  <option value="creciaula">Creciaula</option>
-                  <option value="institucional">Institucional</option>
-                  <option value="el-don-historia">El Don Historia</option>
-                  <option value="jeff-verso">Jeff Verso</option>
-                </select>
-              </label>
-              <label class="select-row" for="editModeSelect">
-                <span>Modo</span>
-                <select id="editModeSelect" name="modoEdicion">
-                  <option value="revision_completa" selected>Revisión completa</option>
-                  <option value="automatico_rapido">Automático rápido</option>
-                </select>
-              </label>
-              <label class="toggle-row export-row" for="exportMultiplatform">
-                <input id="exportMultiplatform" name="exportarMultiplataforma" type="checkbox" checked />
-                <span><strong>Exportar todo</strong><small>9:16, 16:9 y 1:1</small></span>
-              </label>
+              <label class="select-row" for="profileSelect"><span>Perfil</span><select id="profileSelect" name="perfil"><option value="general" selected>General</option><option value="11-contra-11">11 contra 11</option><option value="jeff-isekai">Jeff Isekai</option><option value="creciaula">Creciaula</option><option value="institucional">Institucional</option><option value="el-don-historia">El Don Historia</option><option value="jeff-verso">Jeff Verso</option></select></label>
+              <label class="select-row" for="editModeSelect"><span>Modo</span><select id="editModeSelect" name="modoEdicion"><option value="revision_completa" selected>Revisión completa</option><option value="automatico_rapido">Automático rápido</option></select></label>
+              <label class="toggle-row export-row" for="exportMultiplatform"><input id="exportMultiplatform" name="exportarMultiplataforma" type="checkbox" checked /><span><strong>Exportar todo</strong><small>9:16, 16:9 y 1:1</small></span></label>
             </div>
             <div class="platform-checks" aria-label="Plataformas de exportación">
               <label class="platform-check"><input type="checkbox" data-platform-option value="tiktok" checked /><span>TikTok<small>9:16</small></span></label>
@@ -80,13 +60,8 @@
         </div>
 
         <section class="form-section auto-card auto-card--inline">
-          <div>
-            <p class="eyebrow">Automático activo</p>
-            <p id="autoModeSummary" class="auto-summary">Silencios, audio, textos, visuales y sonidos.</p>
-          </div>
-          <div class="auto-pills" aria-label="Funciones automáticas activas">
-            <span>Silencios</span><span>Audio</span><span>Textos</span><span>Visuales</span><span>Sonidos</span>
-          </div>
+          <div><p class="eyebrow">Automático activo</p><p id="autoModeSummary" class="auto-summary">Silencios, audio, textos, visuales y sonidos.</p></div>
+          <div class="auto-pills" aria-label="Funciones automáticas activas"><span>Silencios</span><span>Audio</span><span>Textos</span><span>Visuales</span><span>Sonidos</span></div>
         </section>
 
         <input type="hidden" id="platformInput" name="plataforma" value="tiktok" />
@@ -135,17 +110,8 @@
         <p id="transcriptionSummary" class="transcription-summary" hidden></p>
         <p id="modularSummary" class="result-extra-summary" hidden></p>
         <p id="productionSummary" class="result-extra-summary" hidden></p>
-        <section id="resultPlatformsPanel" class="result-platforms-panel" hidden>
-          <div class="result-platforms-header"><div><p class="eyebrow">Exportaciones</p><h2>Resultado por plataforma</h2></div><p id="resultPlatformsSummary" class="result-platforms-summary"></p></div>
-          <div id="resultPlatformsList" class="result-platforms-list"></div>
-        </section>
-        <section id="beforeAfterPanel" class="before-after-panel" hidden>
-          <div class="before-after-header"><div><p class="eyebrow">Comparación</p><h2>Antes y después</h2></div><p id="beforeAfterSummary" class="before-after-summary"></p></div>
-          <div class="before-after-grid">
-            <article class="compare-card"><strong>Antes</strong><video id="beforeVideo" class="compare-video" controls playsinline></video></article>
-            <article class="compare-card"><strong>Después</strong><video id="afterVideo" class="compare-video" controls playsinline></video></article>
-          </div>
-        </section>
+        <section id="resultPlatformsPanel" class="result-platforms-panel" hidden><div class="result-platforms-header"><div><p class="eyebrow">Exportaciones</p><h2>Resultado por plataforma</h2></div><p id="resultPlatformsSummary" class="result-platforms-summary"></p></div><div id="resultPlatformsList" class="result-platforms-list"></div></section>
+        <section id="beforeAfterPanel" class="before-after-panel" hidden><div class="before-after-header"><div><p class="eyebrow">Comparación</p><h2>Antes y después</h2></div><p id="beforeAfterSummary" class="before-after-summary"></p></div><div class="before-after-grid"><article class="compare-card"><strong>Antes</strong><video id="beforeVideo" class="compare-video" controls playsinline></video></article><article class="compare-card"><strong>Después</strong><video id="afterVideo" class="compare-video" controls playsinline></video></article></div></section>
         <video id="resultVideo" class="result-video" controls playsinline hidden></video>
       </section>
     </section>
@@ -171,6 +137,7 @@
     </div>
   </section>
 
+  <script type="module" src="./ajustes-gemini-ui.js"></script>
   <script type="module" src="./app.js"></script>
   <script type="module" src="./navegacion/navegacion-bootstrap.js"></script>
 </body>
