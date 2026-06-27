@@ -23,6 +23,7 @@ function asegurarEstilosBloques() {
   asegurarCss('planEdicionStyles', './plan-edicion.css');
   asegurarCss('produccionMaestroStyles', './produccion-maestro.css');
   asegurarCss('adaptacionStyles', './adaptacion.css');
+  asegurarCss('resultadoFinalStyles', './resultado-final.css');
 }
 
 function iniciarNavegacion() {
