@@ -72,6 +72,12 @@ function textoSeguro(valor, defecto = '') {
   return limpio || defecto;
 }
 
+function normalizarListaProyecto(valor, defecto = []) {
+  if (Array.isArray(valor)) return valor.map((item) => String(item).trim()).filter(Boolean);
+  if (typeof valor === 'string' && valor.trim()) return valor.split(',').map((item) => item.trim()).filter(Boolean);
+  return defecto;
+}
+
 function obtenerCarpetaProyecto(proyectoId) {
   return path.join(obtenerRutaRaiz(), 'datos', 'proyectos', proyectoId);
 }
@@ -142,6 +148,8 @@ async function crearProyectoEtapas(req, res, aplicarCabeceras) {
     const nombre = textoSeguro(req.body?.nombre || req.body?.nombreProyecto || req.body?.titulo, 'Proyecto AutoVideoJeff');
     const proyectoId = textoSeguro(req.body?.proyectoId, '') || crearProyectoIdDesdeNombre(nombre);
     const carpetaProyecto = obtenerCarpetaProyecto(proyectoId);
+    const plataforma = textoSeguro(req.body?.plataforma, 'tiktok');
+    const plataformas = normalizarListaProyecto(req.body?.plataformas, [plataforma]);
     asegurarCarpeta(carpetaProyecto);
 
     const estado = crearEstadoProyectoEtapas({
@@ -150,8 +158,11 @@ async function crearProyectoEtapas(req, res, aplicarCabeceras) {
       datos: {
         origen: 'api-etapas',
         perfil: req.body?.perfil || 'general',
-        plataforma: req.body?.plataforma || 'tiktok',
+        plataforma,
+        plataformas,
         modoEdicion: req.body?.modoEdicion || 'revision_completa',
+        cantidadVideosProyecto: Number(req.body?.cantidadVideosProyecto || req.body?.videosSeleccionados?.length || 0),
+        videosSeleccionados: Array.isArray(req.body?.videosSeleccionados) ? req.body.videosSeleccionados : [],
         creadoDesde: 'POST /api/proyectos'
       }
     });
@@ -163,7 +174,7 @@ async function crearProyectoEtapas(req, res, aplicarCabeceras) {
       mensaje: 'Proyecto creado desde API por etapas.'
     });
 
-    return responderOk(res, { proyecto: { proyectoId, nombre, carpetaProyecto }, estado: estadoGuardado });
+    return responderOk(res, { proyecto: { proyectoId, nombre, carpetaProyecto, plataforma, plataformas }, estado: estadoGuardado });
   } catch (error) {
     return responderError(res, error, 400);
   }
