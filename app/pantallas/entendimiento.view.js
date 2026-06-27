@@ -17,9 +17,22 @@ export function renderEntendimientoView() {
         </label>
         <button id="entendimientoCargarBtn" class="secondary-button" type="button">Cargar entendimiento</button>
         <button id="entendimientoProcesarBtn" class="primary-button" type="button">Procesar entendimiento</button>
+        <button id="entendimientoDiagnosticarMotoresBtn" class="secondary-button" type="button">Diagnosticar motores</button>
       </div>
 
       <section id="entendimientoMensaje" class="entendimiento-message" hidden></section>
+
+      <section id="entendimientoDiagnosticoMotores" class="entendimiento-diagnostico-motores" hidden>
+        <header>
+          <div>
+            <p class="eyebrow">Diagnóstico</p>
+            <h3>Motores gratuitos/locales</h3>
+          </div>
+          <span id="entendimientoDiagnosticoMotoresEstado">Pendiente</span>
+        </header>
+        <div id="entendimientoDiagnosticoMotoresResumen" class="entendimiento-diagnostico-resumen">Ejecuta el diagnóstico para revisar Python, faster-whisper, whisper.cpp y Vosk.</div>
+        <div id="entendimientoDiagnosticoMotoresLista" class="entendimiento-diagnostico-lista"></div>
+      </section>
 
       <section class="entendimiento-kpis" aria-label="Resumen de entendimiento">
         <article><span>Orientación</span><strong id="entendimientoOrientacion">—</strong></article>
