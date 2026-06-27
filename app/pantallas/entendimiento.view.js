@@ -27,12 +27,15 @@ export function renderEntendimientoView() {
         <article><span>Audio</span><strong id="entendimientoAudio">—</strong></article>
         <article><span>Fotogramas</span><strong id="entendimientoFotogramas">—</strong></article>
         <article><span>Momentos clave</span><strong id="entendimientoMomentos">—</strong></article>
+        <article><span>Motores</span><strong id="entendimientoMotores">—</strong></article>
         <article><span>Listo para plan</span><strong id="entendimientoListo">—</strong></article>
       </section>
 
       <section class="entendimiento-layout">
         <article class="entendimiento-panel entendimiento-panel--transcripcion">
-          <header><div><p class="eyebrow">Transcripción</p><h3>Texto detectado</h3></div><span id="entendimientoTranscripcionEstado">Pendiente</span></header>
+          <header><div><p class="eyebrow">Transcripción</p><h3>Texto detectado por motor</h3></div><span id="entendimientoTranscripcionEstado">Pendiente</span></header>
+          <div id="entendimientoTranscripcionTabs" class="entendimiento-transcripcion-tabs" aria-label="Transcripciones por motor"></div>
+          <div id="entendimientoTranscripcionMeta" class="entendimiento-transcripcion-meta">Sin motor seleccionado.</div>
           <div id="entendimientoTranscripcion" class="entendimiento-text-box">Carga un proyecto para ver la transcripción o la estructura preparada.</div>
         </article>
 
