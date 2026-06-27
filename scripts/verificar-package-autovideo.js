@@ -27,6 +27,7 @@ const SCRIPTS_REQUERIDOS = [
   'check:menu-compacto-ui',
   'check:opcion-a-pantallas-ui',
   'check:nuevo-proyecto-ui',
+  'check:funcionamiento-completo-autovideo',
   'check:gemini-conexion',
   'check:diagnostico-fuerte',
   'check:biblioteca-ui',
