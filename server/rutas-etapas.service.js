@@ -1,7 +1,6 @@
 /*
-  Bloque 5: API por etapas
-  Función: registrar rutas base del nuevo flujo crear -> entender -> planificar -> producir -> adaptar -> resultado.
-  Nota: estas rutas preparan la arquitectura. El procesamiento real de cada etapa se conecta en los siguientes bloques.
+  Bloques 5 y 6: API por etapas + Entendimiento backend independiente
+  Función: registrar rutas base del nuevo flujo y ejecutar entendimiento real cuando se solicite esa etapa.
 */
 
 import path from 'path';
@@ -25,12 +24,13 @@ import {
   guardarResultadoEtapa,
   cargarResultadoEtapa
 } from '../flujo-etapas/flujo-etapas.conexion.js';
+import { procesarEntendimientoProyectoEtapa } from '../entender/etapas/entendimiento-etapa.service.js';
 
 const CONFIG_ETAPAS_API = Object.freeze({
   entendimiento: {
     etapa: ETAPAS_AUTOVIDEO.ENTENDIMIENTO,
     estadoProcesando: ESTADOS_PROYECTO_ETAPAS.ENTENDIENDO,
-    mensaje: 'Solicitud de entendimiento registrada. El motor real se conectará en el Bloque 6.'
+    mensaje: 'Entendimiento real conectado desde el Bloque 6.'
   },
   plan: {
     etapa: ETAPAS_AUTOVIDEO.PLAN_EDICION,
@@ -146,6 +146,8 @@ async function crearProyectoEtapas(req, res, aplicarCabeceras) {
       datos: {
         origen: 'api-etapas',
         perfil: req.body?.perfil || 'general',
+        plataforma: req.body?.plataforma || 'tiktok',
+        modoEdicion: req.body?.modoEdicion || 'revision_completa',
         creadoDesde: 'POST /api/proyectos'
       }
     });
@@ -208,6 +210,12 @@ async function registrarSolicitudEtapa({ req, res, aplicarCabeceras, tipo }) {
     const config = CONFIG_ETAPAS_API[tipo];
     if (!config) throw new Error(`Tipo de etapa no soportado: ${tipo}`);
     const proyectoId = req.params.proyectoId;
+
+    if (tipo === 'entendimiento') {
+      const resultadoEntendimiento = await procesarEntendimientoProyectoEtapa({ proyectoId, opciones: req.body || {}, solicitud: req.body || {} });
+      return responderOk(res, { ...resultadoEntendimiento, pendienteImplementacion: false });
+    }
+
     const estado = await avanzarEstadoProyectoEtapas({
       proyectoId,
       etapaDestino: config.etapa,
