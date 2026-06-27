@@ -27,7 +27,7 @@ function construirEnable(inicio, fin) {
 }
 
 function exprBetween(inicio, fin) {
-  return `between(t\\,${inicio.toFixed(3)}\\,${fin.toFixed(3)})`;
+  return `between(t\,${inicio.toFixed(3)}\,${fin.toFixed(3)})`;
 }
 
 function obtenerDuracion(entendimiento = {}, edicionDinamica = {}) {
@@ -62,7 +62,7 @@ function extraerMomentos(transcripcion = {}, duracion = 0) {
 function elegirIntensidad(opciones = {}) {
   const valor = String(opciones.intensidadAnimaciones || opciones.intensidadEfectos || opciones.intensidadEdicion || 'fuerte').toLowerCase();
   if (['suave', 'baja', 'limpia'].includes(valor)) return 'suave';
-  if (['normal', 'media', 'equilibrada', 'automatica'].includes(valor)) return 'normal';
+  if (['normal', 'media', 'equilibrada'].includes(valor)) return 'normal';
   return 'fuerte';
 }
 
