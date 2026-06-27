@@ -1,27 +1,37 @@
 /*
-  Nombre completo: entender.conexion.js
-  Ruta o ubicación: AutoVideoJeff/entender/entender.conexion.js
-  Función o funciones:
-    - Ser la puerta de comunicación para todo lo que signifique entender el video.
-    - Ejecutar análisis simple del archivo de video.
-    - Ejecutar transcripción simple preparada para crecer después.
-    - Devolver un objeto único con datos técnicos y texto detectado o pendiente.
-  Con qué se conecta:
-    - motor/flujo-principal.js
-    - entender/analisis-simple/analisis.service.js
-    - entender/transcripcion-simple/transcripcion.service.js
+  Nueva etapa estructural - Bloque 1
+  Función:
+    - Ser la puerta de comunicación para entender el video antes de editar.
+    - Ejecutar análisis técnico.
+    - Preparar transcripción.
+    - Extraer fotogramas clave.
+    - Generar análisis editorial del video.
+    - Guardar un reporte único de entendimiento.
 */
 
 import { analizarVideoSimple } from './analisis-simple/analisis.service.js';
 import { transcribirVideoSimple } from './transcripcion-simple/transcripcion.service.js';
+import { extraerFotogramasClave } from './fotogramas/index.js';
+import { analizarVideoEditorial } from './analisis-video/index.js';
+import { crearReporteEntendimiento } from './reporte-entendimiento/index.js';
 
-export async function entenderVideo(entrada) {
+export async function entenderVideo(entrada, opciones = {}) {
   if (!entrada?.video?.rutaOriginal) {
     throw new Error('No se puede entender el video porque falta la ruta original.');
   }
 
   const analisis = await analizarVideoSimple(entrada);
-  const transcripcion = await transcribirVideoSimple({ entrada, analisis });
+  const transcripcion = await transcribirVideoSimple({ entrada, analisis, opciones });
+  const fotogramas = await extraerFotogramasClave({ entrada, analisis, opciones }).catch((error) => ({
+    ok: false,
+    omitido: true,
+    fotogramas: [],
+    cantidadExtraida: 0,
+    mensaje: `No se pudieron extraer fotogramas: ${error.message}`,
+    errores: [{ mensaje: error.message }]
+  }));
+  const analisisVideo = await analizarVideoEditorial({ entrada, analisis, transcripcion, fotogramas, opciones });
+  const reporteEntendimiento = await crearReporteEntendimiento({ entrada, analisis, transcripcion, fotogramas, analisisVideo, opciones });
 
   return {
     ok: true,
@@ -29,9 +39,15 @@ export async function entenderVideo(entrada) {
     resumen: {
       orientacion: analisis.orientacion,
       duracionSegundos: analisis.duracionSegundos,
-      tieneTranscripcionReal: transcripcion.tipo === 'real'
+      tieneTranscripcionReal: Boolean(transcripcion.textoCompleto),
+      fotogramasExtraidos: fotogramas.cantidadExtraida || 0,
+      listoParaEditar: reporteEntendimiento.listoParaEditar
     },
     analisis,
-    transcripcion
+    transcripcion,
+    fotogramas,
+    analisisVideo,
+    reporteEntendimiento,
+    mensaje: reporteEntendimiento.mensaje
   };
 }
