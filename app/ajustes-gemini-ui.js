@@ -2,9 +2,21 @@ import { leerConfigGeminiLocal, guardarConfigGeminiLocal, limpiarClaveGeminiLoca
 
 let crearUrlApiAjustes = null;
 let probando = false;
+let inicializado = false;
 
 function $(id) {
   return document.getElementById(id);
+}
+
+async function crearUrlApiLocal(ruta) {
+  const estadoElectron = window.AutoVideoJeff?.servidor?.obtenerEstado;
+  if (typeof estadoElectron === 'function') {
+    try {
+      const estado = await estadoElectron();
+      if (estado?.url) return `${estado.url}${ruta}`;
+    } catch (_error) {}
+  }
+  return `${window.location.origin}${ruta}`;
 }
 
 function obtenerElementos() {
@@ -67,10 +79,6 @@ async function leerRespuestaJsonSegura(respuesta) {
 async function probarConexionGemini() {
   if (probando) return;
   const e = obtenerElementos();
-  if (typeof crearUrlApiAjustes !== 'function') {
-    escribirEstado('No se pudo probar: servidor local no disponible.', 'error');
-    return;
-  }
   const config = leerFormulario();
   if (!config.geminiCredencial) {
     escribirEstado('Pega la clave API antes de probar conexión.', 'error');
@@ -119,6 +127,9 @@ function limpiarClave() {
 
 function conectarEventos() {
   const e = obtenerElementos();
+  e.guardar?.removeEventListener('click', guardarDesdeAjustes);
+  e.probar?.removeEventListener('click', probarConexionGemini);
+  e.limpiar?.removeEventListener('click', limpiarClave);
   e.guardar?.addEventListener('click', guardarDesdeAjustes);
   e.probar?.addEventListener('click', probarConexionGemini);
   e.limpiar?.addEventListener('click', limpiarClave);
@@ -128,7 +139,9 @@ function conectarEventos() {
 }
 
 export function inicializarAjustesGeminiUI({ crearUrlApi = null } = {}) {
-  crearUrlApiAjustes = crearUrlApi;
+  if (inicializado) return;
+  inicializado = true;
+  crearUrlApiAjustes = crearUrlApi || crearUrlApiLocal;
   document.addEventListener('autovideo:navegacion', (evento) => {
     if (evento.detail?.pantallaId === 'ajustes') {
       setTimeout(() => {
@@ -138,3 +151,5 @@ export function inicializarAjustesGeminiUI({ crearUrlApi = null } = {}) {
   });
   if (aplicarConfig()) conectarEventos();
 }
+
+document.addEventListener('DOMContentLoaded', () => inicializarAjustesGeminiUI());
