@@ -13,6 +13,8 @@ import { inicializarHistorialProyectosUI, recargarHistorialProyectosUI } from '.
 import { inicializarProduccionRevisionUI, guardarUltimaProduccion } from './produccion-revision-ui.js';
 import { inicializarBibliotecaUI } from './biblioteca-ui.js';
 
+const PANTALLA_PROCESADOR = 'nuevo-proyecto';
+
 const elementos = {
   serverStatus: document.getElementById('serverStatus'),
   videoForm: document.getElementById('videoForm'),
@@ -49,6 +51,8 @@ const elementos = {
 
 let apiBaseCache = null;
 let controladorProgreso = null;
+let procesandoVideo = false;
+let servidorVerificado = false;
 
 function validarElementosRequeridos() {
   const faltantes = Object.entries(elementos).filter(([, valor]) => !valor).map(([nombre]) => nombre);
@@ -57,6 +61,10 @@ function validarElementosRequeridos() {
     return false;
   }
   return true;
+}
+
+function esPantallaProcesadorActiva(pantallaId = document.body.dataset.pantallaActiva) {
+  return pantallaId === PANTALLA_PROCESADOR;
 }
 
 function cerrarProgresoActual() {
@@ -106,15 +114,22 @@ function reiniciarResultado() {
   limpiarResultadoPlataformasUI(elementos);
 }
 
+function aplicarEstadoControlesProcesador() {
+  const activo = esPantallaProcesadorActiva();
+  const bloquearBase = procesandoVideo || !activo;
+  elementos.processButton.disabled = bloquearBase;
+  elementos.videoInput.disabled = bloquearBase;
+  elementos.improveAudio.disabled = bloquearBase;
+  elementos.audioMode.disabled = bloquearBase || !elementos.improveAudio.checked;
+  bloquearControlesTranscripcion(bloquearBase);
+  bloquearControlesGemini(bloquearBase);
+  bloquearControlesConfiguracionProyecto(bloquearBase);
+  elementos.processButton.textContent = procesandoVideo ? 'Editando automáticamente...' : 'Procesar automáticamente';
+}
+
 function bloquearFormulario(bloquear) {
-  elementos.processButton.disabled = bloquear;
-  elementos.videoInput.disabled = bloquear;
-  elementos.improveAudio.disabled = bloquear;
-  elementos.audioMode.disabled = bloquear;
-  bloquearControlesTranscripcion(bloquear);
-  bloquearControlesGemini(bloquear);
-  bloquearControlesConfiguracionProyecto(bloquear);
-  elementos.processButton.textContent = bloquear ? 'Editando automáticamente...' : 'Procesar automáticamente';
+  procesandoVideo = Boolean(bloquear);
+  aplicarEstadoControlesProcesador();
 }
 
 async function obtenerBaseApi() {
@@ -169,13 +184,16 @@ async function verificarServidor() {
     const datos = await leerRespuestaJsonSegura(respuesta);
     if (!respuesta.ok || !datos.ok) throw new Error(datos.mensaje || 'Servidor no disponible.');
     actualizarEstadoDiagnosticoEnServidor(elementos.serverStatus, datos);
+    servidorVerificado = true;
   } catch (error) {
     actualizarEstadoServidor(false, 'Servidor no disponible');
-    mostrarMensaje(`No se pudo conectar con el servidor local: ${error.message}`, 'error');
+    servidorVerificado = false;
+    if (esPantallaProcesadorActiva()) mostrarMensaje(`No se pudo conectar con el servidor local: ${error.message}`, 'error');
   }
 }
 
 function registrarCambioDeArchivo() {
+  if (!esPantallaProcesadorActiva()) return;
   ocultarMensaje();
   ocultarProgreso();
   reiniciarResultado();
@@ -275,6 +293,7 @@ function construirErrorParaModal(datos, respaldoMensaje) {
 
 async function procesarFormulario(evento) {
   evento.preventDefault();
+  if (!esPantallaProcesadorActiva()) return;
   ocultarMensaje();
   reiniciarResultado();
   cerrarProgresoActual();
@@ -313,7 +332,21 @@ async function procesarFormulario(evento) {
 }
 
 function sincronizarModoAudio() {
-  elementos.audioMode.disabled = !elementos.improveAudio.checked;
+  aplicarEstadoControlesProcesador();
+}
+
+async function sincronizarProcesadorConPantalla(pantallaId = document.body.dataset.pantallaActiva) {
+  aplicarEstadoControlesProcesador();
+  if (pantallaId === PANTALLA_PROCESADOR && !servidorVerificado) await verificarServidor();
+}
+
+function registrarEventosProcesador() {
+  elementos.videoInput.addEventListener('change', registrarCambioDeArchivo);
+  elementos.videoForm.addEventListener('submit', procesarFormulario);
+  elementos.improveAudio.addEventListener('change', sincronizarModoAudio);
+  document.addEventListener('autovideo:navegacion', (evento) => {
+    sincronizarProcesadorConPantalla(evento.detail?.pantallaId);
+  });
 }
 
 function iniciarInterfaz() {
@@ -329,11 +362,8 @@ function iniciarInterfaz() {
   inicializarTranscripcionUI();
   inicializarModalErrorEdicion();
   aplicarModoAutomaticoVisual();
-  elementos.videoInput.addEventListener('change', registrarCambioDeArchivo);
-  elementos.videoForm.addEventListener('submit', procesarFormulario);
-  elementos.improveAudio.addEventListener('change', sincronizarModoAudio);
-  sincronizarModoAudio();
-  verificarServidor();
+  registrarEventosProcesador();
+  sincronizarProcesadorConPantalla();
 }
 
 document.addEventListener('DOMContentLoaded', iniciarInterfaz);
