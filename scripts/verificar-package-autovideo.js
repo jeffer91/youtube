@@ -25,6 +25,7 @@ const SCRIPTS_REQUERIDOS = [
   'check:cierre-final-autovideo',
   'check:auditoria-integral-autovideo',
   'check:menu-compacto-ui',
+  'check:gemini-conexion',
   'check:diagnostico-fuerte',
   'check:biblioteca-ui',
   'check:produccion-reemplazo-ui',
