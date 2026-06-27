@@ -28,6 +28,26 @@ function verificarServicioFinal() {
   ]);
 }
 
+function verificarFlujoInicialReal() {
+  contiene('app/app.js', [
+    'procesarFormularioPorEtapas',
+    'crearProyectoEtapas',
+    'subirVideosProyectoEtapas',
+    'procesarEntendimientoProyectoEtapas',
+    '/api/proyectos',
+    '/videos',
+    '/entendimiento/procesar',
+    'autovideojeff.proyectoEtapasId',
+    'navegarAEntendimientoDespuesDeProcesar'
+  ]);
+  contiene('server/rutas-etapas.service.js', [
+    'normalizarListaProyecto',
+    'plataformas',
+    'cantidadVideosProyecto',
+    'videosSeleccionados'
+  ]);
+}
+
 function verificarRutasFinales() {
   contiene('server/rutas-modulares.service.js', [
     'crearDiagnosticoFinalRedisenio',
@@ -81,6 +101,7 @@ function verificarPackageYDocs() {
 
 function verificarArchivosFinales() {
   const requeridos = [
+    'app/app.js',
     'entender/etapas/entendimiento-etapa.service.js',
     'etapas/02-plan/procesar-plan-edicion.service.js',
     'etapas/03-produccion/procesar-produccion-maestro.service.js',
@@ -111,6 +132,7 @@ async function verificarImportacionReal() {
 
 async function main() {
   verificarServicioFinal();
+  verificarFlujoInicialReal();
   verificarRutasFinales();
   verificarPantallaDiagnostico();
   verificarPackageYDocs();
