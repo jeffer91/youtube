@@ -97,6 +97,16 @@ function convertirBooleano(valor, respaldo = false) {
   return respaldo;
 }
 
+function obtenerTextoManualOpciones(opciones = {}) {
+  return String(
+    opciones.textoTranscripcionManual ||
+    opciones.transcripcionManual ||
+    opciones.textoManual ||
+    opciones.transcripcionTexto ||
+    ''
+  ).trim();
+}
+
 function normalizarOrdenMotores(valor, respaldo = ORDEN_MOTORES_TRANSCRIPCION) {
   const lista = Array.isArray(valor)
     ? valor
@@ -108,6 +118,12 @@ function normalizarOrdenMotores(valor, respaldo = ORDEN_MOTORES_TRANSCRIPCION) {
   return [...new Set(normalizados)];
 }
 
+function filtrarMotoresSinEntrada(orden = [], opciones = {}) {
+  const hayTextoManual = Boolean(obtenerTextoManualOpciones(opciones));
+  if (hayTextoManual) return orden;
+  return orden.filter((motor) => motor !== MOTORES_TRANSCRIPCION.MANUAL);
+}
+
 export function obtenerMotorTranscripcionConfig(motor) {
   const motorId = normalizarIdMotorTranscripcion(motor);
   return MOTORES_TRANSCRIPCION_CONFIG[motorId] || MOTORES_TRANSCRIPCION_CONFIG[MOTORES_TRANSCRIPCION.MANUAL];
@@ -115,10 +131,11 @@ export function obtenerMotorTranscripcionConfig(motor) {
 
 export function obtenerConfigMultimotorTranscripcion(opciones = {}) {
   const configUsuario = opciones.configMultimotorTranscripcion || opciones.configMotoresTranscripcion || {};
-  const orden = normalizarOrdenMotores(
+  const ordenBase = normalizarOrdenMotores(
     opciones.ordenMotoresTranscripcion || configUsuario.ordenMotores,
     CONFIG_MULTIMOTOR_TRANSCRIPCION.ordenMotores
   );
+  const orden = filtrarMotoresSinEntrada(ordenBase, opciones);
 
   return {
     ...CONFIG_MULTIMOTOR_TRANSCRIPCION,
