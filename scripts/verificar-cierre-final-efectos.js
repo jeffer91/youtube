@@ -14,7 +14,8 @@ const ARCHIVOS_REQUERIDOS = Object.freeze([
   'app/efectos-ui.js',
   'app/resultado-efectos-ui.js',
   'server/rutas-modulares.service.js',
-  'docs/efectos-automaticos.md'
+  'docs/efectos-automaticos.md',
+  'docs/cierre-motor-efectos.md'
 ]);
 
 const SCRIPTS_REQUERIDOS = Object.freeze([
@@ -26,6 +27,7 @@ const SCRIPTS_REQUERIDOS = Object.freeze([
   'check:efectos-render',
   'check:efectos-integracion',
   'check:efectos-preview',
+  'check:efectos-cierre',
   'check:efectos'
 ]);
 
@@ -94,7 +96,7 @@ function main() {
   validarServidor();
   validarPackage();
   validarUi();
-  console.log('OK cierre final efectos: arquitectura, UI, API, scripts y planificador conectados.');
+  console.log('OK cierre final efectos: arquitectura, UI, API, scripts, documentacion y planificador conectados.');
 }
 
 try {
