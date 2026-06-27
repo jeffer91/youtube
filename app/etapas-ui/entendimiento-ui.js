@@ -183,6 +183,29 @@ function crearOpcionesTranscripcion(resultado = {}) {
   return opciones;
 }
 
+function obtenerOpcionTranscripcionActiva() {
+  if (!ultimoResultadoEntendimiento) return null;
+  const opciones = crearOpcionesTranscripcion(ultimoResultadoEntendimiento);
+  return opciones.find((opcion) => opcion.id === transcripcionActivaId) || opciones[0] || null;
+}
+
+function aplicarPrincipalEnResultadoLocal(seleccion = {}) {
+  const principal = seleccion.transcripcionPrincipal || seleccion.principal?.transcripcion || null;
+  if (!ultimoResultadoEntendimiento || !principal) return;
+  ultimoResultadoEntendimiento.transcripcionPrincipal = principal;
+  ultimoResultadoEntendimiento.resumenTranscripcion = seleccion.resumen || ultimoResultadoEntendimiento.resumenTranscripcion || null;
+  ultimoResultadoEntendimiento.transcripcion = {
+    ...(ultimoResultadoEntendimiento.transcripcion || {}),
+    ...principal,
+    motorPrincipal: seleccion.motor || principal.motor,
+    transcripcionPrincipal: principal,
+    resumenTranscripcion: seleccion.resumen || ultimoResultadoEntendimiento.transcripcion?.resumenTranscripcion || null
+  };
+  if (ultimoResultadoEntendimiento.resumen) {
+    ultimoResultadoEntendimiento.resumen.motorTranscripcionPrincipal = seleccion.motor || principal.motor;
+  }
+}
+
 function renderKpis(resultado = {}) {
   const resumen = obtenerResumen(resultado);
   const duracion = numero(resumen.duracionSegundos);
@@ -220,6 +243,19 @@ function renderMetaTranscripcion(opcion = {}) {
   meta.innerHTML = partes.map((parte) => `<span>${escapar(parte)}</span>`).join('');
 }
 
+function renderAccionesTranscripcion(opcion = {}) {
+  const contenedor = $('entendimientoTranscripcionAcciones');
+  if (!contenedor) return;
+  const esPrincipal = opcion.id === 'principal';
+  const puedeUsar = !esPrincipal && opcion.ok && tieneTexto(opcion.transcripcion?.textoCompleto) && opcion.motor;
+  contenedor.innerHTML = `
+    <button type="button" class="secondary-button entendimiento-usar-principal-btn" data-usar-transcripcion-principal ${puedeUsar ? '' : 'disabled'}>
+      ${esPrincipal ? 'Esta ya es la principal' : 'Usar esta como principal'}
+    </button>
+    <span>${puedeUsar ? `Seleccionará ${escapar(motorBonito(opcion.motor))} como texto base del plan.` : 'Solo se puede elegir una transcripción con texto útil.'}</span>
+  `;
+}
+
 function renderDetalleTranscripcion(opcion = {}) {
   const transcripcion = opcion.transcripcion || {};
   const textoCompleto = texto(transcripcion.textoCompleto, opcion.mensaje || transcripcion.mensaje || transcripcion.observacion || 'Sin texto transcrito todavía. La estructura de segmentos está preparada para el plan de edición.');
@@ -227,6 +263,7 @@ function renderDetalleTranscripcion(opcion = {}) {
   $('entendimientoTranscripcionEstado').textContent = transcripcion.textoCompleto ? `${motorBonito(opcion.motor)} · texto real` : `${motorBonito(opcion.motor)} · ${segmentos.length} segmento(s)`;
   $('entendimientoTranscripcion').innerHTML = `<p>${escapar(textoCompleto)}</p>` + (segmentos.length ? `<ol>${segmentos.slice(0, 12).map((s) => `<li><strong>${escapar(s.inicio)}s - ${escapar(s.fin ?? 'fin')}s</strong><span>${escapar(s.texto || s.nota || 'Segmento preparado')}</span></li>`).join('')}</ol>` : '');
   renderMetaTranscripcion(opcion);
+  renderAccionesTranscripcion(opcion);
 }
 
 function renderTranscripcion(resultado = {}) {
@@ -407,6 +444,28 @@ async function mostrarGuiaInstalacionMotores() {
   setMensaje('Guía de instalación cargada.', 'ok');
 }
 
+async function usarTranscripcionActivaComoPrincipal() {
+  const proyectoId = obtenerProyectoId();
+  const opcion = obtenerOpcionTranscripcionActiva();
+  if (!proyectoId) { setMensaje('Falta proyectoId para seleccionar la transcripción principal.', 'warn'); return; }
+  if (!opcion?.motor || opcion.id === 'principal') { setMensaje('Selecciona una transcripción de motor distinta a Principal.', 'warn'); return; }
+  if (!tieneTexto(opcion.transcripcion?.textoCompleto)) { setMensaje('Esa transcripción no tiene texto útil para usar como principal.', 'warn'); return; }
+
+  setMensaje(`Seleccionando ${motorBonito(opcion.motor)} como transcripción principal...`, 'normal');
+  const datos = await api(`/api/proyectos/${encodeURIComponent(proyectoId)}/transcripciones/${encodeURIComponent(opcion.motor)}/usar`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ motivo: 'ui-entendimiento', usuario: 'local' })
+  });
+  aplicarPrincipalEnResultadoLocal(datos.seleccion || {});
+  transcripcionActivaId = 'principal';
+  if (ultimoResultadoEntendimiento) {
+    renderKpis(ultimoResultadoEntendimiento);
+    renderTranscripcion(ultimoResultadoEntendimiento);
+  }
+  setMensaje(datos.mensaje || `Transcripción ${motorBonito(opcion.motor)} seleccionada como principal.`, 'ok');
+}
+
 async function crearPlanPlaceholder() {
   const proyectoId = obtenerProyectoId();
   if (!proyectoId) { setMensaje('Falta proyectoId para crear el plan.', 'warn'); return; }
@@ -415,6 +474,12 @@ async function crearPlanPlaceholder() {
 }
 
 function manejarClickTranscripcion(evento) {
+  const botonUsar = evento.target.closest('[data-usar-transcripcion-principal]');
+  if (botonUsar) {
+    usarTranscripcionActivaComoPrincipal().catch((error) => setMensaje(error.message, 'error'));
+    return;
+  }
+
   const boton = evento.target.closest('[data-transcripcion-tab]');
   if (!boton) return;
   transcripcionActivaId = boton.dataset.transcripcionTab || 'principal';
