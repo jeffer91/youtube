@@ -306,6 +306,37 @@ function renderDiagnosticoMotores(payload = {}) {
   }).join('') || '<div class="entendimiento-empty">No hay motores reportados.</div>';
 }
 
+function renderInstalacionMotores(payload = {}) {
+  const guia = payload.guia || payload;
+  const panel = $('entendimientoInstalacionMotores');
+  const estado = $('entendimientoInstalacionMotoresEstado');
+  const resumenBox = $('entendimientoInstalacionMotoresResumen');
+  const lista = $('entendimientoInstalacionMotoresLista');
+  if (!panel || !estado || !resumenBox || !lista) return;
+
+  const pasos = Array.isArray(guia.pasos) ? guia.pasos : [];
+  const variables = Array.isArray(guia.variablesEntorno) ? guia.variablesEntorno : [];
+  panel.hidden = false;
+  estado.textContent = 'Guía lista';
+  resumenBox.innerHTML = `
+    <strong>${escapar(guia.objetivo || 'Guía de instalación cargada.')}</strong>
+    <span>${escapar(guia.aviso || 'Instalación manual asistida.')}</span>
+    <div class="entendimiento-instalacion-vars">${variables.map((item) => `<span>${escapar(item.nombre)}: ${escapar(item.uso)}</span>`).join('')}</div>
+  `;
+
+  lista.innerHTML = pasos.map((paso) => {
+    const comandos = Array.isArray(paso.comandos) ? paso.comandos : [];
+    const acciones = Array.isArray(paso.siFalla) ? paso.siFalla : [];
+    return `<article class="entendimiento-instalacion-card">
+      <header><strong>${escapar(paso.titulo)}</strong><span>${paso.recomendado ? 'Recomendado' : paso.obligatorio ? 'Base' : 'Opcional'}</span></header>
+      <p>${escapar(paso.descripcion || '')}</p>
+      ${comandos.length ? `<div class="entendimiento-comandos">${comandos.map((cmd) => `<code>${escapar(cmd.comando || cmd)}</code>`).join('')}</div>` : ''}
+      ${paso.resultadoEsperado ? `<small>Resultado esperado: ${escapar(paso.resultadoEsperado)}</small>` : ''}
+      ${acciones.length ? `<ul>${acciones.map((accion) => `<li>${escapar(accion)}</li>`).join('')}</ul>` : ''}
+    </article>`;
+  }).join('') || '<div class="entendimiento-empty">No hay pasos de instalación disponibles.</div>';
+}
+
 function renderResultado(datos = {}) {
   const resultado = extraerResultado(datos);
   ultimoResultadoEntendimiento = resultado;
@@ -362,6 +393,20 @@ async function diagnosticarMotores() {
   setMensaje('Diagnóstico de motores completado.', 'ok');
 }
 
+async function mostrarGuiaInstalacionMotores() {
+  const panel = $('entendimientoInstalacionMotores');
+  const estado = $('entendimientoInstalacionMotoresEstado');
+  const resumenBox = $('entendimientoInstalacionMotoresResumen');
+  const lista = $('entendimientoInstalacionMotoresLista');
+  if (panel) panel.hidden = false;
+  if (estado) estado.textContent = 'Cargando...';
+  if (resumenBox) resumenBox.textContent = 'Cargando guía de instalación gratuita...';
+  if (lista) lista.innerHTML = '';
+  const datos = await api('/api/autovideo/transcripcion/motores/instalacion');
+  renderInstalacionMotores(datos);
+  setMensaje('Guía de instalación cargada.', 'ok');
+}
+
 async function crearPlanPlaceholder() {
   const proyectoId = obtenerProyectoId();
   if (!proyectoId) { setMensaje('Falta proyectoId para crear el plan.', 'warn'); return; }
@@ -385,6 +430,7 @@ function enlazarEventos() {
   $('entendimientoCargarBtn')?.addEventListener('click', () => cargarEntendimiento().catch((error) => setMensaje(error.message, 'error')));
   $('entendimientoProcesarBtn')?.addEventListener('click', () => procesarEntendimiento().catch((error) => setMensaje(error.message, 'error')));
   $('entendimientoDiagnosticarMotoresBtn')?.addEventListener('click', () => diagnosticarMotores().catch((error) => setMensaje(error.message, 'error')));
+  $('entendimientoInstalarMotoresBtn')?.addEventListener('click', () => mostrarGuiaInstalacionMotores().catch((error) => setMensaje(error.message, 'error')));
   $('entendimientoCrearPlanBtn')?.addEventListener('click', () => crearPlanPlaceholder().catch((error) => setMensaje(error.message, 'error')));
   root.addEventListener('click', manejarClickTranscripcion);
 }
