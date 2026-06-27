@@ -1,9 +1,37 @@
 export function renderBibliotecaView() {
   return `
     <section class="aj-view-card library-page">
-      <p class="eyebrow">Biblioteca inteligente</p>
-      <h2>Recursos para edición</h2>
-      <p>Arrastra o elige un recurso. Después define para qué tipo de edición sirve, su categoría, tipo y tono.</p>
+      <div class="library-hero">
+        <div>
+          <p class="eyebrow">Biblioteca inteligente</p>
+          <h2>Recursos para edición y producción</h2>
+          <p>Arrastra recursos, clasifícalos y genera sugerencias automáticas para el proyecto según entendimiento y plan de edición.</p>
+        </div>
+        <span class="aj-status-chip">Bloque 12</span>
+      </div>
+
+      <section class="library-recommend-panel">
+        <header>
+          <div>
+            <p class="eyebrow">Recursos para producción</p>
+            <h3>Recomendador por proyecto</h3>
+            <p>Usa el plan de edición para sugerir imágenes, videos, fondos, overlays, transiciones, plantillas y audios útiles.</p>
+          </div>
+        </header>
+        <div class="library-recommend-toolbar">
+          <label><span>ID del proyecto</span><input id="libraryProjectIdInput" type="text" placeholder="Pega aquí el proyectoId" autocomplete="off" /></label>
+          <label><span>Consulta opcional</span><input id="libraryRecommendQuery" type="search" placeholder="Ej: gol, explicación, cierre, estadio" /></label>
+          <label><span>Límite por necesidad</span><select id="libraryRecommendLimit"><option value="3">3</option><option value="4" selected>4</option><option value="5">5</option><option value="8">8</option></select></label>
+          <button class="library-button is-smart" type="button" data-library-action="recommend-project">Recomendar recursos</button>
+        </div>
+        <div class="library-recommend-kpis">
+          <article><span>Necesidades</span><strong id="libraryRecommendNeeds">—</strong></article>
+          <article><span>Recursos analizados</span><strong id="libraryRecommendAnalyzed">—</strong></article>
+          <article><span>Sugerencias</span><strong id="libraryRecommendSuggestions">—</strong></article>
+          <article><span>Sin recurso</span><strong id="libraryRecommendMissing">—</strong></article>
+        </div>
+        <div id="libraryRecommendList" class="library-recommend-list"><div class="library-empty">Genera recomendaciones para ver recursos sugeridos por elemento del plan.</div></div>
+      </section>
 
       <section id="libraryDropZone" class="library-drop-zone">
         <input id="libraryFileInput" type="file" hidden />
