@@ -1,6 +1,6 @@
 /*
-  Bloque 14
-  Funcion: registrar rutas API para modulos, diagnostico, auditoria, reintento, efectos, presets y aprendizaje.
+  Nueva etapa estructural - Bloque 2
+  Funcion: registrar rutas API para modulos, diagnostico, auditoria, reintento, efectos, presets, aprendizaje y Gemini.
 */
 
 import { listarPerfiles, obtenerPerfil } from '../perfiles/perfiles.conexion.js';
@@ -10,7 +10,7 @@ import { listarCategoriasBiblioteca, buscarRecursosBiblioteca, guardarRecursoBib
 import { listarRecursosProyecto, guardarRecursoProyecto } from '../biblioteca-proyecto/biblioteca-proyecto.conexion.js';
 import { crearPlanProduccion, guardarPlanProduccion, cargarPlanProduccion } from '../produccion/produccion.conexion.js';
 import { cargarMemoriaEdicion, guardarCorreccionAprendizaje } from '../aprendizaje/aprendizaje.conexion.js';
-import { GEMINI_CONFIG } from '../gemini/gemini.conexion.js';
+import { GEMINI_CONFIG, ejecutarTareaGeminiReal } from '../gemini/gemini.conexion.js';
 import { crearDiagnosticoFuerte } from '../diagnostico/diagnostico-fuerte.service.js';
 import { crearAuditoriaIntegral } from '../diagnostico/auditoria-integral.service.js';
 import { crearPlanReintento } from '../diagnostico/reintento-etapa.service.js';
@@ -22,6 +22,7 @@ import { previsualizarEfectos } from '../editar/efectos/previsualizacion/index.j
 function responderOk(res, datos = {}) { return res.json({ ok: true, ...datos, fecha: new Date().toISOString() }); }
 function responderError(res, error, codigo = 500) { return res.status(codigo).json({ ok: false, mensaje: error?.message || 'Error en rutas modulares.', fecha: new Date().toISOString() }); }
 function normalizarProyectoSimple(datos = {}) { return { nombre: datos.nombre || datos.titulo || 'Nuevo proyecto AutoVideoJeff', perfil: datos.perfil || 'general', modoEdicion: datos.modoEdicion || 'revision_completa', plataformas: Array.isArray(datos.plataformas) ? datos.plataformas : ['tiktok', 'reels', 'shorts', 'youtube'] }; }
+function crearTareaPruebaGemini() { return { tarea: 'probar_conexion_gemini', payload: { perfil: 'general', plataforma: 'tiktok', transcripcion: { textoCompleto: 'Prueba de conexión de AutoVideoJeff.' }, momentosClave: [{ inicio: 0, fin: 2, tipo: 'prueba', motivo: 'Confirmar que Gemini responde con JSON válido.' }], efectosPermitidos: ['titulo_inicial', 'texto_impacto', 'barra_progreso'] }, instrucciones: ['Devuelve exactamente un JSON con ok=true, mensaje corto y una sugerencia de edición.'] }; }
 
 export function registrarRutasModulares(app, opciones = {}) {
   const aplicarCabeceras = opciones.aplicarCabecerasSinCache || (() => {});
@@ -59,4 +60,5 @@ export function registrarRutasModulares(app, opciones = {}) {
   app.get('/api/autovideo/aprendizaje', async (_req, res) => { try { aplicarCabeceras(res); return responderOk(res, { memoria: await cargarMemoriaEdicion() }); } catch (error) { return responderError(res, error); } });
   app.post('/api/autovideo/aprendizaje', async (req, res) => { try { aplicarCabeceras(res); const regla = await guardarCorreccionAprendizaje(req.body || {}); return responderOk(res, { regla }); } catch (error) { return responderError(res, error, 400); } });
   app.get('/api/autovideo/gemini/config', (_req, res) => { aplicarCabeceras(res); return responderOk(res, { config: { ...GEMINI_CONFIG, requiereClaveApi: true } }); });
+  app.post('/api/autovideo/gemini/probar', async (req, res) => { try { aplicarCabeceras(res); const resultado = await ejecutarTareaGeminiReal(crearTareaPruebaGemini(), { ...(req.body || {}), usarGemini: true, usarFallbackGemini: false }); return responderOk(res, { estado: resultado.real ? 'Gemini conectado correctamente con contexto editorial.' : 'Gemini respondió con fallback local.', resultado: { real: Boolean(resultado.real), modelo: resultado.modelo || req.body?.geminiModelo || GEMINI_CONFIG.modeloPorDefecto, contextoEditorial: Boolean(resultado.contextoEditorial), data: resultado.data || null } }); } catch (error) { return responderError(res, error, 400); } });
 }
