@@ -64,7 +64,7 @@ function crearFiltroZoomInOut({ width, height, estilo }) {
   const h = Math.round(numero(height, 1920));
   const pulso = Math.max(0.02, Math.min(0.075, numero(estilo.pulso, 0.042)));
   const periodo = Math.max(3.2, Math.min(7.0, numero(estilo.periodo, 5.0)));
-  const expr = `(1+${pulso.toFixed(3)}*sin(6.28318*t/${periodo.toFixed(2)}))`;
+  const expr = `(1+${pulso.toFixed(3)}*(0.5+0.5*sin(6.28318*t/${periodo.toFixed(2)})))`;
   return `scale=w='${w}*${expr}':h='${h}*${expr}':eval=frame,crop=w=${w}:h=${h}:x=(iw-${w})/2:y=(ih-${h})/2`;
 }
 
