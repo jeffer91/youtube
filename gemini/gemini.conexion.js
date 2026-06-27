@@ -11,6 +11,7 @@ import { prepararSugerenciaRecursos, crearSugerenciasRecursosFallback } from './
 import { prepararSugerenciaTextos, crearTextosFallback } from './sugerir-textos.service.js';
 import { prepararSugerenciaGraficos, crearGraficosFallback } from './sugerir-graficos.service.js';
 import { prepararSugerenciaEstiloEdicion, crearEstiloEdicionFallback } from './sugerir-estilo-edicion.service.js';
+import { construirContextoEditorialGemini } from './contexto-editorial-gemini.service.js';
 import { ejecutarTareaGeminiReal } from './cliente-gemini.service.js';
 import { ejecutarPaqueteGeminiEdicion } from './ejecutar-paquete-gemini.service.js';
 
@@ -20,6 +21,7 @@ export {
   GEMINI_INSTRUCCIONES_PERFIL,
   obtenerInstruccionesPerfilGemini,
   construirBloquePerfilGemini,
+  construirContextoEditorialGemini,
   validarRespuestaGemini,
   extraerJsonSeguro,
   crearRespuestaFallback,
@@ -37,7 +39,7 @@ export {
   ejecutarPaqueteGeminiEdicion
 };
 
-export function crearPaqueteGeminiEdicion({ proyecto = {}, perfil = {}, transcripcion = {}, analisis = null, biblioteca = [], plataformas = [], opciones = {} } = {}) {
+export function crearPaqueteGeminiEdicion({ proyecto = {}, perfil = {}, transcripcion = {}, analisis = null, biblioteca = [], plataformas = [], opciones = {}, reporteEntendimiento = null, efectosDisponibles = [] } = {}) {
   const analisisBase = analisis || crearAnalisisTranscripcionFallback({ transcripcion, perfil: perfil.id || proyecto.perfil || 'general' });
   return {
     ok: true,
@@ -46,11 +48,11 @@ export function crearPaqueteGeminiEdicion({ proyecto = {}, perfil = {}, transcri
     perfilNombre: perfil.nombre || 'General',
     modo: opciones.usarGemini ? 'gemini_real_si_credencial' : 'fallback_local',
     tareas: {
-      analisis: prepararAnalisisTranscripcion({ transcripcion, perfil, proyecto, opciones }),
-      recursos: prepararSugerenciaRecursos({ analisis: analisisBase, perfil, biblioteca, opciones }),
-      textos: prepararSugerenciaTextos({ transcripcion, analisis: analisisBase, perfil, plataforma: plataformas[0] || 'tiktok', opciones }),
-      graficos: prepararSugerenciaGraficos({ analisis: analisisBase, perfil, opciones }),
-      estilo: prepararSugerenciaEstiloEdicion({ perfil, proyecto, plataformas, analisis: analisisBase, opciones })
+      analisis: prepararAnalisisTranscripcion({ transcripcion, perfil, proyecto, opciones, reporteEntendimiento }),
+      recursos: prepararSugerenciaRecursos({ analisis: analisisBase, perfil, biblioteca, opciones, reporteEntendimiento }),
+      textos: prepararSugerenciaTextos({ transcripcion, analisis: analisisBase, perfil, plataforma: plataformas[0] || 'tiktok', opciones, reporteEntendimiento }),
+      graficos: prepararSugerenciaGraficos({ analisis: analisisBase, perfil, opciones, reporteEntendimiento, biblioteca }),
+      estilo: prepararSugerenciaEstiloEdicion({ perfil, proyecto, plataformas, analisis: analisisBase, opciones, reporteEntendimiento, efectosDisponibles })
     },
     creadoEn: new Date().toISOString()
   };
