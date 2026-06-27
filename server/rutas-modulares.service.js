@@ -21,6 +21,7 @@ import { listarPresetsVisualesEfectos } from '../editar/efectos/presets/index.js
 import { previsualizarEfectos } from '../editar/efectos/previsualizacion/index.js';
 import { listarPaquetesPremiumEfectos, previsualizarEfectosPremium } from '../editar/efectos/premium/index.js';
 import { listarPaquetesSfxPremium, previsualizarSfxPremium } from '../editar/edicion-dinamica/sonidos/premium/index.js';
+import { diagnosticarMotoresTranscripcion } from '../transcripcion/motores/diagnostico-motores-transcripcion.service.js';
 import { registrarRutasEtapas } from './rutas-etapas.service.js';
 
 function responderOk(res, datos = {}) { return res.json({ ok: true, ...datos, fecha: new Date().toISOString() }); }
@@ -32,10 +33,11 @@ export function registrarRutasModulares(app, opciones = {}) {
   const aplicarCabeceras = opciones.aplicarCabecerasSinCache || (() => {});
   registrarRutasEtapas(app, opciones);
 
-  app.get('/api/autovideo/modulos', (_req, res) => { aplicarCabeceras(res); return responderOk(res, { modulos: ['proyectos', 'flujo-etapas', 'api-etapas', 'perfiles', 'exportacion', 'audio', 'subtitulos', 'textos', 'visual', 'efectos', 'efectos-premium', 'sfx-premium', 'biblioteca', 'biblioteca-produccion', 'gemini', 'produccion', 'aprendizaje', 'diagnostico-fuerte', 'diagnostico-final-redisenio', 'auditoria-integral', 'reintento-etapa'], flujo: ['nuevo-proyecto', 'entendimiento', 'plan-edicion', 'produccion', 'adaptacion-plataformas', 'resultado'], bibliotecaExternaAlFlujo: true }); });
+  app.get('/api/autovideo/modulos', (_req, res) => { aplicarCabeceras(res); return responderOk(res, { modulos: ['proyectos', 'flujo-etapas', 'api-etapas', 'perfiles', 'exportacion', 'audio', 'subtitulos', 'textos', 'visual', 'efectos', 'efectos-premium', 'sfx-premium', 'biblioteca', 'biblioteca-produccion', 'gemini', 'produccion', 'aprendizaje', 'diagnostico-fuerte', 'diagnostico-final-redisenio', 'auditoria-integral', 'reintento-etapa', 'transcripcion-diagnostico'], flujo: ['nuevo-proyecto', 'entendimiento', 'plan-edicion', 'produccion', 'adaptacion-plataformas', 'resultado'], bibliotecaExternaAlFlujo: true }); });
   app.get('/api/autovideo/diagnostico/fuerte', async (_req, res) => { try { aplicarCabeceras(res); const diagnostico = await crearDiagnosticoFuerte({ guardarReporte: true }); return responderOk(res, { diagnostico }); } catch (error) { return responderError(res, error, 500); } });
   app.get('/api/autovideo/diagnostico/auditoria-integral', async (_req, res) => { try { aplicarCabeceras(res); const auditoria = await crearAuditoriaIntegral({ guardarReporte: true }); return responderOk(res, { auditoria }); } catch (error) { return responderError(res, error, 500); } });
   app.get('/api/autovideo/diagnostico/final-redisenio', async (_req, res) => { try { aplicarCabeceras(res); const diagnostico = await crearDiagnosticoFinalRedisenio({ guardarReporte: true }); return responderOk(res, { diagnostico }); } catch (error) { return responderError(res, error, 500); } });
+  app.get('/api/autovideo/transcripcion/motores/diagnostico', async (req, res) => { try { aplicarCabeceras(res); const diagnostico = await diagnosticarMotoresTranscripcion({ opciones: req.query || {} }); return responderOk(res, { diagnostico }); } catch (error) { return responderError(res, error, 500); } });
   app.post('/api/autovideo/reintento/plan', (req, res) => { try { aplicarCabeceras(res); return responderOk(res, { reintento: crearPlanReintento(req.body || {}) }); } catch (error) { return responderError(res, error, 400); } });
 
   app.get('/api/autovideo/perfiles', (_req, res) => { aplicarCabeceras(res); return responderOk(res, { perfiles: listarPerfiles() }); });
@@ -47,7 +49,7 @@ export function registrarRutasModulares(app, opciones = {}) {
   app.get('/api/autovideo/efectos/premium', (_req, res) => { aplicarCabeceras(res); return responderOk(res, { paquetes: listarPaquetesPremiumEfectos(), motor: 'efectos-premium-v2', bloque: 13 }); });
   app.post('/api/autovideo/efectos/premium/previsualizar', (req, res) => { try { aplicarCabeceras(res); return responderOk(res, { premium: previsualizarEfectosPremium(req.body || {}) }); } catch (error) { return responderError(res, error, 400); } });
   app.get('/api/autovideo/sfx/premium', (_req, res) => { aplicarCabeceras(res); return responderOk(res, { paquetes: listarPaquetesSfxPremium(), motor: 'sfx-premium-v1', bloque: 14 }); });
-  app.post('/api/autovideo/sfx/premium/previsualizar', (req, res) => { try { aplicarCabeceras(res); return responderOk(res, { sfx: previsualizarSfxPremium(req.body || {}) }); } catch (error) { return responderError(res, error, 400); } });
+  app.post('/api/autovideo/sfx/premium/previsualizar', (req, res) => { try { aplicarCabeceras(res); const sfx = previsualizarSfxPremium(req.body || {}); return responderOk(res, { sfx }); } catch (error) { return responderError(res, error, 400); } });
   app.get('/api/autovideo/efectos/aprendizaje', async (_req, res) => { try { aplicarCabeceras(res); return responderOk(res, { memoria: await cargarMemoriaEfectos() }); } catch (error) { return responderError(res, error); } });
   app.post('/api/autovideo/efectos/aprendizaje/registrar', async (req, res) => { try { aplicarCabeceras(res); const aprendizaje = await registrarAprendizajeEfectos(req.body?.resultado || req.body || {}); return responderOk(res, { aprendizaje }); } catch (error) { return responderError(res, error, 400); } });
   app.post('/api/autovideo/efectos/previsualizar', async (req, res) => { try { aplicarCabeceras(res); const previsualizacion = await previsualizarEfectos(req.body || {}); return responderOk(res, { previsualizacion }); } catch (error) { return responderError(res, error, 400); } });
