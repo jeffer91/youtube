@@ -4,6 +4,7 @@ import { exportarConFfmpeg } from '../../comun/ffmpeg.js';
 import { asegurarCarpeta, escribirJson, obtenerRutaRaiz, crearRutaRelativaParaWeb } from '../../comun/archivos.js';
 import { reportarModulo } from '../../progreso/progreso-modulo.js';
 import { crearAntesDespues } from '../antes-despues/antes-despues.conexion.js';
+import { crearReporteFinalEdicion } from '../reporte-final/reporte-final.service.js';
 import { crearPlanAudioExportacionSeguro, crearResumenAudioSeguro } from './audio-exportacion-segura.service.js';
 
 const PLATAFORMA_PREDETERMINADA = 'tiktok';
@@ -47,14 +48,8 @@ function obtenerFiltroFallbackVideo(edicion) {
 
 async function exportarConFallbackVisual({ rutaVideoRender, rutaExportada, filtroPrincipal, filtroFallback, planAudio, edicion }) {
   const parametros = { rutaEntrada: rutaVideoRender, rutaSalida: rutaExportada, rutaAudioExterno: planAudio?.rutaAudioExterno || null, filtroAudio: planAudio?.filtroAudioFinal || null, codecVideo: edicion.render.codecVideo || 'libx264', codecAudio: edicion.render.codecAudio || 'aac', crf: edicion.render.crf || 23, presetFfmpeg: edicion.render.presetFfmpeg || 'veryfast', audioBitrate: edicion.render.audioBitrate || '192k' };
-  try {
-    const resultado = await exportarConFfmpeg({ ...parametros, filtroVideo: filtroPrincipal });
-    return { resultado, filtroUsado: filtroPrincipal, fallbackVisualUsado: false, errorPrincipal: null };
-  } catch (errorPrincipal) {
-    if (!filtroFallback) throw errorPrincipal;
-    const resultado = await exportarConFfmpeg({ ...parametros, filtroVideo: filtroFallback });
-    return { resultado, filtroUsado: filtroFallback, fallbackVisualUsado: true, errorPrincipal: errorPrincipal.message };
-  }
+  try { const resultado = await exportarConFfmpeg({ ...parametros, filtroVideo: filtroPrincipal }); return { resultado, filtroUsado: filtroPrincipal, fallbackVisualUsado: false, errorPrincipal: null }; }
+  catch (errorPrincipal) { if (!filtroFallback) throw errorPrincipal; const resultado = await exportarConFfmpeg({ ...parametros, filtroVideo: filtroFallback }); return { resultado, filtroUsado: filtroFallback, fallbackVisualUsado: true, errorPrincipal: errorPrincipal.message }; }
 }
 
 export async function exportarVideoSimple({ entrada, entendimiento, audio = null, transcripcion = null, edicionDinamica = null, edicion, opciones = {}, progreso = null }) {
@@ -72,31 +67,27 @@ export async function exportarVideoSimple({ entrada, entendimiento, audio = null
   const rutaResumenCompatibilidad = path.join(entrada.rutas.carpetaProyecto, 'salida-simple.json');
   const rutaVideoRender = obtenerRutaVideoRender({ entrada, edicion });
   const filtroFallback = obtenerFiltroFallbackVideo(edicion);
-
   asegurarCarpeta(carpetaExportados);
 
   const planAudio = await crearPlanAudioExportacionSeguro({ rutaVideoRender, audio, edicion, entendimiento, opciones });
   await escribirJson(path.join(entrada.rutas.carpetaProyecto, 'audio-exportacion-segura.json'), planAudio);
-
   await reportarModulo(progreso, { etapa: 'salida', porcentaje: 94, titulo: 'Renderizando video', detalle: `FFmpeg está exportando ${nombreExportado}. Audio: ${planAudio.modo}.`, datos: { rutaVideoRender, rutaAudioExterno: planAudio.rutaAudioExterno || null, audioModo: planAudio.modo, fallbackVisualDisponible: Boolean(filtroFallback), advertenciasAudio: planAudio.advertencias || [] }, archivo: 'comun/ffmpeg.js' });
 
   const exportacion = await exportarConFallbackVisual({ rutaVideoRender, rutaExportada, filtroPrincipal: edicion.render.filtroVideo, filtroFallback, planAudio, edicion });
-
   if (exportacion.fallbackVisualUsado) await reportarModulo(progreso, { etapa: 'salida', porcentaje: 96, titulo: 'Render seguro aplicado', detalle: 'El filtro avanzado falló. Se exportó con el filtro base para no detener el video.', datos: { errorPrincipal: exportacion.errorPrincipal }, archivo: 'salida/exportar-simple/exportar.service.js' });
 
   await reportarModulo(progreso, { etapa: 'salida', porcentaje: 98, titulo: 'Validando archivo final', detalle: 'Comprobando que el MP4 exportado exista y no esté vacío.', archivo: 'salida/exportar-simple/exportar.service.js' });
   const stats = await validarArchivoExportado(rutaExportada);
   const resumenAudio = crearResumenAudioSeguro({ planAudio, audio, edicion });
-
-  const salidaBase = { ok: true, etapa: 'salida', tipo: 'exportar-simple', plataforma, modo, rutaExportada, rutaRelativa: crearRutaRelativaParaWeb(rutaExportada), nombreExportado, urlPublica: crearUrlPublica(nombreExportado), pesoBytes: stats.size, audio: resumenAudio, edicion: crearResumenEdicion(edicion), ffmpeg: { audioUsado: exportacion.resultado?.audioUsado || resumenAudio.tipo, videoRenderUsado: rutaVideoRender, filtroAudioAplicado: Boolean(exportacion.resultado?.filtroAudioAplicado), filtroAudio: exportacion.resultado?.filtroAudio || null, fallbackVisualUsado: exportacion.fallbackVisualUsado, errorFiltroPrincipal: exportacion.errorPrincipal }, render: { filtroVideo: exportacion.filtroUsado, filtroVideoOriginal: edicion.render.filtroVideo, filtroFallbackDisponible: Boolean(filtroFallback), planAudio, codecVideo: edicion.render.codecVideo || 'libx264', codecAudio: edicion.render.codecAudio || 'aac', crf: edicion.render.crf || 23, presetFfmpeg: edicion.render.presetFfmpeg || 'veryfast', audioBitrate: edicion.render.audioBitrate || '192k', pixFmt: edicion.render.pixFmt || 'yuv420p' }, entrada: { nombreOriginal: entrada.video.nombreOriginal || null, rutaOriginal: entrada.video.rutaOriginal, rutaVideoRender, origenVideoRender: edicion?.render?.origenVideoEntrada || edicion?.entrada?.origenVideoRender || 'original' }, entendimiento: { orientacion: entendimiento?.analisis?.orientacion || null, duracionSegundos: entendimiento?.analisis?.duracionSegundos || null, tieneAudio: Boolean(entendimiento?.analisis?.tieneAudio) }, opciones: { ...opciones, plataforma, modo }, archivos: { resumenSalida: nombreResumenSalida, resumenCompatibilidad: 'salida-simple.json', audioExportacionSegura: 'audio-exportacion-segura.json' }, creadoEn: new Date().toISOString() };
+  const salidaBase = { ok: true, etapa: 'salida', tipo: 'exportar-simple', plataforma, modo, rutaExportada, rutaRelativa: crearRutaRelativaParaWeb(rutaExportada), nombreExportado, urlPublica: crearUrlPublica(nombreExportado), pesoBytes: stats.size, audio: resumenAudio, edicion: crearResumenEdicion(edicion), ffmpeg: { audioUsado: exportacion.resultado?.audioUsado || resumenAudio.tipo, videoRenderUsado: rutaVideoRender, filtroAudioAplicado: Boolean(exportacion.resultado?.filtroAudioAplicado), filtroAudio: exportacion.resultado?.filtroAudio || null, fallbackVisualUsado: exportacion.fallbackVisualUsado, errorFiltroPrincipal: exportacion.errorPrincipal }, render: { filtroVideo: exportacion.filtroUsado, filtroVideoOriginal: edicion.render.filtroVideo, filtroFallbackDisponible: Boolean(filtroFallback), planAudio, codecVideo: edicion.render.codecVideo || 'libx264', codecAudio: edicion.render.codecAudio || 'aac', crf: edicion.render.crf || 23, presetFfmpeg: edicion.render.presetFfmpeg || 'veryfast', audioBitrate: edicion.render.audioBitrate || '192k', pixFmt: edicion.render.pixFmt || 'yuv420p' }, entrada: { nombreOriginal: entrada.video.nombreOriginal || null, rutaOriginal: entrada.video.rutaOriginal, rutaVideoRender, origenVideoRender: edicion?.render?.origenVideoEntrada || edicion?.entrada?.origenVideoRender || 'original' }, entendimiento: { orientacion: entendimiento?.analisis?.orientacion || null, duracionSegundos: entendimiento?.analisis?.duracionSegundos || null, tieneAudio: Boolean(entendimiento?.analisis?.tieneAudio) }, opciones: { ...opciones, plataforma, modo }, archivos: { resumenSalida: nombreResumenSalida, resumenCompatibilidad: 'salida-simple.json', audioExportacionSegura: 'audio-exportacion-segura.json', reporteFinal: 'reporte-final-edicion.json' }, creadoEn: new Date().toISOString() };
 
   const antesDespues = await crearAntesDespues({ entrada, salida: salidaBase, audio, transcripcion, edicionDinamica, edicion, opciones: { ...opciones, plataforma, modo } });
-  const salida = { ...salidaBase, antesDespues };
+  const salidaSinReporte = { ...salidaBase, antesDespues };
+  const reporteFinal = await crearReporteFinalEdicion({ entrada, entendimiento, audio, transcripcion, edicion, salida: salidaSinReporte, opciones: { ...opciones, plataforma, modo } });
+  const salida = { ...salidaSinReporte, reporteFinal };
 
   await escribirJson(rutaResumenSalida, salida);
   if (rutaResumenCompatibilidad !== rutaResumenSalida) await escribirJson(rutaResumenCompatibilidad, salida);
-
-  await reportarModulo(progreso, { etapa: 'salida', porcentaje: 99, titulo: 'Antes y después listo', detalle: `${nombreExportado} exportado con comparación antes/después.`, datos: { nombreExportado, pesoBytes: stats.size, urlPublica: salida.urlPublica, audio: resumenAudio.tipo, antesDespues: Boolean(antesDespues?.ok), fallbackVisualUsado: exportacion.fallbackVisualUsado }, archivo: 'salida/antes-despues/antes-despues.conexion.js' });
-
+  await reportarModulo(progreso, { etapa: 'salida', porcentaje: 99, titulo: 'Resultado y reporte listo', detalle: `${nombreExportado} exportado con reporte final de efectos, textos, imágenes, animaciones y audio.`, datos: { nombreExportado, pesoBytes: stats.size, urlPublica: salida.urlPublica, audio: resumenAudio.tipo, antesDespues: Boolean(antesDespues?.ok), fallbackVisualUsado: exportacion.fallbackVisualUsado, reporteFinal: reporteFinal.nombreArchivo }, archivo: 'salida/reporte-final/reporte-final.service.js' });
   return { ...salida, rutaResumenSalida };
 }
