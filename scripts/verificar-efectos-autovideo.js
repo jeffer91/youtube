@@ -2,6 +2,7 @@ import { spawnSync } from 'child_process';
 
 const SCRIPTS = Object.freeze([
   'scripts/verificar-catalogo-efectos.js',
+  'scripts/verificar-aprendizaje-efectos.js',
   'scripts/verificar-optimizador-efectos.js',
   'scripts/verificar-planificador-efectos.js',
   'scripts/verificar-compilador-efectos.js',
