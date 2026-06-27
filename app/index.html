@@ -14,85 +14,85 @@
     <section id="mainNavigation" class="aj-navigation-shell" aria-label="Navegación principal"></section>
     <section id="pantallaDinamica" class="aj-dynamic-screen" aria-live="polite"></section>
 
-    <section id="nuevoProyectoProcessor" class="hero-card aj-screen-panel" data-screen-panel="nuevo-proyecto">
-      <div class="hero-top">
+    <section id="nuevoProyectoProcessor" class="hero-card processor-card aj-screen-panel" data-screen-panel="nuevo-proyecto">
+      <div class="hero-top processor-top">
         <div>
           <p class="eyebrow">Nuevo proyecto</p>
-          <h1>Crear y procesar video</h1>
-          <p class="hero-description">Sube un video, elige perfil y procesa en automático.</p>
+          <h1>Crear video</h1>
+          <p class="hero-description">Selecciona video, perfil y plataformas. Luego procesa.</p>
         </div>
         <div id="serverStatus" class="server-status server-status--checking">Verificando servidor</div>
       </div>
 
-      <form id="videoForm" class="video-form">
-        <section class="form-section upload-card">
-          <label class="file-picker" for="videoInput">
-            <span class="file-picker__icon">🎬</span>
-            <span class="file-picker__title">Seleccionar video</span>
-            <span class="file-picker__hint">MP4, MOV, WEBM, MKV o AVI</span>
-          </label>
-          <input id="videoInput" class="file-input" name="video" type="file" accept="video/*,.mp4,.mov,.m4v,.avi,.mkv,.webm" required />
-          <p id="fileName" class="file-name">Ningún video seleccionado.</p>
-        </section>
+      <form id="videoForm" class="video-form video-form--compact">
+        <div class="processor-grid">
+          <section class="form-section upload-card upload-card--compact">
+            <label class="file-picker" for="videoInput">
+              <span class="file-picker__icon">🎬</span>
+              <span class="file-picker__title">Seleccionar video</span>
+              <span class="file-picker__hint">MP4, MOV, WEBM, MKV o AVI</span>
+            </label>
+            <input id="videoInput" class="file-input" name="video" type="file" accept="video/*,.mp4,.mov,.m4v,.avi,.mkv,.webm" required />
+            <p id="fileName" class="file-name">Ningún video seleccionado.</p>
+          </section>
 
-        <section class="form-section auto-card">
+          <section class="form-section project-config-card project-config-card--compact">
+            <div class="options-header processor-section-title">
+              <div>
+                <p class="eyebrow">Configuración</p>
+                <h2>Perfil y plataformas</h2>
+              </div>
+            </div>
+            <div class="project-config-grid">
+              <label class="select-row" for="profileSelect">
+                <span>Perfil</span>
+                <select id="profileSelect" name="perfil">
+                  <option value="general" selected>General</option>
+                  <option value="11-contra-11">11 contra 11</option>
+                  <option value="jeff-isekai">Jeff Isekai</option>
+                  <option value="creciaula">Creciaula</option>
+                  <option value="institucional">Institucional</option>
+                  <option value="el-don-historia">El Don Historia</option>
+                  <option value="jeff-verso">Jeff Verso</option>
+                </select>
+              </label>
+              <label class="select-row" for="editModeSelect">
+                <span>Modo</span>
+                <select id="editModeSelect" name="modoEdicion">
+                  <option value="revision_completa" selected>Revisión completa</option>
+                  <option value="automatico_rapido">Automático rápido</option>
+                </select>
+              </label>
+              <label class="toggle-row export-row" for="exportMultiplatform">
+                <input id="exportMultiplatform" name="exportarMultiplataforma" type="checkbox" checked />
+                <span><strong>Exportar todo</strong><small>9:16, 16:9 y 1:1</small></span>
+              </label>
+            </div>
+            <div class="platform-checks" aria-label="Plataformas de exportación">
+              <label class="platform-check"><input type="checkbox" data-platform-option value="tiktok" checked /><span>TikTok<small>9:16</small></span></label>
+              <label class="platform-check"><input type="checkbox" data-platform-option value="reels" checked /><span>Reels<small>9:16</small></span></label>
+              <label class="platform-check"><input type="checkbox" data-platform-option value="shorts" checked /><span>Shorts<small>9:16</small></span></label>
+              <label class="platform-check"><input type="checkbox" data-platform-option value="youtube" checked /><span>YouTube<small>16:9</small></span></label>
+              <label class="platform-check"><input type="checkbox" data-platform-option value="instagram" /><span>Instagram<small>1:1</small></span></label>
+            </div>
+            <p id="projectSettingsSummary" class="project-summary">Perfil: General · Plataformas: TikTok, Reels, Shorts, YouTube · Modo: revisión completa</p>
+          </section>
+        </div>
+
+        <section class="form-section auto-card auto-card--inline">
           <div>
-            <p class="eyebrow">Modo automático</p>
-            <h2>Edición completa con un clic</h2>
-            <p id="autoModeSummary" class="auto-summary">Audio, silencios, subtítulos, textos, visuales y sonidos.</p>
+            <p class="eyebrow">Automático activo</p>
+            <p id="autoModeSummary" class="auto-summary">Silencios, audio, textos, visuales y sonidos.</p>
           </div>
           <div class="auto-pills" aria-label="Funciones automáticas activas">
             <span>Silencios</span><span>Audio</span><span>Textos</span><span>Visuales</span><span>Sonidos</span>
           </div>
         </section>
 
-        <section class="form-section project-config-card">
-          <div class="options-header">
-            <div>
-              <p class="eyebrow">Configuración</p>
-              <h2>Perfil y plataformas</h2>
-              <p>Define estilo y formatos finales.</p>
-            </div>
-          </div>
-          <div class="project-config-grid">
-            <label class="select-row" for="profileSelect">
-              <span>Perfil</span>
-              <select id="profileSelect" name="perfil">
-                <option value="general" selected>General</option>
-                <option value="11-contra-11">11 contra 11</option>
-                <option value="jeff-isekai">Jeff Isekai</option>
-                <option value="creciaula">Creciaula</option>
-                <option value="institucional">Institucional</option>
-                <option value="el-don-historia">El Don Historia</option>
-                <option value="jeff-verso">Jeff Verso</option>
-              </select>
-            </label>
-            <label class="select-row" for="editModeSelect">
-              <span>Modo de edición</span>
-              <select id="editModeSelect" name="modoEdicion">
-                <option value="revision_completa" selected>Revisión completa</option>
-                <option value="automatico_rapido">Automático rápido</option>
-              </select>
-            </label>
-            <label class="toggle-row" for="exportMultiplatform">
-              <input id="exportMultiplatform" name="exportarMultiplataforma" type="checkbox" checked />
-              <span><strong>Exportar todas las plataformas</strong><small>Formatos 9:16, 16:9 y 1:1 cuando sea posible.</small></span>
-            </label>
-          </div>
-          <div class="platform-checks" aria-label="Plataformas de exportación">
-            <label class="platform-check"><input type="checkbox" data-platform-option value="tiktok" checked /><span>TikTok<small>9:16</small></span></label>
-            <label class="platform-check"><input type="checkbox" data-platform-option value="reels" checked /><span>Reels<small>9:16</small></span></label>
-            <label class="platform-check"><input type="checkbox" data-platform-option value="shorts" checked /><span>Shorts<small>9:16</small></span></label>
-            <label class="platform-check"><input type="checkbox" data-platform-option value="youtube" checked /><span>YouTube<small>16:9</small></span></label>
-            <label class="platform-check"><input type="checkbox" data-platform-option value="instagram" /><span>Instagram<small>1:1</small></span></label>
-          </div>
-          <p id="projectSettingsSummary" class="project-summary">Perfil: General · Plataformas: TikTok, Reels, Shorts, YouTube · Modo: revisión completa</p>
-        </section>
-
         <input type="hidden" id="platformInput" name="plataforma" value="tiktok" />
         <input type="hidden" id="modeInput" name="modo" value="cuadrado-centro" />
 
-        <details class="advanced-options">
+        <details class="advanced-options advanced-options--compact">
           <summary>Opciones avanzadas</summary>
           <div class="advanced-grid">
             <section class="form-section options-card">
@@ -102,7 +102,7 @@
             </section>
 
             <section class="form-section options-card">
-              <div class="options-header"><div><h2>Transcripción y textos</h2><p>Por defecto se intenta preparar subtítulos y textos. Gemini queda opcional.</p></div><button id="openGeminiButton" class="secondary-button" type="button">Configurar Gemini</button></div>
+              <div class="options-header"><div><h2>Transcripción y textos</h2><p>Subtítulos y textos quedan activos por defecto.</p></div><button id="openGeminiButton" class="secondary-button" type="button">Configurar Gemini</button></div>
               <label class="toggle-row" for="createTranscription"><input id="createTranscription" name="crearTranscripcion" type="checkbox" checked /><span><strong>Crear transcripción</strong><small>Usa texto manual o el motor disponible.</small></span></label>
               <label class="toggle-row" for="addSubtitles"><input id="addSubtitles" name="agregarSubtitulos" type="checkbox" checked /><span><strong>Agregar subtítulos</strong><small>Subtítulos quemados en el video final.</small></span></label>
               <label class="toggle-row" for="addFloatingTexts"><input id="addFloatingTexts" name="agregarTextosFlotantes" type="checkbox" checked /><span><strong>Agregar textos flotantes</strong><small>Momentos importantes convertidos en textos visuales.</small></span></label>
@@ -116,10 +116,10 @@
           </div>
         </details>
 
-        <button id="processButton" class="primary-button" type="submit">Procesar automáticamente</button>
+        <button id="processButton" class="primary-button primary-button--compact" type="submit">Procesar automáticamente</button>
       </form>
 
-      <section id="progressArea" class="progress-area" hidden>
+      <section id="progressArea" class="progress-area progress-area--compact" hidden>
         <div class="progress-topline"><div><p class="eyebrow">Progreso real</p><h2 id="progressTitle">Esperando video</h2></div><strong id="progressPercent">0%</strong></div>
         <div class="progress-track" aria-label="Barra de progreso de edición"><div id="progressBar" class="progress-bar" style="width: 0%;"></div></div>
         <div class="progress-status-row"><div class="progress-loader"></div><p id="progressText">Esperando video.</p></div>
