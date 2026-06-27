@@ -10,6 +10,7 @@ const SCRIPTS = Object.freeze([
   'scripts/verificar-integracion-efectos.js',
   'scripts/verificar-previsualizacion-efectos.js',
   'scripts/verificar-efectos-preview-ui.js',
+  'scripts/verificar-fallback-exportacion-efectos.js',
   'scripts/verificar-cierre-final-efectos.js'
 ]);
 
