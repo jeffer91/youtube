@@ -62,6 +62,7 @@ export function renderEntendimientoView() {
           <header><div><p class="eyebrow">Transcripción</p><h3>Texto detectado por motor</h3></div><span id="entendimientoTranscripcionEstado">Pendiente</span></header>
           <div id="entendimientoTranscripcionTabs" class="entendimiento-transcripcion-tabs" aria-label="Transcripciones por motor"></div>
           <div id="entendimientoTranscripcionMeta" class="entendimiento-transcripcion-meta">Sin motor seleccionado.</div>
+          <div id="entendimientoTranscripcionAcciones" class="entendimiento-transcripcion-acciones"></div>
           <div id="entendimientoTranscripcion" class="entendimiento-text-box">Carga un proyecto para ver la transcripción o la estructura preparada.</div>
         </article>
 
