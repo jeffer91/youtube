@@ -81,7 +81,7 @@ export const CONFIG_MULTIMOTOR_TRANSCRIPCION = Object.freeze({
   motorPrincipalPreferido: MOTORES_TRANSCRIPCION.FASTER_WHISPER,
   ordenMotores: ORDEN_MOTORES_TRANSCRIPCION,
   ejecutarEnParalelo: false,
-  detenerAlEncontrarTextoUtil: true,
+  detenerAlEncontrarTextoUtil: false,
   permitirTranscripcionVacia: true,
   carpetaModelos: 'modelos/transcripcion',
   carpetaBinarios: 'binarios/transcripcion'
