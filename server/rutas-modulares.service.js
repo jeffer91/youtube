@@ -1,6 +1,6 @@
 /*
-  Bloque 13
-  Funcion: registrar rutas API para modulos, diagnostico, auditoria, reintento, efectos y aprendizaje de efectos.
+  Bloque 14
+  Funcion: registrar rutas API para modulos, diagnostico, auditoria, reintento, efectos, presets y aprendizaje.
 */
 
 import { listarPerfiles, obtenerPerfil } from '../perfiles/perfiles.conexion.js';
@@ -16,6 +16,7 @@ import { crearAuditoriaIntegral } from '../diagnostico/auditoria-integral.servic
 import { crearPlanReintento } from '../diagnostico/reintento-etapa.service.js';
 import { listarEfectosCatalogo, listarPerfilesEfectos, TOTAL_EFECTOS_CATALOGO } from '../editar/efectos/catalogo/index.js';
 import { cargarMemoriaEfectos, registrarAprendizajeEfectos } from '../editar/efectos/aprendizaje/index.js';
+import { listarPresetsVisualesEfectos } from '../editar/efectos/presets/index.js';
 import { previsualizarEfectos } from '../editar/efectos/previsualizacion/index.js';
 
 function responderOk(res, datos = {}) { return res.json({ ok: true, ...datos, fecha: new Date().toISOString() }); }
@@ -35,6 +36,7 @@ export function registrarRutasModulares(app, opciones = {}) {
   app.get('/api/autovideo/plataformas', (_req, res) => { aplicarCabeceras(res); const plataformas = obtenerIdsPlataformas().map((id) => obtenerPlataformaExportacion(id)); return responderOk(res, { plataformas }); });
 
   app.get('/api/autovideo/efectos/catalogo', (_req, res) => { aplicarCabeceras(res); return responderOk(res, { total: TOTAL_EFECTOS_CATALOGO, perfiles: listarPerfilesEfectos(), efectos: listarEfectosCatalogo() }); });
+  app.get('/api/autovideo/efectos/presets', (_req, res) => { aplicarCabeceras(res); return responderOk(res, { presets: listarPresetsVisualesEfectos() }); });
   app.get('/api/autovideo/efectos/aprendizaje', async (_req, res) => { try { aplicarCabeceras(res); return responderOk(res, { memoria: await cargarMemoriaEfectos() }); } catch (error) { return responderError(res, error); } });
   app.post('/api/autovideo/efectos/aprendizaje/registrar', async (req, res) => { try { aplicarCabeceras(res); const aprendizaje = await registrarAprendizajeEfectos(req.body?.resultado || req.body || {}); return responderOk(res, { aprendizaje }); } catch (error) { return responderError(res, error, 400); } });
   app.post('/api/autovideo/efectos/previsualizar', async (req, res) => { try { aplicarCabeceras(res); const previsualizacion = await previsualizarEfectos(req.body || {}); return responderOk(res, { previsualizacion }); } catch (error) { return responderError(res, error, 400); } });
