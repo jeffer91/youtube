@@ -20,6 +20,7 @@
     "check:labels": "node scripts/verificar-textos-relevantes.js",
     "check:visual": "node scripts/verificar-visual.js",
     "check:efectos-catalogo": "node scripts/verificar-catalogo-efectos.js",
+    "check:efectos-presets": "node scripts/verificar-presets-efectos.js",
     "check:efectos-aprendizaje": "node scripts/verificar-aprendizaje-efectos.js",
     "check:efectos-optimizador": "node scripts/verificar-optimizador-efectos.js",
     "check:efectos-plan": "node scripts/verificar-planificador-efectos.js",
