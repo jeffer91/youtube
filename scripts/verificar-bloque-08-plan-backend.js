@@ -5,13 +5,13 @@ function exigir(condicion, mensaje) {
 }
 
 function leer(ruta) {
-  exigir(fs.existsSync(ruta), `Falta ${ruta}`);
+  exigir(fs.existsSync(ruta), 'Falta ' + ruta);
   return fs.readFileSync(ruta, 'utf-8');
 }
 
 function contiene(ruta, claves) {
   const contenido = leer(ruta);
-  for (const clave of claves) exigir(contenido.includes(clave), `${ruta} no contiene ${clave}`);
+  for (const clave of claves) exigir(contenido.includes(clave), ruta + ' no contiene ' + clave);
 }
 
 function verificarServicioPlan() {
@@ -28,9 +28,8 @@ function verificarServicioPlan() {
     'crearPlanEditorial',
     'PLANIFICANDO',
     'PLANIFICADO',
-    '02-plan',
     'planProduccion',
-    'lineaTiempo'
+    'listoParaProduccion'
   ]);
 }
 
@@ -50,6 +49,7 @@ function verificarDocumentacion() {
     'Plan de edición backend',
     'POST /api/proyectos/:proyectoId/plan/procesar',
     '02-plan/plan-edicion.json',
+    'lineaTiempo',
     'siguiente_bloque: Pantalla Plan de edición'
   ]);
 }
