@@ -47,10 +47,11 @@ function extraerImagenes(entendimiento = {}, modular = null) {
 }
 
 function extraerAnimaciones(edicion = {}, modular = null) {
-  const animacionesModular = lista(modular?.visual?.animaciones?.animaciones || modular?.visual?.animaciones);
-  const animacionesProduccion = lista(modular?.produccion?.elementos).filter((item) => item.tipo === 'animacion');
-  const animacionesEdicion = lista(edicion?.visualDinamico?.animaciones?.animaciones || edicion?.visualDinamico?.animaciones || edicion?.animaciones);
-  return unirListasSinDuplicar(animacionesModular, animacionesProduccion, animacionesEdicion).map((item, indice) => ({ id: item.id || `animacion-${indice + 1}`, tipo: item.tipo || item.datos?.tipo || 'animacion', elementoId: item.elementoId || item.idElemento || null, inicio: item.inicio ?? item.datos?.inicio ?? null, fin: item.fin ?? item.datos?.fin ?? null, intensidad: item.intensidad || item.datos?.intensidad || null }));
+  const animacionesRender = lista(edicion?.visualDinamico?.animacionesRender?.animaciones || edicion?.render?.animacionesRender?.animaciones).map((item) => ({ ...item, renderizada: true, origen: 'render-ffmpeg' }));
+  const animacionesModular = lista(modular?.visual?.animaciones?.animaciones || modular?.visual?.animaciones).map((item) => ({ ...item, renderizada: false, origen: 'plan-modular' }));
+  const animacionesProduccion = lista(modular?.produccion?.elementos).filter((item) => item.tipo === 'animacion').map((item) => ({ ...item, renderizada: false, origen: 'produccion' }));
+  const animacionesEdicion = lista(edicion?.visualDinamico?.animaciones?.animaciones || edicion?.visualDinamico?.animaciones || edicion?.animaciones).map((item) => ({ ...item, renderizada: false, origen: 'edicion' }));
+  return unirListasSinDuplicar(animacionesRender, animacionesModular, animacionesProduccion, animacionesEdicion).map((item, indice) => ({ id: item.id || `animacion-${indice + 1}`, tipo: item.tipo || item.datos?.tipo || 'animacion', elementoId: item.elementoId || item.idElemento || null, inicio: item.inicio ?? item.datos?.inicio ?? null, fin: item.fin ?? item.datos?.fin ?? null, intensidad: item.intensidad || item.datos?.intensidad || null, renderizada: Boolean(item.renderizada), origen: item.origen || 'desconocido' }));
 }
 
 function crearResumen({ efectos, textos, imagenes, animaciones, salida, audio }) {
@@ -62,6 +63,7 @@ function crearResumen({ efectos, textos, imagenes, animaciones, salida, audio })
     textosUsados: textos.length,
     imagenesDisponibles: imagenes.length,
     animacionesUsadas: animaciones.length,
+    animacionesRenderizadas: animaciones.filter((item) => item.renderizada).length,
     audio: salida?.audio?.tipo || audio?.tipo || 'no reportado',
     fallbackVisualUsado: Boolean(salida?.ffmpeg?.fallbackVisualUsado)
   };
@@ -91,19 +93,21 @@ export async function crearReporteFinalEdicion({ entrada, entendimiento, audio =
       fallbackVisualUsado: Boolean(salida?.ffmpeg?.fallbackVisualUsado),
       errorFiltroPrincipal: salida?.ffmpeg?.errorFiltroPrincipal || null,
       audioSeguro: salida?.render?.planAudio || null,
-      produccionConTimeline: Boolean(modular?.produccion?.lineaTiempo)
+      produccionConTimeline: Boolean(modular?.produccion?.lineaTiempo),
+      animacionesRenderizadas: animaciones.filter((item) => item.renderizada).length
     },
     recomendaciones: [
       efectos.length ? 'Revisar en Producción los efectos aplicados y desactivar los que no aporten.' : 'No se reportaron efectos; revisar motor visual.',
       textos.length ? 'Validar títulos y textos antes de publicar.' : 'No se reportaron textos; revisar transcripción.',
-      imagenes.length ? 'Usar las imágenes/fotogramas como apoyo en la línea de tiempo.' : 'No hay imágenes revisables; revisar extracción de fotogramas o biblioteca.'
+      imagenes.length ? 'Usar las imágenes/fotogramas como apoyo en la línea de tiempo.' : 'No hay imágenes revisables; revisar extracción de fotogramas o biblioteca.',
+      animaciones.some((item) => item.renderizada) ? 'Las animaciones visibles ya fueron renderizadas en el MP4 final.' : 'No se reportaron animaciones renderizadas; revisar motor de animaciones.'
     ],
     creadoEn: new Date().toISOString()
   };
 
   const rutaReporte = path.join(carpetaProyecto, 'reporte-final-edicion.json');
   await escribirJson(rutaReporte, reporte);
-  return { ok: true, rutaReporte, nombreArchivo: path.basename(rutaReporte), reporte, resumenTexto: `${texto(reporte.resumen.videoFinal, 'Video final')} · ${reporte.resumen.efectosUsados} efecto(s) · ${reporte.resumen.textosUsados} texto(s) · ${reporte.resumen.animacionesUsadas} animación(es).` };
+  return { ok: true, rutaReporte, nombreArchivo: path.basename(rutaReporte), reporte, resumenTexto: `${texto(reporte.resumen.videoFinal, 'Video final')} · ${reporte.resumen.efectosUsados} efecto(s) · ${reporte.resumen.textosUsados} texto(s) · ${reporte.resumen.animacionesRenderizadas} animación(es) renderizada(s).` };
 }
 
 export default crearReporteFinalEdicion;
