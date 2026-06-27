@@ -1,6 +1,6 @@
 /*
-  Bloque 21
-  Funcion: auditoria integral de variables, conexiones, botones, entradas y salidas.
+  Bloque 8
+  Funcion: auditoria integral de variables, conexiones, botones, entradas, salidas y motor de efectos.
 */
 
 import fs from 'fs';
@@ -13,6 +13,8 @@ const ARCHIVOS_CRITICOS = Object.freeze([
   'app/index.html',
   'app/app.js',
   'app/configuracion-proyecto-ui.js',
+  'app/efectos-ui.js',
+  'app/resultado-efectos-ui.js',
   'app/biblioteca-ui.js',
   'app/historial-proyectos-ui.js',
   'app/produccion-revision-ui.js',
@@ -23,6 +25,12 @@ const ARCHIVOS_CRITICOS = Object.freeze([
   'server/rutas-modulares.service.js',
   'motor/flujo-principal.js',
   'motor/flujo-modular-autovideo.service.js',
+  'editar/efectos/catalogo/index.js',
+  'editar/efectos/analisis/index.js',
+  'editar/efectos/planificador/index.js',
+  'editar/efectos/ffmpeg/index.js',
+  'editar/efectos/efectos.conexion.js',
+  'diagnostico/efectos/diagnostico-efectos.service.js',
   'diagnostico/diagnostico-fuerte.service.js',
   'diagnostico/auditoria-integral.service.js',
   'diagnostico/reintento-etapa.service.js',
@@ -36,7 +44,7 @@ const IDS_REQUERIDOS = Object.freeze([
 ]);
 
 const CAMPOS_FORMULARIO = Object.freeze([
-  'video', 'jobId', 'perfil', 'plataforma', 'plataformas', 'modoEdicion', 'exportarMultiplataforma', 'modo', 'mejorarAudio', 'modoAudio', 'crearTranscripcion', 'modoTranscripcion', 'idiomaTranscripcion', 'textoTranscripcionManual', 'usarGemini', 'usarFallbackGemini', 'geminiCredencial', 'geminiModelo', 'geminiGuia', 'geminiTemperatura'
+  'video', 'jobId', 'perfil', 'plataforma', 'plataformas', 'modoEdicion', 'exportarMultiplataforma', 'modo', 'mejorarAudio', 'modoAudio', 'crearTranscripcion', 'modoTranscripcion', 'idiomaTranscripcion', 'textoTranscripcionManual', 'usarGemini', 'usarFallbackGemini', 'geminiCredencial', 'geminiModelo', 'geminiGuia', 'geminiTemperatura', 'usarMotorEfectos', 'selectorEfectos', 'intensidadEfectos', 'maxEfectosVisuales'
 ]);
 
 const RUTAS_API_REQUERIDAS = Object.freeze([
@@ -66,6 +74,19 @@ const ACCIONES_REQUERIDAS = Object.freeze([
   'data-diagnostic-action="strong"',
   'data-diagnostic-action="audit"',
   'data-platform-option'
+]);
+
+const ARCHIVOS_MOTOR_EFECTOS = Object.freeze([
+  'editar/efectos/catalogo/efectos.catalogo.js',
+  'editar/efectos/catalogo/efectos.schema.js',
+  'editar/efectos/analisis/contexto-video-efectos.service.js',
+  'editar/efectos/planificador/planificar-efectos.service.js',
+  'editar/efectos/planificador/seleccionar-efectos-local.service.js',
+  'editar/efectos/planificador/seleccionar-efectos-gemini.service.js',
+  'editar/efectos/ffmpeg/compilar-plan-ffmpeg.service.js',
+  'editar/efectos/ffmpeg/compilar-efecto-ffmpeg.service.js',
+  'editar/efectos/efectos.conexion.js',
+  'diagnostico/efectos/diagnostico-efectos.service.js'
 ]);
 
 function listarArchivos(dir, salida = []) {
@@ -160,7 +181,7 @@ function auditarScriptsIndex() {
 function auditarFormularioYServidor() {
   const fuenteFormulario = obtenerArchivosApp().filter((archivo) => archivo.endsWith('.js')).map((archivo) => fs.readFileSync(archivo, 'utf-8')).join('\n');
   const server = leer('server.js');
-  const faltanEnFormulario = CAMPOS_FORMULARIO.filter((campo) => campo !== 'video' && !fuenteFormulario.includes(`'${campo}'`) && !fuenteFormulario.includes(`"${campo}"`));
+  const faltanEnFormulario = CAMPOS_FORMULARIO.filter((campo) => campo !== 'video' && !fuenteFormulario.includes(`'${campo}'`) && !fuenteFormulario.includes(`"${campo}"`) && !fuenteFormulario.includes(campo));
   const faltanEnServidor = CAMPOS_FORMULARIO.filter((campo) => campo === 'video' ? false : !server.includes(campo));
   return { ok: faltanEnFormulario.length === 0 && faltanEnServidor.length === 0, campos: CAMPOS_FORMULARIO.length, faltanEnFormulario, faltanEnServidor };
 }
@@ -176,6 +197,27 @@ function auditarAccionesBotones() {
   const faltantes = ACCIONES_REQUERIDAS.filter((accion) => !fuente.includes(accion));
   const manejadores = ['data-history-action', 'data-production-action', 'data-production-mark', 'data-production-replace', 'data-library-action', 'data-diagnostic-action', 'data-platform-option'].filter((accion) => fuente.includes(accion));
   return { ok: faltantes.length === 0 && manejadores.length >= 7, total: ACCIONES_REQUERIDAS.length, manejadores: manejadores.length, faltantes };
+}
+
+function auditarMotorEfectos() {
+  const faltantes = ARCHIVOS_MOTOR_EFECTOS.filter((archivo) => !existeRelativo(archivo));
+  const verificaciones = [];
+  const catalogo = existeRelativo('editar/efectos/catalogo/efectos.catalogo.js') ? leer('editar/efectos/catalogo/efectos.catalogo.js') : '';
+  const conexion = existeRelativo('editar/efectos/efectos.conexion.js') ? leer('editar/efectos/efectos.conexion.js') : '';
+  const app = existeRelativo('app/app.js') ? leer('app/app.js') : '';
+  const server = existeRelativo('server.js') ? leer('server.js') : '';
+
+  if (!catalogo.includes('CATALOGO_EFECTOS')) verificaciones.push('No se detecta CATALOGO_EFECTOS.');
+  if (!conexion.includes('planificarEfectos') || !conexion.includes('compilarPlanFfmpeg')) verificaciones.push('La conexión de efectos no integra planificador y compilador.');
+  if (!app.includes('obtenerOpcionesEfectos')) verificaciones.push('La interfaz no envía opciones de efectos.');
+  if (!server.includes('maxEfectosVisuales') || !server.includes('selectorEfectos')) verificaciones.push('El servidor no normaliza opciones de efectos.');
+
+  return {
+    ok: faltantes.length === 0 && verificaciones.length === 0,
+    archivos: ARCHIVOS_MOTOR_EFECTOS.length,
+    faltantes,
+    errores: verificaciones
+  };
 }
 
 function auditarPackage() {
@@ -195,6 +237,7 @@ export async function crearAuditoriaIntegral(opciones = {}) {
     formularioServidor: auditarFormularioYServidor(),
     rutasApi: auditarRutasApi(),
     botonesAcciones: auditarAccionesBotones(),
+    motorEfectos: auditarMotorEfectos(),
     packageJson: auditarPackage()
   };
   const errores = Object.entries(secciones).flatMap(([nombre, resultado]) => {
@@ -209,11 +252,11 @@ export async function crearAuditoriaIntegral(opciones = {}) {
     ok,
     bloqueante: !ok,
     tipo: 'auditoria-integral-autovideo',
-    version: '1.0.0',
+    version: '1.1.0',
     mensaje: ok ? 'Auditoria integral correcta.' : `Auditoria integral encontro ${errores.length} problema(s).`,
     secciones,
     errores,
-    recomendaciones: ok ? ['Probar flujo real con video corto en Electron.'] : ['Corregir errores listados antes de empaquetar o procesar videos largos.'],
+    recomendaciones: ok ? ['Probar flujo real con video corto en Electron y revisar diagnostico-efectos.json.'] : ['Corregir errores listados antes de empaquetar o procesar videos largos.'],
     creadoEn: new Date().toISOString()
   };
   if (opciones.guardarReporte) {
