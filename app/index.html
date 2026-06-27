@@ -14,7 +14,7 @@
     <section id="mainNavigation" class="aj-navigation-shell" aria-label="Navegación principal"></section>
     <section id="pantallaDinamica" class="aj-dynamic-screen" aria-live="polite"></section>
 
-    <section class="hero-card">
+    <section id="nuevoProyectoProcessor" class="hero-card aj-screen-panel" data-screen-panel="nuevo-proyecto">
       <div class="hero-top">
         <div>
           <p class="eyebrow">Editor automático</p>
@@ -42,11 +42,7 @@
             <p id="autoModeSummary" class="auto-summary">Corta silencios, mejora audio, agrega subtítulos, textos, visuales y sonidos sin configurar nada.</p>
           </div>
           <div class="auto-pills" aria-label="Funciones automáticas activas">
-            <span>Silencios</span>
-            <span>Audio</span>
-            <span>Textos</span>
-            <span>Visuales</span>
-            <span>Sonidos</span>
+            <span>Silencios</span><span>Audio</span><span>Textos</span><span>Visuales</span><span>Sonidos</span>
           </div>
         </section>
 
@@ -124,20 +120,9 @@
       </form>
 
       <section id="progressArea" class="progress-area" hidden>
-        <div class="progress-topline">
-          <div>
-            <p class="eyebrow">Progreso real</p>
-            <h2 id="progressTitle">Esperando video</h2>
-          </div>
-          <strong id="progressPercent">0%</strong>
-        </div>
-        <div class="progress-track" aria-label="Barra de progreso de edición">
-          <div id="progressBar" class="progress-bar" style="width: 0%;"></div>
-        </div>
-        <div class="progress-status-row">
-          <div class="progress-loader"></div>
-          <p id="progressText">Esperando video.</p>
-        </div>
+        <div class="progress-topline"><div><p class="eyebrow">Progreso real</p><h2 id="progressTitle">Esperando video</h2></div><strong id="progressPercent">0%</strong></div>
+        <div class="progress-track" aria-label="Barra de progreso de edición"><div id="progressBar" class="progress-bar" style="width: 0%;"></div></div>
+        <div class="progress-status-row"><div class="progress-loader"></div><p id="progressText">Esperando video.</p></div>
         <ol id="progressHistory" class="progress-history"></ol>
       </section>
 
@@ -151,32 +136,14 @@
         <p id="modularSummary" class="result-extra-summary" hidden></p>
         <p id="productionSummary" class="result-extra-summary" hidden></p>
         <section id="resultPlatformsPanel" class="result-platforms-panel" hidden>
-          <div class="result-platforms-header">
-            <div>
-              <p class="eyebrow">Exportaciones</p>
-              <h2>Resultado por plataforma</h2>
-            </div>
-            <p id="resultPlatformsSummary" class="result-platforms-summary"></p>
-          </div>
+          <div class="result-platforms-header"><div><p class="eyebrow">Exportaciones</p><h2>Resultado por plataforma</h2></div><p id="resultPlatformsSummary" class="result-platforms-summary"></p></div>
           <div id="resultPlatformsList" class="result-platforms-list"></div>
         </section>
         <section id="beforeAfterPanel" class="before-after-panel" hidden>
-          <div class="before-after-header">
-            <div>
-              <p class="eyebrow">Comparación</p>
-              <h2>Antes y después</h2>
-            </div>
-            <p id="beforeAfterSummary" class="before-after-summary"></p>
-          </div>
+          <div class="before-after-header"><div><p class="eyebrow">Comparación</p><h2>Antes y después</h2></div><p id="beforeAfterSummary" class="before-after-summary"></p></div>
           <div class="before-after-grid">
-            <article class="compare-card">
-              <strong>Antes</strong>
-              <video id="beforeVideo" class="compare-video" controls playsinline></video>
-            </article>
-            <article class="compare-card">
-              <strong>Después</strong>
-              <video id="afterVideo" class="compare-video" controls playsinline></video>
-            </article>
+            <article class="compare-card"><strong>Antes</strong><video id="beforeVideo" class="compare-video" controls playsinline></video></article>
+            <article class="compare-card"><strong>Después</strong><video id="afterVideo" class="compare-video" controls playsinline></video></article>
           </div>
         </section>
         <video id="resultVideo" class="result-video" controls playsinline hidden></video>
@@ -187,12 +154,7 @@
   <section id="errorModal" class="modal-backdrop" hidden>
     <div class="modal-card error-modal-card" role="dialog" aria-modal="true" aria-labelledby="errorModalTitle">
       <div class="modal-header"><div><p class="eyebrow">Error de edición</p><h2 id="errorModalTitle">Fallo de edición</h2></div><button id="closeErrorModal" class="icon-button" type="button" aria-label="Cerrar">×</button></div>
-      <div class="error-detail-box">
-        <p id="errorModalStage">Etapa: no identificada</p>
-        <p id="errorModalDetail">No se recibió detalle del error.</p>
-        <p id="errorModalFile">Archivo sugerido: no identificado</p>
-        <p id="errorModalRecommendation">Revisa el historial de edición para ubicar el problema.</p>
-      </div>
+      <div class="error-detail-box"><p id="errorModalStage">Etapa: no identificada</p><p id="errorModalDetail">No se recibió detalle del error.</p><p id="errorModalFile">Archivo sugerido: no identificado</p><p id="errorModalRecommendation">Revisa el historial de edición para ubicar el problema.</p></div>
     </div>
   </section>
 
