@@ -3,14 +3,63 @@ import { transcribirVideoSimple } from './transcripcion-simple/transcripcion.ser
 import { extraerFotogramasClave } from './fotogramas/index.js';
 import { analizarVideoEditorial } from './analisis-video/index.js';
 import { crearReporteEntendimiento } from './reporte-entendimiento/index.js';
+import { procesarTranscripcionMultimotor } from '../transcripcion/motores/gestor-motores-transcripcion.service.js';
 
-async function intentarTranscripcionDisponible({ entrada, analisis, opciones }) {
-  const simple = await transcribirVideoSimple({ entrada, analisis, opciones });
-  if (simple?.textoCompleto) return simple;
+function tieneTextoTranscrito(transcripcion) {
+  return Boolean(String(transcripcion?.textoCompleto || '').trim());
+}
 
+function crearTranscripcionesPorMotorDesdeMultimotor(paqueteMultimotor) {
+  const resultados = Array.isArray(paqueteMultimotor?.resultados) ? paqueteMultimotor.resultados : [];
+  return resultados.map((resultado) => ({
+    motor: resultado.motor || resultado.transcripcion?.motor || 'desconocido',
+    ok: Boolean(resultado.ok || resultado.transcripcion?.ok),
+    estado: resultado.estado || resultado.transcripcion?.estado || 'pendiente',
+    mensaje: resultado.mensaje || resultado.transcripcion?.mensaje || '',
+    resumen: resultado.resumen || resultado.transcripcion?.resumen || null,
+    transcripcion: resultado.transcripcion || null,
+    error: resultado.error || resultado.transcripcion?.error || null
+  }));
+}
+
+function crearTranscripcionDesdeMultimotor(paqueteMultimotor, transcripcionBase = null) {
+  const principal = paqueteMultimotor?.transcripcionPrincipal || null;
+  const motorPrincipal = paqueteMultimotor?.motorPrincipal || principal?.motor || null;
+  const transcripcionesPorMotor = crearTranscripcionesPorMotorDesdeMultimotor(paqueteMultimotor);
+
+  if (principal && tieneTextoTranscrito(principal)) {
+    return {
+      ...principal,
+      tipo: 'transcripcion-multimotor',
+      motor: motorPrincipal,
+      motorPrincipal,
+      transcripcionPrincipal: principal,
+      transcripcionesPorMotor,
+      resumenTranscripcion: paqueteMultimotor?.resumen || null,
+      paqueteMultimotor,
+      rutaTranscripcion: paqueteMultimotor?.guardado?.principal?.ruta || transcripcionBase?.rutaTranscripcion || null,
+      observacion: paqueteMultimotor.mensaje || `Transcripción principal seleccionada desde ${motorPrincipal}.`
+    };
+  }
+
+  return {
+    ...(transcripcionBase || {}),
+    tipo: transcripcionBase?.tipo || 'estructura-preparada',
+    motor: transcripcionBase?.motor || 'transcripcion-simple',
+    textoCompleto: transcripcionBase?.textoCompleto || '',
+    segmentos: transcripcionBase?.segmentos || [],
+    transcripcionPrincipal: null,
+    transcripcionesPorMotor,
+    resumenTranscripcion: paqueteMultimotor?.resumen || null,
+    paqueteMultimotor,
+    observacion: paqueteMultimotor?.mensaje || transcripcionBase?.observacion || 'Transcripción multimotor sin texto útil.'
+  };
+}
+
+async function intentarTranscripcionLegacy({ entrada, analisis, opciones, transcripcionBase, paqueteMultimotor }) {
   try {
     const modulo = await import('../transcripcion/transcripcion.conexion.js');
-    if (typeof modulo.procesarTranscripcion !== 'function') return simple;
+    if (typeof modulo.procesarTranscripcion !== 'function') return transcripcionBase;
     const resultado = await modulo.procesarTranscripcion({
       entrada,
       entendimiento: { ok: true, analisis },
@@ -20,22 +69,91 @@ async function intentarTranscripcionDisponible({ entrada, analisis, opciones }) 
     if (resultado?.transcripcion?.textoCompleto) {
       return {
         ...resultado.transcripcion,
-        rutaTranscripcion: simple.rutaTranscripcion || resultado.archivosTranscripcion?.json || null,
-        paqueteTranscripcion: resultado
+        tipo: 'transcripcion-ampliada-legacy',
+        motor: resultado.transcripcion.motor || 'modulo-transcripcion',
+        rutaTranscripcion: transcripcionBase?.rutaTranscripcion || resultado.archivosTranscripcion?.json || null,
+        paqueteTranscripcion: resultado,
+        paqueteMultimotor,
+        transcripcionesPorMotor: crearTranscripcionesPorMotorDesdeMultimotor(paqueteMultimotor),
+        resumenTranscripcion: paqueteMultimotor?.resumen || null
       };
     }
     return {
-      ...simple,
+      ...transcripcionBase,
       paqueteTranscripcion: resultado || null,
-      observacion: resultado?.mensaje || simple.observacion || simple.mensaje || 'Transcripción no disponible.'
+      paqueteMultimotor,
+      transcripcionesPorMotor: crearTranscripcionesPorMotorDesdeMultimotor(paqueteMultimotor),
+      resumenTranscripcion: paqueteMultimotor?.resumen || null,
+      observacion: resultado?.mensaje || transcripcionBase?.observacion || transcripcionBase?.mensaje || 'Transcripción no disponible.'
     };
   } catch (error) {
     return {
-      ...simple,
-      observacion: simple.observacion || `No se pudo usar el módulo ampliado de transcripción: ${error.message}`,
+      ...transcripcionBase,
+      paqueteMultimotor,
+      transcripcionesPorMotor: crearTranscripcionesPorMotorDesdeMultimotor(paqueteMultimotor),
+      resumenTranscripcion: paqueteMultimotor?.resumen || null,
+      observacion: transcripcionBase?.observacion || `No se pudo usar el módulo ampliado de transcripción: ${error.message}`,
       errorTranscripcionAmpliada: error.message
     };
   }
+}
+
+async function intentarTranscripcionDisponible({ entrada, analisis, opciones }) {
+  const simple = await transcribirVideoSimple({ entrada, analisis, opciones });
+  if (tieneTextoTranscrito(simple)) {
+    return {
+      ...simple,
+      transcripcionPrincipal: simple,
+      transcripcionesPorMotor: [{
+        motor: simple.motor || 'manual',
+        ok: true,
+        estado: 'ok',
+        mensaje: simple.observacion || 'Texto manual disponible.',
+        resumen: null,
+        transcripcion: simple,
+        error: null
+      }],
+      resumenTranscripcion: {
+        motorPrincipal: simple.motor || 'manual',
+        totalMotores: 1,
+        resultados: []
+      }
+    };
+  }
+
+  const entradaConAnalisis = { ...entrada, analisis };
+  let transcripcionMultimotor = null;
+
+  if (opciones.usarTranscripcionMultimotor !== false) {
+    try {
+      transcripcionMultimotor = await procesarTranscripcionMultimotor({
+        entrada: entradaConAnalisis,
+        audio: null,
+        opciones
+      });
+
+      const desdeMultimotor = crearTranscripcionDesdeMultimotor(transcripcionMultimotor, simple);
+      if (tieneTextoTranscrito(desdeMultimotor)) return desdeMultimotor;
+    } catch (error) {
+      transcripcionMultimotor = {
+        ok: false,
+        motorPrincipal: null,
+        resultados: [],
+        resumen: null,
+        mensaje: `No se pudo procesar transcripción multimotor: ${error.message}`,
+        error: { mensaje: error.message }
+      };
+    }
+  }
+
+  const baseConMultimotor = crearTranscripcionDesdeMultimotor(transcripcionMultimotor, simple);
+  return await intentarTranscripcionLegacy({
+    entrada,
+    analisis,
+    opciones,
+    transcripcionBase: baseConMultimotor,
+    paqueteMultimotor: transcripcionMultimotor
+  });
 }
 
 export async function entenderVideo(entrada, opciones = {}) {
@@ -64,11 +182,16 @@ export async function entenderVideo(entrada, opciones = {}) {
       duracionSegundos: analisis.duracionSegundos,
       tieneAudio: Boolean(analisis.tieneAudio),
       tieneTranscripcionReal: Boolean(transcripcion.textoCompleto),
+      motorTranscripcionPrincipal: transcripcion.motorPrincipal || transcripcion.motor || null,
+      transcripcionesGeneradas: Array.isArray(transcripcion.transcripcionesPorMotor) ? transcripcion.transcripcionesPorMotor.length : 0,
       fotogramasExtraidos: fotogramas.cantidadExtraida || 0,
       listoParaEditar: reporteEntendimiento.listoParaEditar
     },
     analisis,
     transcripcion,
+    transcripcionPrincipal: transcripcion.transcripcionPrincipal || (transcripcion.textoCompleto ? transcripcion : null),
+    transcripcionesPorMotor: transcripcion.transcripcionesPorMotor || [],
+    resumenTranscripcion: transcripcion.resumenTranscripcion || null,
     fotogramas,
     analisisVideo,
     reporteEntendimiento,
