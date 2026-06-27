@@ -1,5 +1,6 @@
 export { renderInicioView } from './inicio.view.js';
 export { renderNuevoProyectoView } from './nuevo-proyecto.view.js';
+export { renderEntendimientoView } from './entendimiento.view.js';
 export { renderProcesadoView } from './procesado.view.js';
 export { renderProduccionView } from './produccion.view.js';
 export { renderResultadoView } from './resultado.view.js';
