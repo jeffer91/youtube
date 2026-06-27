@@ -1,8 +1,3 @@
-/*
-  Bloque 7: Pantalla Entendimiento
-  Función: cargar, mostrar y procesar la etapa de entendimiento desde la UI.
-*/
-
 const STORAGE_PROYECTO_ETAPAS = 'autovideojeff.proyectoEtapasId';
 
 function $(id) { return document.getElementById(id); }
@@ -80,6 +75,13 @@ function obtenerResumen(resultado = {}) {
   return resultado.resumenEtapa || resultado.resumen || resultado.reporteEntendimiento?.resumen || {};
 }
 
+function obtenerSrcFrame(frame = {}) {
+  const src = frame.urlPublica || frame.rutaPublica || frame.rutaPreviewPublica || frame.rutaRelativa || '';
+  if (!src) return '';
+  if (/^(https?:|data:|blob:)/i.test(src)) return src;
+  return src.startsWith('/') ? src : `/${src}`;
+}
+
 function renderKpis(resultado = {}) {
   const resumen = obtenerResumen(resultado);
   const duracion = numero(resumen.duracionSegundos);
@@ -93,7 +95,7 @@ function renderKpis(resultado = {}) {
 
 function renderTranscripcion(resultado = {}) {
   const transcripcion = resultado.transcripcion || {};
-  const textoCompleto = texto(transcripcion.textoCompleto, 'Sin texto transcrito todavía. La estructura de segmentos está preparada para el plan de edición.');
+  const textoCompleto = texto(transcripcion.textoCompleto, transcripcion.mensaje || transcripcion.observacion || 'Sin texto transcrito todavía. La estructura de segmentos está preparada para el plan de edición.');
   const segmentos = Array.isArray(transcripcion.segmentos) ? transcripcion.segmentos : [];
   $('entendimientoTranscripcionEstado').textContent = transcripcion.textoCompleto ? 'Texto real' : `${segmentos.length} segmento(s)`;
   $('entendimientoTranscripcion').innerHTML = `<p>${escapar(textoCompleto)}</p>` + (segmentos.length ? `<ol>${segmentos.slice(0, 8).map((s) => `<li><strong>${escapar(s.inicio)}s - ${escapar(s.fin ?? 'fin')}s</strong><span>${escapar(s.texto || s.nota || 'Segmento preparado')}</span></li>`).join('')}</ol>` : '');
@@ -108,8 +110,12 @@ function renderFrames(resultado = {}) {
     return;
   }
   contenedor.innerHTML = frames.slice(0, 8).map((frame) => {
-    const src = frame.rutaRelativa || '';
-    return `<article class="entendimiento-frame"><div>${src ? `<img src="${escapar(src)}" alt="Fotograma ${escapar(frame.id)}" />` : '<span>Sin preview</span>'}</div><strong>${escapar(frame.id)}</strong><small>${escapar(frame.segundo)}s · ${escapar(frame.estado)}</small></article>`;
+    const src = obtenerSrcFrame(frame);
+    const visual = frame.analisisVisual || {};
+    const descripcion = frame.descripcionVisual || visual.descripcion || visual.escena || 'Sin descripción visual todavía.';
+    const escena = visual.escena ? `<span>${escapar(visual.escena)}</span>` : '';
+    const accion = visual.accion ? `<span>${escapar(visual.accion)}</span>` : '';
+    return `<article class="entendimiento-frame"><div>${src ? `<img src="${escapar(src)}" alt="${escapar(descripcion)}" />` : '<span>Sin preview</span>'}</div><strong>${escapar(frame.id)}</strong><small>${escapar(frame.segundo)}s · ${escapar(frame.estado)}</small><p class="entendimiento-frame-desc">${escapar(descripcion)}</p>${escena || accion ? `<div class="entendimiento-frame-tags">${escena}${accion}</div>` : ''}</article>`;
   }).join('');
 }
 
