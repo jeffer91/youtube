@@ -1,5 +1,5 @@
 /*
-  Bloques 5, 6, 8, 10 y 15: API por etapas + Entendimiento + Plan + Producción + Adaptación
+  Bloques 5, 6, 8, 10, 15 y 17: API por etapas + Entendimiento + Plan + Producción + Adaptación + Resultado
   Función: registrar rutas base del nuevo flujo y ejecutar etapas reales cuando estén conectadas.
 */
 
@@ -28,6 +28,7 @@ import { procesarEntendimientoProyectoEtapa } from '../entender/etapas/entendimi
 import { procesarPlanEdicionProyectoEtapa } from '../etapas/02-plan/procesar-plan-edicion.service.js';
 import { procesarProduccionMaestroProyectoEtapa } from '../etapas/03-produccion/procesar-produccion-maestro.service.js';
 import { procesarAdaptacionPlataformasProyectoEtapa } from '../etapas/04-adaptacion/procesar-adaptacion-plataformas.service.js';
+import { procesarResultadoFinalProyectoEtapa } from '../etapas/05-resultado/procesar-resultado-final.service.js';
 
 const CONFIG_ETAPAS_API = Object.freeze({
   entendimiento: {
@@ -53,7 +54,7 @@ const CONFIG_ETAPAS_API = Object.freeze({
   resultado: {
     etapa: ETAPAS_AUTOVIDEO.RESULTADO,
     estadoProcesando: ESTADOS_PROYECTO_ETAPAS.EXPORTANDO,
-    mensaje: 'Solicitud de resultado final registrada. La exportación final se conectará en el Bloque 17.'
+    mensaje: 'Resultado final real conectado desde el Bloque 17.'
   }
 });
 
@@ -232,6 +233,11 @@ async function registrarSolicitudEtapa({ req, res, aplicarCabeceras, tipo }) {
     if (tipo === 'adaptacion') {
       const resultadoAdaptacion = await procesarAdaptacionPlataformasProyectoEtapa({ proyectoId, opciones: req.body || {}, solicitud: req.body || {} });
       return responderOk(res, { ...resultadoAdaptacion, pendienteImplementacion: false });
+    }
+
+    if (tipo === 'resultado') {
+      const resultadoFinal = await procesarResultadoFinalProyectoEtapa({ proyectoId, opciones: req.body || {}, solicitud: req.body || {} });
+      return responderOk(res, { ...resultadoFinal, pendienteImplementacion: false });
     }
 
     const estado = await avanzarEstadoProyectoEtapas({
