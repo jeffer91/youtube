@@ -24,6 +24,7 @@ const ARCHIVOS_FLUJO_FINAL = Object.freeze([
 ]);
 
 const ARCHIVOS_UI_FINAL = Object.freeze([
+  'app/index.html',
   'app/pantallas/nuevo-proyecto.view.js',
   'app/pantallas/entendimiento.view.js',
   'app/pantallas/plan-edicion.view.js',
@@ -59,6 +60,8 @@ const RUTAS_API_ETAPAS = Object.freeze([
 
 const IDS_UI_ETAPAS = Object.freeze([
   'projectNameInput',
+  'videoInput',
+  'processButton',
   'entendimientoProyectoId',
   'planProyectoId',
   'produccionMaestroProyectoId',
@@ -161,10 +164,9 @@ function verificarUiEtapas() {
 
 function verificarPackage() {
   const errores = [];
-  let scripts = {};
   try {
     const pkg = JSON.parse(leer('package.json'));
-    scripts = pkg.scripts || {};
+    const scripts = pkg.scripts || {};
     if (!scripts['check:bloque18-autovideo']) errores.push('Falta script check:bloque18-autovideo.');
     if (!scripts['check:autovideo']) errores.push('Falta script check:autovideo.');
     if (!pkg.build?.files?.includes('etapas/**/*')) errores.push('build.files no incluye etapas/**/* para empaquetado.');
@@ -182,7 +184,7 @@ function verificarPackage() {
 
 function crearMatrizEtapas() {
   return [
-    { etapa: 'nuevo-proyecto', backend: 'server/rutas-etapas.service.js', ui: 'app/pantallas/nuevo-proyecto.view.js', estado: 'conectado' },
+    { etapa: 'nuevo-proyecto', backend: 'server/rutas-etapas.service.js', ui: 'app/index.html', estado: 'conectado' },
     { etapa: 'entendimiento', backend: 'entender/etapas/entendimiento-etapa.service.js', ui: 'app/pantallas/entendimiento.view.js', estado: 'conectado' },
     { etapa: 'plan-edicion', backend: 'etapas/02-plan/procesar-plan-edicion.service.js', ui: 'app/pantallas/plan-edicion.view.js', estado: 'conectado' },
     { etapa: 'produccion', backend: 'etapas/03-produccion/procesar-produccion-maestro.service.js', ui: 'app/pantallas/produccion.view.js', estado: 'conectado' },
@@ -226,7 +228,7 @@ export async function crearDiagnosticoFinalRedisenio(opciones = {}) {
     bloqueante: errores.length > 0,
     tipo: 'diagnostico-final-redisenio',
     bloque: 18,
-    version: '1.0.0',
+    version: '1.0.1',
     mensaje: errores.length ? `Diagnóstico final encontró ${errores.length} problema(s).` : 'Diagnóstico final correcto: rediseño por etapas cerrado.',
     resumen: {
       bloquesRevisados: 18,
