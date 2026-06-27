@@ -1,5 +1,5 @@
 /*
-  Bloques 5, 6 y 8: API por etapas + Entendimiento + Plan de edición
+  Bloques 5, 6, 8 y 10: API por etapas + Entendimiento + Plan + Producción maestro
   Función: registrar rutas base del nuevo flujo y ejecutar etapas reales cuando estén conectadas.
 */
 
@@ -26,6 +26,7 @@ import {
 } from '../flujo-etapas/flujo-etapas.conexion.js';
 import { procesarEntendimientoProyectoEtapa } from '../entender/etapas/entendimiento-etapa.service.js';
 import { procesarPlanEdicionProyectoEtapa } from '../etapas/02-plan/procesar-plan-edicion.service.js';
+import { procesarProduccionMaestroProyectoEtapa } from '../etapas/03-produccion/procesar-produccion-maestro.service.js';
 
 const CONFIG_ETAPAS_API = Object.freeze({
   entendimiento: {
@@ -41,7 +42,7 @@ const CONFIG_ETAPAS_API = Object.freeze({
   produccion: {
     etapa: ETAPAS_AUTOVIDEO.PRODUCCION,
     estadoProcesando: ESTADOS_PROYECTO_ETAPAS.PRODUCIENDO,
-    mensaje: 'Solicitud de producción maestro registrada. El motor real se conectará en el Bloque 10.'
+    mensaje: 'Producción maestro real conectada desde el Bloque 10.'
   },
   adaptacion: {
     etapa: ETAPAS_AUTOVIDEO.ADAPTACION,
@@ -220,6 +221,11 @@ async function registrarSolicitudEtapa({ req, res, aplicarCabeceras, tipo }) {
     if (tipo === 'plan') {
       const resultadoPlan = await procesarPlanEdicionProyectoEtapa({ proyectoId, opciones: req.body || {}, solicitud: req.body || {} });
       return responderOk(res, { ...resultadoPlan, pendienteImplementacion: false });
+    }
+
+    if (tipo === 'produccion') {
+      const resultadoProduccion = await procesarProduccionMaestroProyectoEtapa({ proyectoId, opciones: req.body || {}, solicitud: req.body || {} });
+      return responderOk(res, { ...resultadoProduccion, pendienteImplementacion: false });
     }
 
     const estado = await avanzarEstadoProyectoEtapas({
