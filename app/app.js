@@ -22,6 +22,7 @@ const PANTALLA_PRODUCCION = 'produccion';
 const elementos = {
   serverStatus: document.getElementById('serverStatus'),
   videoForm: document.getElementById('videoForm'),
+  projectNameInput: document.getElementById('projectNameInput'),
   videoInput: document.getElementById('videoInput'),
   fileName: document.getElementById('fileName'),
   processButton: document.getElementById('processButton'),
@@ -131,13 +132,14 @@ function aplicarEstadoControlesProcesador() {
   const bloquearBase = procesandoVideo || !activo;
   elementos.processButton.disabled = bloquearBase;
   elementos.videoInput.disabled = bloquearBase;
+  elementos.projectNameInput.disabled = bloquearBase;
   elementos.improveAudio.disabled = bloquearBase;
   elementos.audioMode.disabled = bloquearBase || !elementos.improveAudio.checked;
   bloquearControlesTranscripcion(bloquearBase);
   bloquearControlesGemini(bloquearBase);
   bloquearControlesConfiguracionProyecto(bloquearBase);
   bloquearControlesEfectos(bloquearBase);
-  elementos.processButton.textContent = procesandoVideo ? 'Editando automáticamente...' : 'Procesar automáticamente';
+  elementos.processButton.textContent = procesandoVideo ? 'Procesando entendimiento...' : 'Procesar entendimiento';
 }
 
 function bloquearFormulario(bloquear) {
@@ -216,31 +218,50 @@ async function verificarServidor() {
   }
 }
 
+function describirArchivosSeleccionados(archivos) {
+  if (!archivos.length) return 'Ningún video seleccionado.';
+  if (archivos.length === 1) {
+    const pesoMb = archivos[0].size / (1024 * 1024);
+    return `${archivos[0].name} · ${pesoMb.toFixed(1)} MB`;
+  }
+  const pesoTotalMb = archivos.reduce((total, archivo) => total + archivo.size, 0) / (1024 * 1024);
+  const nombres = archivos.slice(0, 3).map((archivo) => archivo.name).join(', ');
+  const extra = archivos.length > 3 ? ` y ${archivos.length - 3} más` : '';
+  return `${archivos.length} videos · ${pesoTotalMb.toFixed(1)} MB · ${nombres}${extra}`;
+}
+
 function registrarCambioDeArchivo() {
   if (!esPantallaProcesadorActiva()) return;
   ocultarMensaje();
   ocultarProgreso();
   reiniciarResultado();
-  const archivo = elementos.videoInput.files?.[0];
-  if (!archivo) {
-    elementos.fileName.textContent = 'Ningún video seleccionado.';
-    return;
-  }
-  const pesoMb = archivo.size / (1024 * 1024);
-  elementos.fileName.textContent = `${archivo.name} · ${pesoMb.toFixed(1)} MB`;
-  mostrarMensaje('Video seleccionado. Presiona Procesar automáticamente.', 'normal');
+  const archivos = [...(elementos.videoInput.files || [])];
+  elementos.fileName.textContent = describirArchivosSeleccionados(archivos);
+  if (!archivos.length) return;
+  mostrarMensaje(`${archivos.length} video(s) seleccionado(s). Presiona Procesar entendimiento.`, 'normal');
 }
 
 function agregarOpcionesAFormulario(formulario, opciones) {
   Object.entries(opciones).forEach(([clave, valor]) => formulario.append(clave, valor ?? ''));
 }
 
+function obtenerNombreProyectoSeguro(archivo) {
+  const escrito = elementos.projectNameInput.value.trim();
+  if (escrito) return escrito;
+  return archivo?.name?.replace(/\.[^.]+$/, '') || 'Proyecto AutoVideoJeff';
+}
+
 function crearFormularioProcesamiento(jobId) {
-  const archivo = elementos.videoInput.files?.[0];
+  const archivos = [...(elementos.videoInput.files || [])];
+  const archivo = archivos[0];
   validarVideoSeleccionado(archivo);
   const formulario = new FormData();
   formulario.append('video', archivo);
   formulario.append('jobId', jobId);
+  formulario.append('nombreProyecto', obtenerNombreProyectoSeguro(archivo));
+  formulario.append('cantidadVideosProyecto', String(archivos.length || 1));
+  formulario.append('videosSeleccionadosJson', JSON.stringify(archivos.map((item) => ({ nombre: item.name, tamano: item.size, tipo: item.type || 'video' }))));
+  formulario.append('etapaSolicitada', 'entendimiento');
   aplicarOpcionesProyectoAFormulario(formulario);
   formulario.append('modo', elementos.modeInput.value || 'cuadrado-centro');
   formulario.append('mejorarAudio', elementos.improveAudio.checked ? 'true' : 'false');
