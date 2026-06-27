@@ -1,16 +1,40 @@
 export function renderInicioView() {
   return `
-    <section class="aj-view-card aj-home-view">
-      <p class="eyebrow">Inicio</p>
-      <h2>Panel general de AutoVideoJeff</h2>
-      <p>Resumen rápido de la app. Para subir y procesar videos entra en <strong>Nuevo proyecto</strong>.</p>
-      <div class="aj-home-grid">
-        <article><strong>Nuevo proyecto</strong><span>Subir video, elegir perfil y procesar.</span></article>
-        <article><strong>Producción</strong><span>Revisar, aprobar, reemplazar y aprender.</span></article>
-        <article><strong>Biblioteca</strong><span>Guardar recursos, rutas, URLs y licencias.</span></article>
-        <article><strong>Diagnóstico</strong><span>Revisar errores, auditoría y estado técnico.</span></article>
+    <section class="aj-view-card aj-home-view aj-home-dashboard">
+      <div class="aj-home-hero">
+        <div>
+          <p class="eyebrow">Panel principal</p>
+          <h2>AutoVideoJeff</h2>
+          <p>Editor automático modular para subir, procesar y revisar videos.</p>
+        </div>
+        <span class="aj-status-chip">Sistema listo</span>
       </div>
-      <div class="aj-flow"><span>Inicio limpio</span><span>Sin procesador aquí</span><span>Flujo ordenado</span></div>
+
+      <div class="aj-home-grid aj-home-actions" aria-label="Accesos rápidos">
+        <button type="button" data-pantalla-destino="nuevo-proyecto">
+          <strong>Nuevo proyecto</strong>
+          <span>Subir video y elegir perfil.</span>
+        </button>
+        <button type="button" data-pantalla-destino="nuevo-proyecto">
+          <strong>Procesar video</strong>
+          <span>Iniciar edición automática.</span>
+        </button>
+        <button type="button" data-pantalla-destino="biblioteca">
+          <strong>Biblioteca</strong>
+          <span>Recursos, rutas y materiales.</span>
+        </button>
+        <button type="button" data-pantalla-destino="historial">
+          <strong>Historial</strong>
+          <span>Videos y resultados previos.</span>
+        </button>
+      </div>
+
+      <div class="aj-home-status">
+        <span>Servidor local</span>
+        <strong>Activo al procesar</strong>
+        <span>Diagnóstico</span>
+        <strong>Disponible</strong>
+      </div>
     </section>
   `;
 }
