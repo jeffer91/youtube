@@ -1,6 +1,6 @@
 /*
-  Bloque 5: Integracion al render
-  Funcion: conectar planificador local + compilador FFmpeg para entregar un filtro visual final.
+  Bloque 6: Selector Gemini de efectos
+  Funcion: conectar planificador local/Gemini + compilador FFmpeg para entregar un filtro visual final.
 */
 
 import { reportarModulo } from '../../progreso/progreso-modulo.js';
@@ -38,7 +38,7 @@ export async function procesarMotorEfectos({ filtroBase = '', entrada = null, en
 
     await reportarModulo(progreso, { etapa: 'editar', porcentaje: 84, titulo: 'Planificando efectos', detalle: 'Seleccionando efectos visuales por perfil.', archivo: 'editar/efectos/efectos.conexion.js' });
 
-    const plan = planificarEfectos({ entrada, entendimiento, transcripcion, edicionDinamica, opciones });
+    const plan = await planificarEfectos({ entrada, entendimiento, transcripcion, edicionDinamica, opciones });
     const width = numero(salida?.width, 1080);
     const height = numero(salida?.height, 1920);
     const duracionSegundos = numero(plan?.duracionSegundos || entendimiento?.analisis?.duracionSegundos, 0);
@@ -54,6 +54,8 @@ export async function procesarMotorEfectos({ filtroBase = '', entrada = null, en
       compilado,
       filtrosAplicados: compilado.filtrosAplicados || 0,
       detalle: {
+        origen: plan?.origen || 'local',
+        fallbackLocal: Boolean(plan?.fallbackLocal),
         perfil: plan?.perfil?.id || 'general',
         intensidad: plan?.intensidad?.id || 'normal',
         totalPlan: plan?.total || 0,
