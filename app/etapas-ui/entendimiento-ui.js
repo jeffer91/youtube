@@ -1,9 +1,13 @@
 const STORAGE_PROYECTO_ETAPAS = 'autovideojeff.proyectoEtapasId';
 
+let ultimoResultadoEntendimiento = null;
+let transcripcionActivaId = 'principal';
+
 function $(id) { return document.getElementById(id); }
 function texto(valor, respaldo = '—') { const limpio = String(valor ?? '').trim(); return limpio || respaldo; }
 function escapar(valor) { return texto(valor, '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;'); }
 function numero(valor) { const n = Number(valor); return Number.isFinite(n) ? n : null; }
+function tieneTexto(valor) { return Boolean(String(valor ?? '').trim()); }
 
 async function obtenerBaseApi() {
   const apiElectron = window.AutoVideoJeff?.servidor?.obtenerEstado;
@@ -82,23 +86,162 @@ function obtenerSrcFrame(frame = {}) {
   return src.startsWith('/') ? src : `/${src}`;
 }
 
+function motorBonito(motor = '') {
+  const mapa = {
+    principal: 'Principal',
+    manual: 'Manual',
+    'faster-whisper': 'faster-whisper',
+    'whisper-cpp': 'whisper.cpp',
+    vosk: 'Vosk',
+    gemini: 'Gemini',
+    'transcripcion-simple': 'Simple',
+    'modulo-transcripcion': 'Módulo anterior'
+  };
+  return mapa[motor] || texto(motor, 'Motor');
+}
+
+function estadoBonito(estado = '') {
+  const mapa = { ok: 'OK', vacia: 'Vacía', omitida: 'Omitida', error: 'Error', pendiente: 'Pendiente' };
+  return mapa[estado] || texto(estado, 'Pendiente');
+}
+
+function claseEstadoTranscripcion(opcion = {}) {
+  if (opcion.ok || opcion.estado === 'ok') return 'ok';
+  if (opcion.estado === 'error') return 'error';
+  if (opcion.estado === 'omitida' || opcion.estado === 'vacia') return 'warn';
+  return 'normal';
+}
+
+function normalizarItemMotor(item = {}, indice = 0) {
+  const transcripcion = item.transcripcion || item;
+  const motor = item.motor || transcripcion.motor || `motor-${indice + 1}`;
+  const estado = item.estado || transcripcion.estado || (transcripcion.textoCompleto ? 'ok' : 'pendiente');
+  return {
+    id: `motor:${motor}`,
+    tipo: 'motor',
+    motor,
+    etiqueta: motorBonito(motor),
+    ok: Boolean(item.ok || transcripcion.ok || transcripcion.textoCompleto),
+    estado,
+    mensaje: item.mensaje || transcripcion.mensaje || transcripcion.observacion || '',
+    resumen: item.resumen || transcripcion.resumen || null,
+    transcripcion,
+    error: item.error || transcripcion.error || null
+  };
+}
+
+function crearOpcionesTranscripcion(resultado = {}) {
+  const opciones = [];
+  const vistos = new Set();
+  const transcripcionBase = resultado.transcripcion || {};
+  const principal = resultado.transcripcionPrincipal || transcripcionBase.transcripcionPrincipal || (tieneTexto(transcripcionBase.textoCompleto) ? transcripcionBase : null);
+
+  if (principal) {
+    opciones.push({
+      id: 'principal',
+      tipo: 'principal',
+      motor: principal.motor || transcripcionBase.motorPrincipal || transcripcionBase.motor || 'principal',
+      etiqueta: 'Principal',
+      ok: Boolean(principal.ok || principal.textoCompleto),
+      estado: principal.estado || (principal.textoCompleto ? 'ok' : 'pendiente'),
+      mensaje: principal.mensaje || transcripcionBase.observacion || 'Transcripción principal seleccionada.',
+      resumen: principal.resumen || null,
+      transcripcion: principal,
+      error: principal.error || null
+    });
+    vistos.add('principal');
+    vistos.add(`motor:${principal.motor || transcripcionBase.motor || ''}`);
+  }
+
+  const listaMotores = [
+    ...(Array.isArray(resultado.transcripcionesPorMotor) ? resultado.transcripcionesPorMotor : []),
+    ...(Array.isArray(transcripcionBase.transcripcionesPorMotor) ? transcripcionBase.transcripcionesPorMotor : [])
+  ];
+
+  listaMotores.forEach((item, indice) => {
+    const normalizado = normalizarItemMotor(item, indice);
+    if (vistos.has(normalizado.id)) return;
+    vistos.add(normalizado.id);
+    opciones.push(normalizado);
+  });
+
+  if (!opciones.length) {
+    opciones.push({
+      id: 'base',
+      tipo: 'base',
+      motor: transcripcionBase.motor || 'transcripcion-simple',
+      etiqueta: motorBonito(transcripcionBase.motor || 'transcripcion-simple'),
+      ok: Boolean(transcripcionBase.textoCompleto),
+      estado: transcripcionBase.textoCompleto ? 'ok' : 'pendiente',
+      mensaje: transcripcionBase.mensaje || transcripcionBase.observacion || 'Transcripción pendiente.',
+      resumen: transcripcionBase.resumen || null,
+      transcripcion: transcripcionBase,
+      error: transcripcionBase.error || null
+    });
+  }
+
+  return opciones;
+}
+
 function renderKpis(resultado = {}) {
   const resumen = obtenerResumen(resultado);
   const duracion = numero(resumen.duracionSegundos);
+  const opcionesTranscripcion = crearOpcionesTranscripcion(resultado);
   $('entendimientoOrientacion').textContent = texto(resumen.orientacion || resultado.analisis?.orientacion);
   $('entendimientoDuracion').textContent = duracion !== null ? `${duracion}s` : '—';
   $('entendimientoAudio').textContent = resumen.tieneAudio ? 'Sí' : 'No / pendiente';
   $('entendimientoFotogramas').textContent = String(resumen.fotogramasExtraidos ?? resultado.fotogramas?.cantidadExtraida ?? 0);
   $('entendimientoMomentos').textContent = String(resumen.momentosClave ?? resultado.analisisVideo?.momentosClave?.length ?? 0);
+  const motoresEl = $('entendimientoMotores');
+  if (motoresEl) motoresEl.textContent = String(resumen.transcripcionesGeneradas ?? opcionesTranscripcion.length ?? 0);
   $('entendimientoListo').textContent = resumen.listoParaEditar ? 'Sí' : 'Revisar';
 }
 
-function renderTranscripcion(resultado = {}) {
-  const transcripcion = resultado.transcripcion || {};
-  const textoCompleto = texto(transcripcion.textoCompleto, transcripcion.mensaje || transcripcion.observacion || 'Sin texto transcrito todavía. La estructura de segmentos está preparada para el plan de edición.');
+function renderTabsTranscripcion(opciones = []) {
+  const contenedor = $('entendimientoTranscripcionTabs');
+  if (!contenedor) return;
+  contenedor.innerHTML = opciones.map((opcion) => {
+    const activa = opcion.id === transcripcionActivaId;
+    const estado = claseEstadoTranscripcion(opcion);
+    return `<button type="button" class="entendimiento-transcripcion-tab is-${estado}${activa ? ' is-active' : ''}" data-transcripcion-tab="${escapar(opcion.id)}"><span>${escapar(opcion.etiqueta)}</span><small>${escapar(estadoBonito(opcion.estado))}</small></button>`;
+  }).join('');
+}
+
+function renderMetaTranscripcion(opcion = {}) {
+  const meta = $('entendimientoTranscripcionMeta');
+  if (!meta) return;
+  const transcripcion = opcion.transcripcion || {};
+  const resumen = opcion.resumen || transcripcion.resumen || {};
+  const segmentos = Array.isArray(transcripcion.segmentos) ? transcripcion.segmentos.length : 0;
+  const palabras = resumen.palabras ?? (transcripcion.textoCompleto ? String(transcripcion.textoCompleto).split(/\s+/).filter(Boolean).length : 0);
+  const partes = [
+    `Motor: ${motorBonito(opcion.motor)}`,
+    `Estado: ${estadoBonito(opcion.estado)}`,
+    `Segmentos: ${segmentos}`,
+    `Palabras: ${palabras}`
+  ];
+  if (opcion.error?.mensaje) partes.push(`Error: ${opcion.error.mensaje}`);
+  else if (opcion.mensaje) partes.push(opcion.mensaje);
+  meta.innerHTML = partes.map((parte) => `<span>${escapar(parte)}</span>`).join('');
+}
+
+function renderDetalleTranscripcion(opcion = {}) {
+  const transcripcion = opcion.transcripcion || {};
+  const textoCompleto = texto(transcripcion.textoCompleto, opcion.mensaje || transcripcion.mensaje || transcripcion.observacion || 'Sin texto transcrito todavía. La estructura de segmentos está preparada para el plan de edición.');
   const segmentos = Array.isArray(transcripcion.segmentos) ? transcripcion.segmentos : [];
-  $('entendimientoTranscripcionEstado').textContent = transcripcion.textoCompleto ? 'Texto real' : `${segmentos.length} segmento(s)`;
-  $('entendimientoTranscripcion').innerHTML = `<p>${escapar(textoCompleto)}</p>` + (segmentos.length ? `<ol>${segmentos.slice(0, 8).map((s) => `<li><strong>${escapar(s.inicio)}s - ${escapar(s.fin ?? 'fin')}s</strong><span>${escapar(s.texto || s.nota || 'Segmento preparado')}</span></li>`).join('')}</ol>` : '');
+  $('entendimientoTranscripcionEstado').textContent = transcripcion.textoCompleto ? `${motorBonito(opcion.motor)} · texto real` : `${motorBonito(opcion.motor)} · ${segmentos.length} segmento(s)`;
+  $('entendimientoTranscripcion').innerHTML = `<p>${escapar(textoCompleto)}</p>` + (segmentos.length ? `<ol>${segmentos.slice(0, 12).map((s) => `<li><strong>${escapar(s.inicio)}s - ${escapar(s.fin ?? 'fin')}s</strong><span>${escapar(s.texto || s.nota || 'Segmento preparado')}</span></li>`).join('')}</ol>` : '');
+  renderMetaTranscripcion(opcion);
+}
+
+function renderTranscripcion(resultado = {}) {
+  const opciones = crearOpcionesTranscripcion(resultado);
+  if (!opciones.some((opcion) => opcion.id === transcripcionActivaId)) {
+    transcripcionActivaId = opciones[0]?.id || 'principal';
+  }
+  renderTabsTranscripcion(opciones);
+  const activa = opciones.find((opcion) => opcion.id === transcripcionActivaId) || opciones[0] || {};
+  renderDetalleTranscripcion(activa);
 }
 
 function renderFrames(resultado = {}) {
@@ -141,6 +284,7 @@ function renderNecesidades(resultado = {}) {
 
 function renderResultado(datos = {}) {
   const resultado = extraerResultado(datos);
+  ultimoResultadoEntendimiento = resultado;
   renderKpis(resultado);
   renderTranscripcion(resultado);
   renderFrames(resultado);
@@ -174,6 +318,7 @@ async function procesarEntendimiento() {
   guardarProyectoId(proyectoId);
   ocultarMensaje();
   setChip('Procesando...', 'normal');
+  transcripcionActivaId = 'principal';
   const datos = await api(`/api/proyectos/${encodeURIComponent(proyectoId)}/entendimiento/procesar`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ origen: 'pantalla-entendimiento' }) });
   renderResultado(datos);
   setMensaje(datos.mensaje || 'Entendimiento procesado correctamente.', 'ok');
@@ -186,6 +331,13 @@ async function crearPlanPlaceholder() {
   setMensaje(datos.mensaje || 'Solicitud de plan registrada. El motor real se conectará en el bloque del Plan.', 'ok');
 }
 
+function manejarClickTranscripcion(evento) {
+  const boton = evento.target.closest('[data-transcripcion-tab]');
+  if (!boton) return;
+  transcripcionActivaId = boton.dataset.transcripcionTab || 'principal';
+  if (ultimoResultadoEntendimiento) renderTranscripcion(ultimoResultadoEntendimiento);
+}
+
 function enlazarEventos() {
   const root = document.querySelector('[data-entendimiento-root]');
   if (!root || root.dataset.entendimientoInicializado === '1') return;
@@ -195,6 +347,7 @@ function enlazarEventos() {
   $('entendimientoCargarBtn')?.addEventListener('click', () => cargarEntendimiento().catch((error) => setMensaje(error.message, 'error')));
   $('entendimientoProcesarBtn')?.addEventListener('click', () => procesarEntendimiento().catch((error) => setMensaje(error.message, 'error')));
   $('entendimientoCrearPlanBtn')?.addEventListener('click', () => crearPlanPlaceholder().catch((error) => setMensaje(error.message, 'error')));
+  root.addEventListener('click', manejarClickTranscripcion);
 }
 
 export function inicializarEntendimientoUI() {
