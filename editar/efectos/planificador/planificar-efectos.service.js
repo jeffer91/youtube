@@ -1,9 +1,10 @@
 /*
-  Bloque 6: Selector Gemini de efectos
-  Funcion: generar un plan de efectos con Gemini cuando este disponible y fallback local seguro.
+  Bloque 10: Optimización y seguridad del motor de efectos
+  Función: generar un plan de efectos con Gemini/local y optimizarlo antes del render.
 */
 
 import { analizarContextoVideoEfectos } from '../analisis/index.js';
+import { optimizarPlanEfectos } from '../optimizador/index.js';
 import { seleccionarEfectosLocal } from './seleccionar-efectos-local.service.js';
 import { seleccionarEfectosGemini } from './seleccionar-efectos-gemini.service.js';
 import { validarPlanEfectos } from './validar-plan-efectos.service.js';
@@ -27,7 +28,8 @@ export async function planificarEfectos({ entrada = null, entendimiento = null, 
   const contexto = analizarContextoVideoEfectos({ entrada, entendimiento, transcripcion, edicionDinamica, opciones });
   const maxEfectos = numero(opciones?.maxEfectosVisuales || opciones?.maxEfectos || contexto?.perfil?.maxEfectosPorVideo, contexto?.perfil?.maxEfectosPorVideo || 12);
   const { seleccion, fallbackLocal, intentoGemini } = await seleccionarPlanBase(contexto, { opciones, maxEfectos });
-  const validacion = validarPlanEfectos(seleccion, { duracionVideo: contexto.duracionSegundos, maxEfectos });
+  const optimizado = optimizarPlanEfectos(seleccion, contexto, { maxEfectos });
+  const validacion = validarPlanEfectos(optimizado, { duracionVideo: contexto.duracionSegundos, maxEfectos });
   const origen = seleccion?.origen || 'local';
 
   return {
@@ -35,6 +37,7 @@ export async function planificarEfectos({ entrada = null, entendimiento = null, 
     tipo: origen === 'gemini' ? 'plan-efectos-gemini' : 'plan-efectos-local',
     origen,
     fallbackLocal,
+    optimizado: true,
     intentoGemini: intentoGemini ? { ok: intentoGemini.ok, omitido: intentoGemini.omitido, motivo: intentoGemini.motivo || null, total: intentoGemini.total || 0 } : null,
     perfil: contexto.perfil,
     intensidad: contexto.intensidad,
@@ -43,9 +46,11 @@ export async function planificarEfectos({ entrada = null, entendimiento = null, 
     contexto,
     efectos: validacion.efectos,
     total: validacion.totalValido,
-    advertencias: [...(seleccion?.advertencias || []), ...validacion.advertencias],
+    totalAntesOptimizar: optimizado.totalEntrada || seleccion?.efectos?.length || 0,
+    reglasOptimizacion: optimizado.reglas || null,
+    advertencias: [...(optimizado?.advertencias || []), ...validacion.advertencias],
     errores: validacion.errores,
-    mensaje: validacion.ok ? `Plan ${origen} listo con ${validacion.totalValido} efectos.` : `Plan ${origen} con errores.`,
+    mensaje: validacion.ok ? `Plan ${origen} optimizado con ${validacion.totalValido} efectos.` : `Plan ${origen} con errores.`,
     creadoEn: new Date().toISOString()
   };
 }
