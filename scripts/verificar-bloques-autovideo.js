@@ -1,32 +1,24 @@
 import { spawnSync } from 'child_process';
 
 const SCRIPTS = [
-  'scripts/verificar-proyectos.js',
-  'scripts/verificar-perfiles.js',
-  'scripts/verificar-exportacion-plataformas.js',
-  'scripts/verificar-bloque-2-autovideo.js',
-  'scripts/verificar-bloque-3-autovideo.js',
-  'scripts/verificar-bloque-4-autovideo.js',
-  'scripts/verificar-bloque-5-autovideo.js',
-  'scripts/verificar-bloque-6-autovideo.js',
-  'scripts/verificar-bloque-7-autovideo.js',
-  'scripts/verificar-bloque-8-autovideo.js',
-  'scripts/verificar-bloque-9-autovideo.js',
-  'scripts/verificar-bloque-10-autovideo.js',
-  'scripts/verificar-bloque-11-autovideo.js',
-  'scripts/verificar-bloque-12-autovideo.js',
-  'scripts/verificar-bloque-13-autovideo.js',
-  'scripts/verificar-bloque-14-autovideo.js',
-  'scripts/verificar-bloque-15-autovideo.js',
-  'scripts/verificar-bloque-16-autovideo.js',
-  'scripts/verificar-bloque-17-autovideo.js',
-  'scripts/verificar-bloque-18-autovideo.js',
-  'scripts/verificar-bloque-19-autovideo.js',
-  'scripts/verificar-bloque-20-autovideo.js',
-  'scripts/verificar-bloque-21-autovideo.js',
-  'scripts/verificar-diagnostico-modular.js',
-  'scripts/verificar-estructura-modular.js',
-  'scripts/verificar-integracion-modular-final.js'
+  'scripts/verificar-bloque-01-redisenio-etapas.js',
+  'scripts/verificar-bloque-02-shell-escritorio.js',
+  'scripts/verificar-bloque-03-estado-etapas.js',
+  'scripts/verificar-bloque-04-nuevo-proyecto-limpio.js',
+  'scripts/verificar-bloque-05-api-etapas.js',
+  'scripts/verificar-bloque-06-entendimiento-backend.js',
+  'scripts/verificar-bloque-07-pantalla-entendimiento.js',
+  'scripts/verificar-bloque-08-plan-backend.js',
+  'scripts/verificar-bloque-09-pantalla-plan.js',
+  'scripts/verificar-bloque-10-produccion-backend.js',
+  'scripts/verificar-bloque-11-pantalla-produccion.js',
+  'scripts/verificar-bloque-12-biblioteca-produccion.js',
+  'scripts/verificar-bloque-13-efectos-premium.js',
+  'scripts/verificar-bloque-14-sfx-premium.js',
+  'scripts/verificar-bloque-15-adaptacion-backend.js',
+  'scripts/verificar-bloque-16-pantalla-adaptacion.js',
+  'scripts/verificar-bloque-17-resultado-final.js',
+  'scripts/verificar-bloque-18-autovideo.js'
 ];
 
 function ejecutar(script) {
@@ -36,8 +28,8 @@ function ejecutar(script) {
 
 try {
   SCRIPTS.forEach(ejecutar);
-  console.log('OK todos los bloques AutoVideoJeff:', SCRIPTS.length, 'verificaciones');
+  console.log('OK rediseño AutoVideoJeff completo:', SCRIPTS.length, 'verificaciones');
 } catch (error) {
-  console.error('ERROR bloques AutoVideoJeff:', error.message);
+  console.error('ERROR rediseño AutoVideoJeff:', error.message);
   process.exit(1);
 }
