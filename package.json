@@ -25,6 +25,7 @@
     "check:audio-seguro": "node scripts/verificar-audio-sincronizacion-segura.js",
     "check:produccion-timeline": "node scripts/verificar-produccion-timeline.js",
     "check:cierre-estructural": "node scripts/verificar-cierre-estructural-autovideo.js",
+    "check:revision-final-errores": "node scripts/verificar-revision-final-errores.js",
     "check:efectos-catalogo": "node scripts/verificar-catalogo-efectos.js",
     "check:efectos-presets": "node scripts/verificar-presets-efectos.js",
     "check:efectos-aprendizaje": "node scripts/verificar-aprendizaje-efectos.js",
