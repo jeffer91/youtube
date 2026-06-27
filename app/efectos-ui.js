@@ -5,6 +5,9 @@ const DEFAULTS = Object.freeze({
   maxEfectosVisuales: '12'
 });
 
+let crearUrlApiEfectos = null;
+let previsualizando = false;
+
 function $(id) {
   return document.getElementById(id);
 }
@@ -51,7 +54,15 @@ function crearMarkup() {
           <option value="20">20</option>
         </select>
       </label>
+      <label class="effects-preview-input" for="effectsPreviewText">
+        <span>Texto de prueba para previsualizar</span>
+        <textarea id="effectsPreviewText" rows="3" placeholder="Ejemplo: el video arranca fuerte, aparece una idea clave y termina con una conclusión potente."></textarea>
+      </label>
+      <div class="effects-actions">
+        <button id="previewEffectsButton" class="secondary-button effects-preview-button" type="button">Previsualizar efectos</button>
+      </div>
       <p id="effectsSettingsSummary" class="mini-summary">Motor activo · Selector automático · Intensidad normal · Máximo 12 efectos</p>
+      <pre id="effectsPreviewResult" class="effects-preview-result" hidden></pre>
     </section>
   `;
 }
@@ -83,6 +94,104 @@ function leerControles() {
   });
 }
 
+function obtenerPerfilActual() {
+  return $('profileSelect')?.value || 'general';
+}
+
+function obtenerPlataformaActual() {
+  return $('platformInput')?.value || 'tiktok';
+}
+
+function obtenerFormatoActual() {
+  const modo = $('modeInput')?.value || 'cuadrado-centro';
+  if (modo === 'horizontal' || modo === 'youtube-horizontal') return '16:9';
+  if (modo === 'cuadrado' || modo === 'square') return '1:1';
+  return '9:16';
+}
+
+function construirPayloadPrevisualizacion() {
+  const opciones = leerControles();
+  return {
+    perfil: obtenerPerfilActual(),
+    plataforma: obtenerPlataformaActual(),
+    formato: obtenerFormatoActual(),
+    duracionSegundos: 38,
+    selectorEfectos: opciones.selectorEfectos === 'automatico' ? 'local' : opciones.selectorEfectos,
+    intensidadEfectos: opciones.intensidadEfectos,
+    maxEfectosVisuales: opciones.maxEfectosVisuales,
+    texto: $('effectsPreviewText')?.value || ''
+  };
+}
+
+function escribirResultadoPrevisualizacion(texto) {
+  const salida = $('effectsPreviewResult');
+  if (!salida) return;
+  salida.hidden = false;
+  salida.textContent = texto;
+}
+
+function resumirPrevisualizacion(previsualizacion = {}) {
+  const efectos = Array.isArray(previsualizacion.efectos) ? previsualizacion.efectos : [];
+  const principales = efectos.slice(0, 8).map((efecto, index) => `${index + 1}. ${efecto.nombre || efecto.efectoId} · ${efecto.categoria} · ${efecto.inicio}s-${efecto.fin}s`).join('\n');
+  const advertencias = previsualizacion.planResumen?.advertencias?.length || 0;
+  return [
+    `OK: ${previsualizacion.ok ? 'sí' : 'con advertencias'}`,
+    `Perfil: ${previsualizacion.entrada?.perfil || 'general'}`,
+    `Selector: ${previsualizacion.planResumen?.origen || 'local'}${previsualizacion.planResumen?.fallbackLocal ? ' · fallback local' : ''}`,
+    `Intensidad: ${previsualizacion.entrada?.intensidadEfectos || 'normal'}`,
+    `Efectos del plan: ${previsualizacion.planResumen?.total || 0}`,
+    `Antes de optimizar: ${previsualizacion.planResumen?.totalAntesOptimizar || previsualizacion.planResumen?.total || 0}`,
+    `Filtros FFmpeg: ${previsualizacion.filtrosAplicados || 0}`,
+    `Advertencias: ${advertencias}`,
+    principales ? `\nEfectos principales:\n${principales}` : '\nSin efectos principales.'
+  ].join('\n');
+}
+
+async function leerRespuestaJsonSegura(respuesta) {
+  const texto = await respuesta.text();
+  if (!texto) return {};
+  try {
+    return JSON.parse(texto);
+  } catch (_error) {
+    return { ok: false, mensaje: texto };
+  }
+}
+
+async function previsualizarEfectosDesdeUI() {
+  if (previsualizando) return;
+  if (typeof crearUrlApiEfectos !== 'function') {
+    escribirResultadoPrevisualizacion('No se pudo previsualizar: falta conexión con el servidor local.');
+    return;
+  }
+
+  const boton = $('previewEffectsButton');
+  previsualizando = true;
+  if (boton) {
+    boton.disabled = true;
+    boton.textContent = 'Previsualizando...';
+  }
+  escribirResultadoPrevisualizacion('Generando previsualización técnica de efectos...');
+
+  try {
+    const respuesta = await fetch(await crearUrlApiEfectos('/api/autovideo/efectos/previsualizar'), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(construirPayloadPrevisualizacion())
+    });
+    const datos = await leerRespuestaJsonSegura(respuesta);
+    if (!respuesta.ok || !datos.ok) throw new Error(datos.mensaje || 'No se pudo generar la previsualización.');
+    escribirResultadoPrevisualizacion(resumirPrevisualizacion(datos.previsualizacion));
+  } catch (error) {
+    escribirResultadoPrevisualizacion(`Error de previsualización: ${error.message}`);
+  } finally {
+    previsualizando = false;
+    if (boton) {
+      boton.disabled = false;
+      boton.textContent = 'Previsualizar efectos';
+    }
+  }
+}
+
 export function obtenerOpcionesEfectos() {
   asegurarControlesEfectos();
   const opciones = leerControles();
@@ -108,18 +217,21 @@ export function actualizarResumenEfectos() {
 
 export function bloquearControlesEfectos(bloquear) {
   asegurarControlesEfectos();
-  ['useEffectsEngine', 'effectsSelector', 'effectsIntensity', 'maxVisualEffects'].forEach((id) => {
+  ['useEffectsEngine', 'effectsSelector', 'effectsIntensity', 'maxVisualEffects', 'effectsPreviewText', 'previewEffectsButton'].forEach((id) => {
     const control = $(id);
-    if (control) control.disabled = bloquear;
+    if (control) control.disabled = bloquear || previsualizando;
   });
 }
 
-export function inicializarEfectosUI() {
+export function inicializarEfectosUI({ crearUrlApi = null } = {}) {
+  crearUrlApiEfectos = crearUrlApi;
   if (!asegurarControlesEfectos()) return false;
   ['useEffectsEngine', 'effectsSelector', 'effectsIntensity', 'maxVisualEffects'].forEach((id) => {
     const control = $(id);
     if (control) control.addEventListener('change', actualizarResumenEfectos);
   });
+  const botonPreview = $('previewEffectsButton');
+  if (botonPreview) botonPreview.addEventListener('click', previsualizarEfectosDesdeUI);
   actualizarResumenEfectos();
   return true;
 }
