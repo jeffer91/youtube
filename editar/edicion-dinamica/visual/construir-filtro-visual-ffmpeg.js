@@ -30,6 +30,7 @@ export function construirFiltroVisualFfmpeg({ filtroBase, barraProgreso = null, 
     filtroVideo: filtros.filter(Boolean).join(','),
     filtrosAplicados: filtros.length - 1,
     detalle: {
+      revision: 'perfil-visual-pendiente',
       zoomSuave: Boolean(zoom),
       barraProgreso: Boolean(barraProgreso?.filtro),
       etiquetas: etiquetas?.filtros?.length || 0
