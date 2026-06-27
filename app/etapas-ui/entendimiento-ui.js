@@ -101,7 +101,7 @@ function motorBonito(motor = '') {
 }
 
 function estadoBonito(estado = '') {
-  const mapa = { ok: 'OK', vacia: 'Vacía', omitida: 'Omitida', error: 'Error', pendiente: 'Pendiente' };
+  const mapa = { ok: 'OK', listo: 'Listo', vacia: 'Vacía', omitida: 'Omitida', error: 'Error', pendiente: 'Pendiente', falta_modelo: 'Falta modelo', falta_python_o_paquete: 'Falta Python/paquete', falta_paquete: 'Falta paquete', requiere_configuracion: 'Configurar', opcional: 'Opcional' };
   return mapa[estado] || texto(estado, 'Pendiente');
 }
 
@@ -214,12 +214,7 @@ function renderMetaTranscripcion(opcion = {}) {
   const resumen = opcion.resumen || transcripcion.resumen || {};
   const segmentos = Array.isArray(transcripcion.segmentos) ? transcripcion.segmentos.length : 0;
   const palabras = resumen.palabras ?? (transcripcion.textoCompleto ? String(transcripcion.textoCompleto).split(/\s+/).filter(Boolean).length : 0);
-  const partes = [
-    `Motor: ${motorBonito(opcion.motor)}`,
-    `Estado: ${estadoBonito(opcion.estado)}`,
-    `Segmentos: ${segmentos}`,
-    `Palabras: ${palabras}`
-  ];
+  const partes = [`Motor: ${motorBonito(opcion.motor)}`, `Estado: ${estadoBonito(opcion.estado)}`, `Segmentos: ${segmentos}`, `Palabras: ${palabras}`];
   if (opcion.error?.mensaje) partes.push(`Error: ${opcion.error.mensaje}`);
   else if (opcion.mensaje) partes.push(opcion.mensaje);
   meta.innerHTML = partes.map((parte) => `<span>${escapar(parte)}</span>`).join('');
@@ -236,9 +231,7 @@ function renderDetalleTranscripcion(opcion = {}) {
 
 function renderTranscripcion(resultado = {}) {
   const opciones = crearOpcionesTranscripcion(resultado);
-  if (!opciones.some((opcion) => opcion.id === transcripcionActivaId)) {
-    transcripcionActivaId = opciones[0]?.id || 'principal';
-  }
+  if (!opciones.some((opcion) => opcion.id === transcripcionActivaId)) transcripcionActivaId = opciones[0]?.id || 'principal';
   renderTabsTranscripcion(opciones);
   const activa = opciones.find((opcion) => opcion.id === transcripcionActivaId) || opciones[0] || {};
   renderDetalleTranscripcion(activa);
@@ -280,6 +273,37 @@ function renderNecesidades(resultado = {}) {
   const necesidades = resultado.analisisVideo?.necesidades || resultado.reporteEntendimiento?.resumen?.necesidades || obtenerResumen(resultado).necesidades || [];
   $('entendimientoNecesidadesEstado').textContent = String(necesidades.length);
   $('entendimientoNecesidades').innerHTML = necesidades.length ? necesidades.map((item) => `<span>${escapar(item)}</span>`).join('') : '<span>Sin necesidades críticas</span>';
+}
+
+function renderDiagnosticoMotores(payload = {}) {
+  const diagnostico = payload.diagnostico || payload;
+  const panel = $('entendimientoDiagnosticoMotores');
+  const estado = $('entendimientoDiagnosticoMotoresEstado');
+  const resumenBox = $('entendimientoDiagnosticoMotoresResumen');
+  const lista = $('entendimientoDiagnosticoMotoresLista');
+  if (!panel || !estado || !resumenBox || !lista) return;
+
+  const resumen = diagnostico.resumen || {};
+  const motores = Array.isArray(diagnostico.motores) ? diagnostico.motores : [];
+  panel.hidden = false;
+  estado.textContent = resumen.puedeTranscribirGratis ? 'Listo parcial' : 'Revisar';
+  resumenBox.innerHTML = `
+    <strong>${escapar(resumen.recomendacion || 'Diagnóstico completado.')}</strong>
+    <span>Listos: ${escapar(resumen.listos ?? 0)} · Faltantes: ${escapar(resumen.faltantes ?? 0)} · Puede transcribir gratis: ${resumen.puedeTranscribirGratis ? 'Sí' : 'No todavía'}</span>
+  `;
+
+  lista.innerHTML = motores.map((motor) => {
+    const severidad = motor.severidad || (motor.ok ? 'ok' : 'warn');
+    const acciones = Array.isArray(motor.acciones) ? motor.acciones : [];
+    const rutas = motor.rutas && typeof motor.rutas === 'object' ? Object.entries(motor.rutas).filter(([, valor]) => valor !== '' && valor !== null && valor !== undefined) : [];
+    return `<article class="entendimiento-diagnostico-card is-${escapar(severidad)}">
+      <header><strong>${escapar(motor.nombre || motor.motor)}</strong><span>${escapar(estadoBonito(motor.estado))}</span></header>
+      <p>${escapar(motor.mensaje || 'Sin mensaje.')}</p>
+      ${motor.detalle ? `<small>${escapar(motor.detalle)}</small>` : ''}
+      ${rutas.length ? `<div class="entendimiento-diagnostico-rutas">${rutas.map(([clave, valor]) => `<span>${escapar(clave)}: ${escapar(valor)}</span>`).join('')}</div>` : ''}
+      ${acciones.length ? `<ul>${acciones.slice(0, 4).map((accion) => `<li>${escapar(accion)}</li>`).join('')}</ul>` : ''}
+    </article>`;
+  }).join('') || '<div class="entendimiento-empty">No hay motores reportados.</div>';
 }
 
 function renderResultado(datos = {}) {
@@ -324,6 +348,20 @@ async function procesarEntendimiento() {
   setMensaje(datos.mensaje || 'Entendimiento procesado correctamente.', 'ok');
 }
 
+async function diagnosticarMotores() {
+  const panel = $('entendimientoDiagnosticoMotores');
+  const estado = $('entendimientoDiagnosticoMotoresEstado');
+  const resumenBox = $('entendimientoDiagnosticoMotoresResumen');
+  const lista = $('entendimientoDiagnosticoMotoresLista');
+  if (panel) panel.hidden = false;
+  if (estado) estado.textContent = 'Revisando...';
+  if (resumenBox) resumenBox.textContent = 'Revisando motores locales gratuitos...';
+  if (lista) lista.innerHTML = '';
+  const datos = await api('/api/autovideo/transcripcion/motores/diagnostico');
+  renderDiagnosticoMotores(datos);
+  setMensaje('Diagnóstico de motores completado.', 'ok');
+}
+
 async function crearPlanPlaceholder() {
   const proyectoId = obtenerProyectoId();
   if (!proyectoId) { setMensaje('Falta proyectoId para crear el plan.', 'warn'); return; }
@@ -346,6 +384,7 @@ function enlazarEventos() {
   if (input && !input.value) input.value = localStorage.getItem(STORAGE_PROYECTO_ETAPAS) || '';
   $('entendimientoCargarBtn')?.addEventListener('click', () => cargarEntendimiento().catch((error) => setMensaje(error.message, 'error')));
   $('entendimientoProcesarBtn')?.addEventListener('click', () => procesarEntendimiento().catch((error) => setMensaje(error.message, 'error')));
+  $('entendimientoDiagnosticarMotoresBtn')?.addEventListener('click', () => diagnosticarMotores().catch((error) => setMensaje(error.message, 'error')));
   $('entendimientoCrearPlanBtn')?.addEventListener('click', () => crearPlanPlaceholder().catch((error) => setMensaje(error.message, 'error')));
   root.addEventListener('click', manejarClickTranscripcion);
 }
