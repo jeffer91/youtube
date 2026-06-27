@@ -1,5 +1,5 @@
 /*
-  Bloque 6: Selector Gemini de efectos
+  Bloque 7: UI de control de efectos
   Funcion: pedir a Gemini una seleccion controlada de efectos y normalizarla.
 */
 
@@ -13,8 +13,17 @@ function booleano(valor, defecto = false) {
   return defecto;
 }
 
+function obtenerSelector(opciones = {}) {
+  return String(opciones?.selectorEfectos || opciones?.motorEfectosIA || 'automatico').trim().toLowerCase();
+}
+
 export async function seleccionarEfectosGemini(contexto = {}, { opciones = {}, maxEfectos = 12 } = {}) {
-  const usarGemini = booleano(opciones?.usarGemini, false) || opciones?.selectorEfectos === 'gemini' || opciones?.motorEfectosIA === 'gemini';
+  const selector = obtenerSelector(opciones);
+  if (selector === 'local') {
+    return { ok: false, omitido: true, origen: 'gemini', motivo: 'Selector local activado desde la interfaz.' };
+  }
+
+  const usarGemini = selector === 'gemini' || booleano(opciones?.usarGemini, false);
 
   if (!usarGemini) {
     return { ok: false, omitido: true, origen: 'gemini', motivo: 'Gemini no esta activado para efectos.' };
