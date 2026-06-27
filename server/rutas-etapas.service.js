@@ -1,6 +1,6 @@
 /*
-  Bloques 5 y 6: API por etapas + Entendimiento backend independiente
-  Función: registrar rutas base del nuevo flujo y ejecutar entendimiento real cuando se solicite esa etapa.
+  Bloques 5, 6 y 8: API por etapas + Entendimiento + Plan de edición
+  Función: registrar rutas base del nuevo flujo y ejecutar etapas reales cuando estén conectadas.
 */
 
 import path from 'path';
@@ -25,6 +25,7 @@ import {
   cargarResultadoEtapa
 } from '../flujo-etapas/flujo-etapas.conexion.js';
 import { procesarEntendimientoProyectoEtapa } from '../entender/etapas/entendimiento-etapa.service.js';
+import { procesarPlanEdicionProyectoEtapa } from '../etapas/02-plan/procesar-plan-edicion.service.js';
 
 const CONFIG_ETAPAS_API = Object.freeze({
   entendimiento: {
@@ -35,7 +36,7 @@ const CONFIG_ETAPAS_API = Object.freeze({
   plan: {
     etapa: ETAPAS_AUTOVIDEO.PLAN_EDICION,
     estadoProcesando: ESTADOS_PROYECTO_ETAPAS.PLANIFICANDO,
-    mensaje: 'Solicitud de plan de edición registrada. El motor real se conectará en el Bloque 8.'
+    mensaje: 'Plan de edición real conectado desde el Bloque 8.'
   },
   produccion: {
     etapa: ETAPAS_AUTOVIDEO.PRODUCCION,
@@ -214,6 +215,11 @@ async function registrarSolicitudEtapa({ req, res, aplicarCabeceras, tipo }) {
     if (tipo === 'entendimiento') {
       const resultadoEntendimiento = await procesarEntendimientoProyectoEtapa({ proyectoId, opciones: req.body || {}, solicitud: req.body || {} });
       return responderOk(res, { ...resultadoEntendimiento, pendienteImplementacion: false });
+    }
+
+    if (tipo === 'plan') {
+      const resultadoPlan = await procesarPlanEdicionProyectoEtapa({ proyectoId, opciones: req.body || {}, solicitud: req.body || {} });
+      return responderOk(res, { ...resultadoPlan, pendienteImplementacion: false });
     }
 
     const estado = await avanzarEstadoProyectoEtapas({
