@@ -1,5 +1,6 @@
-/* Verificacion Bloque 7: navegacion y pantallas UI. */
+/* Verificacion: navegacion compacta, pantallas separadas y controladores UI. */
 
+import fs from 'fs';
 import { MENU_PRINCIPAL, FLUJO_PROYECTO, obtenerItemMenu } from '../app/navegacion/menu.config.js';
 import { obtenerSubmenu, renderizarSubmenu } from '../app/navegacion/submenus.service.js';
 import {
@@ -20,8 +21,15 @@ function main() {
   if (!obtenerSubmenu('biblioteca').length) throw new Error('Biblioteca debe tener submenu.');
   if (!renderizarSubmenu('produccion').includes('Aprendizaje')) throw new Error('Produccion debe incluir aprendizaje en submenu.');
 
-  const html = [renderInicioView(), renderNuevoProyectoView(), renderProduccionView(), renderBibliotecaView(), renderPerfilesView(), renderDiagnosticoView()].join('\n');
-  if (!html.includes('AutoVideoJeff') || !html.includes('Produccion')) throw new Error('Las vistas no generan contenido esperado.');
+  const inicio = renderInicioView();
+  const nuevo = renderNuevoProyectoView();
+  const html = [inicio, nuevo, renderProduccionView(), renderBibliotecaView(), renderPerfilesView(), renderDiagnosticoView()].join('\n');
+  if (inicio.includes('videoForm') || inicio.includes('Seleccionar video')) throw new Error('Inicio no debe contener procesador de video.');
+  if (!nuevo.includes('procesador principal')) throw new Error('Nuevo proyecto debe indicar el procesador principal.');
+  if (!html.includes('Produccion') || !html.includes('Biblioteca')) throw new Error('Las vistas no generan contenido esperado.');
+
+  const nav = fs.readFileSync('app/navegacion/navegacion.service.js', 'utf-8');
+  if (!nav.includes('document.body.dataset.pantallaActiva')) throw new Error('La navegacion debe marcar la pantalla activa.');
 
   const produccion = crearProduccionController().obtenerEstado();
   const biblioteca = crearBibliotecaController().obtenerEstado();
