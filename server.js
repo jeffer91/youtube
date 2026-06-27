@@ -222,7 +222,7 @@ function crearAplicacionExpress({ modoElectron = false } = {}) {
   app.get('/api/estado', async (_req, res) => {
     aplicarCabecerasSinCache(res);
     const diagnostico = await crearDiagnosticoSeguro({ guardarReporte: false });
-    res.json({ ok: true, app: 'AutoVideoJeff', estado: diagnosticoEsBloqueante(diagnostico) ? 'SERVIDOR_CON_DIAGNOSTICO_PENDIENTE' : 'SERVIDOR_ACTIVO', modo: modoElectron ? 'electron' : 'web', predeterminados: crearPredeterminadosEstado(), modulosNuevos: ['proyectos', 'perfiles', 'exportacion', 'biblioteca', 'gemini', 'produccion', 'aprendizaje', 'efectos'], diagnostico, rutas: { raizDatos: rutasBase.raizDatos, videosExportados: rutasBase.videosExportados, audiosMejorados: rutasBase.audiosMejorados }, fecha: new Date().toISOString() });
+    res.json({ ok: true, app: 'AutoVideoJeff', estado: diagnosticoEsBloqueante(diagnostico) ? 'SERVIDOR_CON_DIAGNOSTICO_PENDIENTE' : 'SERVIDOR_ACTIVO', modo: modoElectron ? 'electron' : 'web', predeterminados: crearPredeterminadosEstado(), modulosNuevos: ['proyectos', 'flujo-etapas', 'api-etapas', 'perfiles', 'exportacion', 'biblioteca', 'gemini', 'produccion', 'aprendizaje', 'efectos'], diagnostico, rutas: { raizDatos: rutasBase.raizDatos, videosExportados: rutasBase.videosExportados, audiosMejorados: rutasBase.audiosMejorados }, fecha: new Date().toISOString() });
   });
 
   app.get('/api/diagnostico', async (_req, res) => {
@@ -231,7 +231,7 @@ function crearAplicacionExpress({ modoElectron = false } = {}) {
     res.status(diagnosticoEsBloqueante(diagnostico) ? 503 : 200).json({ ok: !diagnosticoEsBloqueante(diagnostico), diagnostico, fecha: new Date().toISOString() });
   });
 
-  registrarRutasModulares(app, { rutasBase, aplicarCabecerasSinCache });
+  registrarRutasModulares(app, { rutasBase, aplicarCabecerasSinCache, upload });
 
   app.get('/api/progreso/:jobId', (req, res) => {
     const jobId = normalizarTexto(req.params.jobId, '');
