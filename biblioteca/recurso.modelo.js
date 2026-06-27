@@ -23,7 +23,7 @@ export function limpiarNombreRecurso(nombre = '') {
 export function crearRecursoModelo(datos = {}) {
   const tipo = obtenerTiposBiblioteca().includes(datos.tipo) ? datos.tipo : BIBLIOTECA_CONFIG.tipos.imagen;
   const categoria = obtenerCategoriaBiblioteca(datos.categoria || 'general');
-  const nombre = datos.nombre || datos.titulo || 'Recurso sin nombre';
+  const nombre = datos.nombre || datos.titulo || datos.nombreArchivo || 'Recurso sin nombre';
 
   return {
     id: datos.id || crearIdRecurso(limpiarNombreRecurso(nombre)),
@@ -33,6 +33,9 @@ export function crearRecursoModelo(datos = {}) {
     tipo,
     categoria: categoria.id,
     perfil: datos.perfil || null,
+    tipoEdicion: datos.tipoEdicion || datos.usoEdicion || 'apoyo_visual',
+    tono: datos.tono || 'neutral',
+    momentoSugerido: datos.momentoSugerido || '',
     etiquetas: Array.isArray(datos.etiquetas) ? datos.etiquetas : [],
     tema: datos.tema || '',
     fraseRelacionada: datos.fraseRelacionada || '',
