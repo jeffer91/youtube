@@ -9,6 +9,7 @@ import { renderizarSubmenu } from './submenus.service.js';
 import {
   renderInicioView,
   renderNuevoProyectoView,
+  renderEntendimientoView,
   renderProcesadoView,
   renderProduccionView,
   renderResultadoView,
@@ -22,6 +23,7 @@ import {
 const VISTAS = Object.freeze({
   inicio: renderInicioView,
   'nuevo-proyecto': renderNuevoProyectoView,
+  entendimiento: renderEntendimientoView,
   procesado: renderProcesadoView,
   produccion: renderProduccionView,
   resultado: renderResultadoView,
