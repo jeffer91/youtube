@@ -1,6 +1,7 @@
 import { inicializarNavegacionAutoVideoJeff } from './navegacion.service.js';
 import { inicializarDiagnosticoFuerteUI } from '../diagnostico-fuerte-ui.js';
 import { inicializarAuditoriaIntegralUI } from '../auditoria-integral-ui.js';
+import { inicializarResultadoFinalUI } from '../resultado-final-ui.js';
 
 function iniciarNavegacion() {
   inicializarNavegacionAutoVideoJeff({
@@ -9,6 +10,7 @@ function iniciarNavegacion() {
   });
   inicializarDiagnosticoFuerteUI();
   inicializarAuditoriaIntegralUI();
+  inicializarResultadoFinalUI();
 }
 
 document.addEventListener('DOMContentLoaded', iniciarNavegacion);
