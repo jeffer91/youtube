@@ -1,0 +1,157 @@
+/*
+  Bloque 4: Nuevo Proyecto limpio
+  Función: dejar la primera pantalla enfocada solo en nombre, videos y primer procesado.
+*/
+
+.clean-project-screen {
+  overflow: hidden;
+}
+
+.clean-project-header h1 {
+  letter-spacing: -.045em;
+}
+
+.clean-project-form {
+  display: grid;
+  gap: 14px;
+}
+
+.clean-project-grid {
+  display: grid;
+  grid-template-columns: minmax(360px, .95fr) minmax(320px, .65fr);
+  gap: 14px;
+  align-items: stretch;
+}
+
+.clean-project-main-card,
+.clean-project-side-card {
+  border: 1px solid rgba(148, 163, 184, .26);
+  border-radius: 24px;
+  background: linear-gradient(180deg, #ffffff, #f8fafc);
+  box-shadow: 0 16px 38px rgba(15, 23, 42, .08);
+  padding: 18px;
+}
+
+.clean-project-main-card {
+  display: grid;
+  gap: 14px;
+}
+
+.clean-project-name {
+  display: grid;
+  gap: 7px;
+}
+
+.clean-project-name span,
+.clean-project-side-card h2 {
+  color: #0f172a;
+  font-weight: 950;
+}
+
+.clean-project-name small,
+.clean-project-note span,
+.clean-stage-list span {
+  color: #64748b;
+  font-weight: 800;
+  line-height: 1.35;
+}
+
+.clean-file-picker {
+  min-height: 230px;
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: 8px;
+  border: 2px dashed #93c5fd;
+  border-radius: 24px;
+  background:
+    radial-gradient(circle at top, rgba(37, 99, 235, .12), transparent 42%),
+    linear-gradient(180deg, #eff6ff, #ffffff);
+  text-align: center;
+  cursor: pointer;
+  transition: transform .18s ease, border-color .18s ease, box-shadow .18s ease;
+}
+
+.clean-file-picker:hover {
+  transform: translateY(-1px);
+  border-color: #2563eb;
+  box-shadow: 0 18px 34px rgba(37, 99, 235, .12);
+}
+
+.clean-file-picker .file-picker__title {
+  color: #0f172a;
+  font-size: 1.15rem;
+  font-weight: 950;
+}
+
+.clean-file-picker .file-picker__hint {
+  max-width: 520px;
+  color: #64748b;
+  font-weight: 800;
+  line-height: 1.4;
+}
+
+.clean-process-button {
+  min-height: 48px;
+  border-radius: 16px;
+  justify-content: center;
+}
+
+.clean-project-side-card {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.clean-stage-list {
+  display: grid;
+  gap: 9px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.clean-stage-list li {
+  display: grid;
+  gap: 4px;
+  border: 1px solid #e2e8f0;
+  border-radius: 16px;
+  background: #fff;
+  padding: 11px 12px;
+}
+
+.clean-stage-list li.is-active {
+  border-color: #bfdbfe;
+  background: linear-gradient(180deg, #eff6ff, #ffffff);
+  box-shadow: 0 12px 28px rgba(37, 99, 235, .08);
+}
+
+.clean-stage-list strong {
+  color: #0f172a;
+  font-weight: 950;
+}
+
+.clean-project-note {
+  margin-top: auto;
+  display: grid;
+  gap: 5px;
+  border: 1px solid #fde68a;
+  border-radius: 18px;
+  background: #fffbeb;
+  padding: 12px;
+}
+
+.clean-project-note strong {
+  color: #92400e;
+  font-weight: 950;
+}
+
+.legacy-options-hidden {
+  display: none !important;
+}
+
+@media (max-width: 980px) {
+  .clean-project-grid {
+    grid-template-columns: 1fr;
+  }
+}
