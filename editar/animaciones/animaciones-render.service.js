@@ -23,11 +23,11 @@ function limitar(valor, minimo, maximo) {
 }
 
 function construirEnable(inicio, fin) {
-  return `enable='between(t\,${numero(inicio, 0).toFixed(3)}\,${numero(fin, inicio + 1).toFixed(3)})'`;
+  return `enable='between(t\\,${numero(inicio, 0).toFixed(3)}\\,${numero(fin, inicio + 1).toFixed(3)})'`;
 }
 
 function exprBetween(inicio, fin) {
-  return `between(t\,${inicio.toFixed(3)}\,${fin.toFixed(3)})`;
+  return `between(t\\,${inicio.toFixed(3)}\\,${fin.toFixed(3)})`;
 }
 
 function obtenerDuracion(entendimiento = {}, edicionDinamica = {}) {
@@ -69,9 +69,9 @@ function elegirIntensidad(opciones = {}) {
 function expresionZoom(inicio, fin, tipo, fuerza) {
   const duracion = Math.max(0.35, fin - inicio).toFixed(3);
   const activo = exprBetween(inicio, fin);
-  if (tipo === 'zoom_out') return `if(${activo}\,1+${fuerza.toFixed(3)}*(1-((t-${inicio.toFixed(3)})/${duracion}))\,1)`;
-  if (tipo === 'explosion_pop') return `if(${activo}\,1+${fuerza.toFixed(3)}*sin(((t-${inicio.toFixed(3)})/${duracion})*PI)\,1)`;
-  return `if(${activo}\,1+${fuerza.toFixed(3)}*((t-${inicio.toFixed(3)})/${duracion})\,1)`;
+  if (tipo === 'zoom_out') return `if(${activo}\\,1+${fuerza.toFixed(3)}*(1-((t-${inicio.toFixed(3)})/${duracion}))\\,1)`;
+  if (tipo === 'explosion_pop') return `if(${activo}\\,1+${fuerza.toFixed(3)}*sin(((t-${inicio.toFixed(3)})/${duracion})*PI)\\,1)`;
+  return `if(${activo}\\,1+${fuerza.toFixed(3)}*((t-${inicio.toFixed(3)})/${duracion})\\,1)`;
 }
 
 function filtroZoomAnimado({ inicio, fin, tipo, width, height, fuerza }) {
