@@ -12,6 +12,7 @@ import { inicializarConfiguracionProyectoUI, aplicarOpcionesProyectoAFormulario,
 import { inicializarHistorialProyectosUI, recargarHistorialProyectosUI } from './historial-proyectos-ui.js';
 import { inicializarProduccionRevisionUI, guardarUltimaProduccion } from './produccion-revision-ui.js';
 import { inicializarBibliotecaUI } from './biblioteca-ui.js';
+import { inicializarEfectosUI, obtenerOpcionesEfectos, bloquearControlesEfectos } from './efectos-ui.js';
 
 const PANTALLA_PROCESADOR = 'nuevo-proyecto';
 
@@ -124,6 +125,7 @@ function aplicarEstadoControlesProcesador() {
   bloquearControlesTranscripcion(bloquearBase);
   bloquearControlesGemini(bloquearBase);
   bloquearControlesConfiguracionProyecto(bloquearBase);
+  bloquearControlesEfectos(bloquearBase);
   elementos.processButton.textContent = procesandoVideo ? 'Editando automáticamente...' : 'Procesar automáticamente';
 }
 
@@ -224,6 +226,7 @@ function crearFormularioProcesamiento(jobId) {
   agregarOpcionesAFormulario(formulario, obtenerOpcionesTranscripcion());
   agregarOpcionesAFormulario(formulario, obtenerConfiguracionGemini());
   agregarOpcionesAFormulario(formulario, obtenerOpcionesEdicionAutomatica());
+  agregarOpcionesAFormulario(formulario, obtenerOpcionesEfectos());
   return formulario;
 }
 
@@ -360,6 +363,7 @@ function iniciarInterfaz() {
   inicializarBibliotecaUI({ crearUrlApi });
   inicializarGeminiPopup();
   inicializarTranscripcionUI();
+  inicializarEfectosUI();
   inicializarModalErrorEdicion();
   aplicarModoAutomaticoVisual();
   registrarEventosProcesador();
