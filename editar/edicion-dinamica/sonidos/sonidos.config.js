@@ -1,71 +1,37 @@
-export const SONIDOS_EDICION = Object.freeze({
-  POP: 'pop',
-  CLICK: 'click',
-  WHOOSH: 'whoosh',
-  HIT: 'hit',
-  INTRO: 'intro',
-  OUTRO: 'outro'
-});
+export const SONIDOS_EDICION = Object.freeze({ POP: 'pop', CLICK: 'click', WHOOSH: 'whoosh', HIT: 'hit', INTRO: 'intro', OUTRO: 'outro' });
 
 export const CONFIG_SONIDOS_EDICION = Object.freeze({
-  volumenPredeterminado: 0.2,
-  volumenMaximo: 0.4,
-  separacionMinimaSegundos: 1.2,
-  inicioSeguroSegundos: 0.45,
-  cantidadMaximaEventos: 16,
+  volumenPredeterminado: 0.11,
+  volumenMaximo: 0.22,
+  separacionMinimaSegundos: 1.8,
+  inicioSeguroSegundos: 0.9,
+  cantidadMaximaEventos: 10,
   carpetaGenerados: 'generados',
   nombreAudioFinal: 'audio-con-sonidos-edicion.m4a',
   sonidosBase: {
-    pop: { frecuencia: 920, duracion: 0.075, volumen: 0.18 },
-    click: { frecuencia: 1350, duracion: 0.045, volumen: 0.15 },
-    whoosh: { frecuencia: 520, duracion: 0.18, volumen: 0.13 },
-    hit: { frecuencia: 190, duracion: 0.11, volumen: 0.2 },
-    intro: { frecuencia: 700, duracion: 0.22, volumen: 0.16 },
-    outro: { frecuencia: 420, duracion: 0.25, volumen: 0.16 }
+    pop: { frecuencia: 840, duracion: 0.055, volumen: 0.09 },
+    click: { frecuencia: 1180, duracion: 0.035, volumen: 0.08 },
+    whoosh: { frecuencia: 460, duracion: 0.14, volumen: 0.075 },
+    hit: { frecuencia: 170, duracion: 0.08, volumen: 0.09 },
+    intro: { frecuencia: 620, duracion: 0.14, volumen: 0.075 },
+    outro: { frecuencia: 380, duracion: 0.16, volumen: 0.075 }
   }
 });
 
-export function numeroSeguro(valor, respaldo = 0) {
-  const numero = Number(valor);
-  return Number.isFinite(numero) ? numero : respaldo;
-}
-
-export function limitarNumero(valor, minimo, maximo, respaldo) {
-  const numero = numeroSeguro(valor, respaldo);
-  return Math.min(maximo, Math.max(minimo, numero));
-}
-
-export function normalizarBooleano(valor, respaldo = false) {
-  if (typeof valor === 'boolean') return valor;
-  if (typeof valor === 'number') return valor === 1;
-  if (typeof valor === 'string') {
-    const limpio = valor.trim().toLowerCase();
-    if (['true', '1', 'si', 'sí', 'yes', 'on', 'activo'].includes(limpio)) return true;
-    if (['false', '0', 'no', 'off', 'inactivo'].includes(limpio)) return false;
-  }
-  return respaldo;
-}
+export function numeroSeguro(valor, respaldo = 0) { const numero = Number(valor); return Number.isFinite(numero) ? numero : respaldo; }
+export function limitarNumero(valor, minimo, maximo, respaldo) { const numero = numeroSeguro(valor, respaldo); return Math.min(maximo, Math.max(minimo, numero)); }
+export function normalizarBooleano(valor, respaldo = false) { if (typeof valor === 'boolean') return valor; if (typeof valor === 'number') return valor === 1; if (typeof valor === 'string') { const limpio = valor.trim().toLowerCase(); if (['true', '1', 'si', 'sí', 'yes', 'on', 'activo'].includes(limpio)) return true; if (['false', '0', 'no', 'off', 'inactivo'].includes(limpio)) return false; } return respaldo; }
 
 export function obtenerConfigSonidosEdicion(opciones = {}) {
   const activo = normalizarBooleano(opciones.agregarSonidosEdicion ?? opciones.sonidosEdicion ?? opciones.efectosSonido, true);
-  const volumen = limitarNumero(opciones.volumenSonidosEdicion, 0.04, CONFIG_SONIDOS_EDICION.volumenMaximo, CONFIG_SONIDOS_EDICION.volumenPredeterminado);
-  const separacionMinimaSegundos = limitarNumero(opciones.separacionMinimaSonidos, 0.5, 4, CONFIG_SONIDOS_EDICION.separacionMinimaSegundos);
-  const inicioSeguroSegundos = limitarNumero(opciones.inicioSeguroSonidos, 0, 1.5, CONFIG_SONIDOS_EDICION.inicioSeguroSegundos);
-  const cantidadMaximaEventos = Math.round(limitarNumero(opciones.cantidadMaximaSonidos, 1, 32, CONFIG_SONIDOS_EDICION.cantidadMaximaEventos));
-  const modo = String(opciones.modoSonidosEdicion || 'normal').trim().toLowerCase();
-
-  return {
-    activo,
-    modo,
-    volumen,
-    separacionMinimaSegundos,
-    inicioSeguroSegundos,
-    cantidadMaximaEventos,
-    volumenMaximo: CONFIG_SONIDOS_EDICION.volumenMaximo,
-    carpetaGenerados: CONFIG_SONIDOS_EDICION.carpetaGenerados,
-    nombreAudioFinal: CONFIG_SONIDOS_EDICION.nombreAudioFinal,
-    sonidosBase: CONFIG_SONIDOS_EDICION.sonidosBase
-  };
+  const modo = String(opciones.modoSonidosEdicion || 'seguro').trim().toLowerCase();
+  const volumenBase = modo === 'fuerte' ? 0.18 : modo === 'normal' ? 0.13 : CONFIG_SONIDOS_EDICION.volumenPredeterminado;
+  const volumenMaximo = modo === 'fuerte' ? 0.3 : CONFIG_SONIDOS_EDICION.volumenMaximo;
+  const volumen = limitarNumero(opciones.volumenSonidosEdicion, 0.03, volumenMaximo, volumenBase);
+  const separacionMinimaSegundos = limitarNumero(opciones.separacionMinimaSonidos, 0.8, 5, CONFIG_SONIDOS_EDICION.separacionMinimaSegundos);
+  const inicioSeguroSegundos = limitarNumero(opciones.inicioSeguroSonidos, 0.6, 2.5, CONFIG_SONIDOS_EDICION.inicioSeguroSegundos);
+  const cantidadMaximaEventos = Math.round(limitarNumero(opciones.cantidadMaximaSonidos, 1, 24, CONFIG_SONIDOS_EDICION.cantidadMaximaEventos));
+  return { activo, modo, volumen, separacionMinimaSegundos, inicioSeguroSegundos, cantidadMaximaEventos, volumenMaximo, carpetaGenerados: CONFIG_SONIDOS_EDICION.carpetaGenerados, nombreAudioFinal: CONFIG_SONIDOS_EDICION.nombreAudioFinal, sonidosBase: CONFIG_SONIDOS_EDICION.sonidosBase };
 }
 
 export default obtenerConfigSonidosEdicion;
