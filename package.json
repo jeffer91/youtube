@@ -124,7 +124,7 @@
     "productName": "AutoVideoJeff",
     "asar": false,
     "directories": { "output": "release" },
-    "files": ["app/**/*", "aprendizaje/**/*", "audio/**/*", "biblioteca/**/*", "biblioteca-proyecto/**/*", "comun/**/*", "diagnostico/**/*", "docs/**/*", "editar/**/*", "entrada/**/*", "entender/**/*", "entrega/**/*", "exportacion/**/*", "gemini/**/*", "motor/**/*", "perfiles/**/*", "produccion/**/*", "progreso/**/*", "proyectos/**/*", "recursos-externos/**/*", "salida/**/*", "scripts/**/*", "server/**/*", "subtitulos/**/*", "textos/**/*", "transcripcion/**/*", "visual/**/*", "main.js", "preload.js", "server.js", "package.json"],
+    "files": ["app/**/*", "aprendizaje/**/*", "audio/**/*", "biblioteca/**/*", "biblioteca-proyecto/**/*", "comun/**/*", "diagnostico/**/*", "docs/**/*", "editar/**/*", "entrada/**/*", "entender/**/*", "entrega/**/*", "etapas/**/*", "exportacion/**/*", "gemini/**/*", "motor/**/*", "perfiles/**/*", "produccion/**/*", "progreso/**/*", "proyectos/**/*", "recursos-externos/**/*", "salida/**/*", "scripts/**/*", "server/**/*", "subtitulos/**/*", "textos/**/*", "transcripcion/**/*", "visual/**/*", "main.js", "preload.js", "server.js", "package.json"],
     "extraResources": [{ "from": "docs", "to": "docs" }],
     "win": { "target": ["nsis"] },
     "nsis": { "oneClick": false, "perMachine": false, "allowToChangeInstallationDirectory": true, "createDesktopShortcut": true, "createStartMenuShortcut": true }
