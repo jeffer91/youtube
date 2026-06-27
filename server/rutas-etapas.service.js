@@ -1,5 +1,5 @@
 /*
-  Bloques 5, 6, 8 y 10: API por etapas + Entendimiento + Plan + Producción maestro
+  Bloques 5, 6, 8, 10 y 15: API por etapas + Entendimiento + Plan + Producción + Adaptación
   Función: registrar rutas base del nuevo flujo y ejecutar etapas reales cuando estén conectadas.
 */
 
@@ -27,6 +27,7 @@ import {
 import { procesarEntendimientoProyectoEtapa } from '../entender/etapas/entendimiento-etapa.service.js';
 import { procesarPlanEdicionProyectoEtapa } from '../etapas/02-plan/procesar-plan-edicion.service.js';
 import { procesarProduccionMaestroProyectoEtapa } from '../etapas/03-produccion/procesar-produccion-maestro.service.js';
+import { procesarAdaptacionPlataformasProyectoEtapa } from '../etapas/04-adaptacion/procesar-adaptacion-plataformas.service.js';
 
 const CONFIG_ETAPAS_API = Object.freeze({
   entendimiento: {
@@ -47,7 +48,7 @@ const CONFIG_ETAPAS_API = Object.freeze({
   adaptacion: {
     etapa: ETAPAS_AUTOVIDEO.ADAPTACION,
     estadoProcesando: ESTADOS_PROYECTO_ETAPAS.ADAPTANDO,
-    mensaje: 'Solicitud de adaptación a plataformas registrada. El motor real se conectará en el Bloque 15.'
+    mensaje: 'Adaptación a plataformas real conectada desde el Bloque 15.'
   },
   resultado: {
     etapa: ETAPAS_AUTOVIDEO.RESULTADO,
@@ -226,6 +227,11 @@ async function registrarSolicitudEtapa({ req, res, aplicarCabeceras, tipo }) {
     if (tipo === 'produccion') {
       const resultadoProduccion = await procesarProduccionMaestroProyectoEtapa({ proyectoId, opciones: req.body || {}, solicitud: req.body || {} });
       return responderOk(res, { ...resultadoProduccion, pendienteImplementacion: false });
+    }
+
+    if (tipo === 'adaptacion') {
+      const resultadoAdaptacion = await procesarAdaptacionPlataformasProyectoEtapa({ proyectoId, opciones: req.body || {}, solicitud: req.body || {} });
+      return responderOk(res, { ...resultadoAdaptacion, pendienteImplementacion: false });
     }
 
     const estado = await avanzarEstadoProyectoEtapas({
