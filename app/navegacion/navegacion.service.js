@@ -32,6 +32,17 @@ const VISTAS = Object.freeze({
   diagnostico: renderDiagnosticoView
 });
 
+function renderLogoMenu() {
+  return `
+    <button class="aj-brand-button" type="button" data-pantalla="inicio" aria-label="Ir al inicio de AutoVideoJeff" title="AutoVideoJeff">
+      <span class="aj-brand-logo-box" aria-hidden="true">
+        <img class="aj-brand-logo" src="./assets/logo-autovideojeff.png" alt="" onerror="this.hidden=true;this.nextElementSibling.hidden=false" />
+        <span class="aj-brand-fallback" hidden>AJ</span>
+      </span>
+    </button>
+  `;
+}
+
 function renderBotonMenu(item, activo) {
   return `<button class="aj-menu-btn ${activo ? 'is-active' : ''}" type="button" data-pantalla="${item.id}" title="${item.descripcion || item.titulo}" aria-label="Abrir ${item.titulo}"><strong>${item.titulo}</strong></button>`;
 }
@@ -54,7 +65,7 @@ function emitirEventoNavegacion(item) {
 
 export function renderizarMenuPrincipal(contenedor, pantallaActiva = 'inicio') {
   if (!contenedor) return;
-  contenedor.innerHTML = `<nav class="aj-main-menu" aria-label="Menu principal AutoVideoJeff">${MENU_PRINCIPAL.map((item) => renderBotonMenu(item, item.id === pantallaActiva)).join('')}</nav>`;
+  contenedor.innerHTML = `<nav class="aj-main-menu" aria-label="Menu principal AutoVideoJeff">${renderLogoMenu()}${MENU_PRINCIPAL.map((item) => renderBotonMenu(item, item.id === pantallaActiva)).join('')}</nav>`;
 }
 
 export function renderizarPantalla(contenedor, pantallaId = 'inicio') {
