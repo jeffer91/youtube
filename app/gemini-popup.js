@@ -1,31 +1,9 @@
-const STORAGE_KEY = 'AutoVideoJeff.gemini.config.v1';
+import { GEMINI_DEFAULTS, leerConfigGeminiLocal, guardarConfigGeminiLocal, describirEstadoGemini } from './gemini-config-storage.js';
 
-const DEFAULTS = Object.freeze({
-  usarGemini: false,
-  usarFallbackGemini: true,
-  geminiCredencial: '',
-  geminiModelo: 'gemini-1.5-flash',
-  geminiGuia: 'Detecta los momentos más importantes del video. Crea textos flotantes cortos, claros, llamativos y útiles para retener la atención.',
-  geminiTemperatura: '0.35',
-  geminiTimeoutMs: '60000'
-});
+const DEFAULTS = GEMINI_DEFAULTS;
 
 function $(id) {
   return document.getElementById(id);
-}
-
-function leerStorage() {
-  try {
-    const raw = window.localStorage.getItem(STORAGE_KEY);
-    if (!raw) return { ...DEFAULTS };
-    return { ...DEFAULTS, ...JSON.parse(raw) };
-  } catch (_error) {
-    return { ...DEFAULTS };
-  }
-}
-
-function guardarStorage(config) {
-  window.localStorage.setItem(STORAGE_KEY, JSON.stringify(config));
 }
 
 function obtenerElementos() {
@@ -47,8 +25,7 @@ function obtenerElementos() {
 
 function actualizarResumen(elementos, config) {
   if (!elementos.resumen) return;
-  const estado = config.usarGemini ? (config.geminiCredencial ? `Gemini activo · Modelo ${config.geminiModelo}` : 'Gemini activo, falta ingresar credencial') : 'Gemini desactivado · Se usará fallback local';
-  elementos.resumen.textContent = estado;
+  elementos.resumen.textContent = describirEstadoGemini(config);
 }
 
 function aplicarConfigEnFormulario(elementos, config) {
@@ -88,7 +65,14 @@ function cerrarModal(elementos) {
 export function obtenerConfiguracionGemini() {
   const elementos = obtenerElementos();
   if (elementos.modal) return leerConfigDesdeFormulario(elementos);
-  return leerStorage();
+  return leerConfigGeminiLocal();
+}
+
+export function refrescarResumenGeminiPopup() {
+  const elementos = obtenerElementos();
+  const config = leerConfigGeminiLocal();
+  aplicarConfigEnFormulario(elementos, config);
+  return config;
 }
 
 export function bloquearControlesGemini(bloquear) {
@@ -101,17 +85,17 @@ export function bloquearControlesGemini(bloquear) {
 export function inicializarGeminiPopup() {
   const elementos = obtenerElementos();
   if (!elementos.modal || !elementos.openButton) return;
-  aplicarConfigEnFormulario(elementos, leerStorage());
+  aplicarConfigEnFormulario(elementos, leerConfigGeminiLocal());
   elementos.openButton.addEventListener('click', () => {
-    aplicarConfigEnFormulario(elementos, leerStorage());
+    aplicarConfigEnFormulario(elementos, leerConfigGeminiLocal());
     abrirModal(elementos);
   });
   elementos.closeButton?.addEventListener('click', () => cerrarModal(elementos));
   elementos.saveButton?.addEventListener('click', () => {
-    const nuevoConfig = leerConfigDesdeFormulario(elementos);
-    guardarStorage(nuevoConfig);
-    actualizarResumen(elementos, nuevoConfig);
+    const nuevoConfig = guardarConfigGeminiLocal(leerConfigDesdeFormulario(elementos));
+    aplicarConfigEnFormulario(elementos, nuevoConfig);
     cerrarModal(elementos);
+    document.dispatchEvent(new CustomEvent('autovideo:gemini-config-actualizada', { detail: { estado: describirEstadoGemini(nuevoConfig) } }));
   });
   elementos.modal.addEventListener('click', (evento) => {
     if (evento.target === elementos.modal) cerrarModal(elementos);
@@ -119,6 +103,7 @@ export function inicializarGeminiPopup() {
   document.addEventListener('keydown', (evento) => {
     if (evento.key === 'Escape' && !elementos.modal.hidden) cerrarModal(elementos);
   });
+  document.addEventListener('autovideo:gemini-config-actualizada', () => refrescarResumenGeminiPopup());
 }
 
 export default inicializarGeminiPopup;
