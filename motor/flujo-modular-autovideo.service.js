@@ -1,5 +1,5 @@
 /*
-  Bloques 8, 9 y 18
+  Bloques 8, 9, 18 y nueva etapa estructural Bloque 5
   Funcion: conectar los modulos nuevos al resultado del flujo actual sin romper el render existente.
 */
 
@@ -8,59 +8,33 @@ import { prepararExportaciones, crearResultadoPlataformas } from '../exportacion
 import { crearPlanAudio } from '../audio/audio.conexion.js';
 import { crearSubtitulosMultiplataforma } from '../subtitulos/subtitulos.conexion.js';
 import { detectarTextosRelevantes, generarTextosPantalla } from '../textos/textos.conexion.js';
-import {
-  detectarSujeto,
-  detectarRostro,
-  detectarZonasSeguras,
-  crearPlanRemoverFondo,
-  crearPlanFondo,
-  crearPlanZoom,
-  crearPlanAnimaciones,
-  crearPlanEfectos,
-  crearPlanEncuadreDinamico
-} from '../visual/visual.conexion.js';
+import { detectarSujeto, detectarRostro, detectarZonasSeguras, crearPlanRemoverFondo, crearPlanFondo, crearPlanZoom, crearPlanAnimaciones, crearPlanEfectos, crearPlanEncuadreDinamico } from '../visual/visual.conexion.js';
 import { crearPaqueteGeminiEdicion, crearAnalisisTranscripcionFallback, ejecutarPaqueteGeminiEdicion } from '../gemini/gemini.conexion.js';
 import { crearPlanProduccion } from '../produccion/produccion.conexion.js';
 import { obtenerReglasAplicables } from '../aprendizaje/aprendizaje.conexion.js';
 
-function extraerSegmentos(transcripcion = {}) {
-  return transcripcion.transcripcion?.segmentos || transcripcion.segmentos || transcripcion.transcripcion?.segments || transcripcion.segments || [];
-}
-
-function normalizarPlataformas(opciones = {}) {
-  if (Array.isArray(opciones.plataformas) && opciones.plataformas.length) return opciones.plataformas;
-  if (typeof opciones.plataformas === 'string' && opciones.plataformas.trim()) return opciones.plataformas.split(',').map((item) => item.trim()).filter(Boolean);
-  if (opciones.plataforma) return [opciones.plataforma];
-  return ['tiktok', 'reels', 'shorts', 'youtube'];
-}
+function extraerSegmentos(transcripcion = {}) { return transcripcion.transcripcion?.segmentos || transcripcion.segmentos || transcripcion.transcripcion?.segments || transcripcion.segments || []; }
+function normalizarPlataformas(opciones = {}) { if (Array.isArray(opciones.plataformas) && opciones.plataformas.length) return opciones.plataformas; if (typeof opciones.plataformas === 'string' && opciones.plataformas.trim()) return opciones.plataformas.split(',').map((item) => item.trim()).filter(Boolean); if (opciones.plataforma) return [opciones.plataforma]; return ['tiktok', 'reels', 'shorts', 'youtube']; }
 
 function crearProyectoModular({ entrada = {}, opciones = {} } = {}) {
   const proyectoBase = entrada.proyecto || {};
   const perfil = opciones.perfil || proyectoBase.perfil || 'general';
   const plataformas = normalizarPlataformas(opciones);
-  return {
-    id: proyectoBase.id || opciones.proyectoId || `proyecto-${Date.now()}`,
-    nombre: proyectoBase.nombre || opciones.nombreProyecto || 'Proyecto AutoVideoJeff',
-    perfil,
-    modoEdicion: opciones.modoEdicion || opciones.modoRevision || 'revision_completa',
-    plataformas,
-    rutas: proyectoBase.rutas || {}
-  };
+  return { id: proyectoBase.id || opciones.proyectoId || `proyecto-${Date.now()}`, nombre: proyectoBase.nombre || opciones.nombreProyecto || 'Proyecto AutoVideoJeff', perfil, modoEdicion: opciones.modoEdicion || opciones.modoRevision || 'revision_completa', plataformas, rutas: proyectoBase.rutas || {} };
 }
 
 function crearMomentosDesdeSegmentos(segmentos = []) {
-  return segmentos.slice(0, 10).map((segmento, indice) => ({
-    id: segmento.id || `momento-${indice + 1}`,
-    inicio: Number(segmento.inicio ?? segmento.start ?? indice * 4),
-    fin: Number(segmento.fin ?? segmento.end ?? indice * 4 + 3),
-    texto: String(segmento.texto ?? segmento.text ?? '').trim(),
-    prioridad: indice < 3 ? 'alta' : 'media'
-  })).filter((momento) => momento.texto);
+  return segmentos.slice(0, 10).map((segmento, indice) => ({ id: segmento.id || `momento-${indice + 1}`, inicio: Number(segmento.inicio ?? segmento.start ?? indice * 4), fin: Number(segmento.fin ?? segmento.end ?? indice * 4 + 3), texto: String(segmento.texto ?? segmento.text ?? '').trim(), prioridad: indice < 3 ? 'alta' : 'media' })).filter((momento) => momento.texto);
 }
 
 function obtenerMomentosGemini(gemini = {}, fallback = []) {
   const data = gemini.resultados?.analisis?.data || {};
   return Array.isArray(data.momentosImportantes) && data.momentosImportantes.length ? data.momentosImportantes : fallback;
+}
+
+function crearImagenesDesdeFotogramas(entendimiento = {}) {
+  const frames = entendimiento.fotogramas?.fotogramas || entendimiento.reporteEntendimiento?.resumen?.fotogramas?.items || [];
+  return Array.isArray(frames) ? frames.slice(0, 8).map((frame, indice) => ({ id: frame.id || `imagen-frame-${indice + 1}`, nombre: frame.nombreArchivo || `Fotograma ${indice + 1}`, tipo: 'fotograma', inicio: Number(frame.segundo || 0), fin: Number(frame.segundo || 0) + 2.5, recurso: { ruta: frame.rutaArchivo || '', nombre: frame.nombreArchivo || '' }, motivo: 'Fotograma disponible para usar como recurso visual o referencia de edición.' })) : [];
 }
 
 export async function crearIntegracionModularAutoVideoJeff({ entrada = {}, entendimiento = {}, audio = {}, transcripcion = {}, edicionDinamica = {}, edicion = {}, salida = {}, opciones = {} } = {}) {
@@ -69,6 +43,7 @@ export async function crearIntegracionModularAutoVideoJeff({ entrada = {}, enten
   const plataformas = proyecto.plataformas;
   const segmentos = extraerSegmentos(transcripcion);
   const momentosFallback = crearMomentosDesdeSegmentos(segmentos);
+  const duracionSegundos = Number(entendimiento?.analisis?.duracionSegundos || salida?.entendimiento?.duracionSegundos || 0);
   const plataformaBase = { formato: salida.formato || '9:16', width: 1080, height: 1920, zonaSegura: { top: 170, bottom: 280, left: 80, right: 80 } };
 
   const exportaciones = prepararExportaciones({ ...proyecto, videoEditado: salida.rutaExportada || salida.rutaVideo || '', rutas: proyecto.rutas });
@@ -85,7 +60,7 @@ export async function crearIntegracionModularAutoVideoJeff({ entrada = {}, enten
   const textosPantalla = generarTextosPantalla({ textos: textosDetectados.textos, perfil: perfil.id, plataforma: plataformas[0] || 'tiktok' });
 
   const analisisGeminiFallback = crearAnalisisTranscripcionFallback({ transcripcion: { segmentos }, perfil: perfil.id });
-  const paqueteGemini = crearPaqueteGeminiEdicion({ proyecto, perfil, transcripcion: { segmentos }, analisis: analisisGeminiFallback, plataformas, opciones });
+  const paqueteGemini = crearPaqueteGeminiEdicion({ proyecto, perfil, transcripcion: { segmentos }, analisis: analisisGeminiFallback, plataformas, opciones, reporteEntendimiento: entendimiento.reporteEntendimiento || null });
   const gemini = await ejecutarPaqueteGeminiEdicion({ paquete: paqueteGemini, opciones });
   const momentos = obtenerMomentosGemini(gemini, momentosFallback);
 
@@ -93,36 +68,10 @@ export async function crearIntegracionModularAutoVideoJeff({ entrada = {}, enten
   const animaciones = crearPlanAnimaciones({ elementos: momentos, perfil: perfil.id });
   const efectos = crearPlanEfectos({ momentos, perfil: perfil.id });
   const encuadre = crearPlanEncuadreDinamico({ perfil: perfil.id, plataforma: plataformaBase, sujeto, rostro });
+  const imagenes = crearImagenesDesdeFotogramas(entendimiento);
   const reglasAprendizaje = await obtenerReglasAplicables({ perfil: perfil.id, texto: segmentos.map((seg) => seg.texto || seg.text).join(' ') });
 
-  const planProduccion = crearPlanProduccion({
-    proyecto,
-    recursos: [],
-    subtitulos: subtitulosPorPlataforma.flatMap((item) => item.subtitulos || []),
-    textos: textosPantalla,
-    graficos: [],
-    tablas: [],
-    visual: { fondo, zooms, efectos, animaciones, encuadre, zonasSeguras },
-    audio: planAudio,
-    gemini
-  });
+  const planProduccion = crearPlanProduccion({ proyecto, recursos: [], imagenes, subtitulos: subtitulosPorPlataforma.flatMap((item) => item.subtitulos || []), textos: textosPantalla, graficos: [], tablas: [], visual: { fondo, zooms, efectos, animaciones, encuadre, zonasSeguras }, audio: planAudio, gemini, duracionSegundos });
 
-  return {
-    ok: true,
-    version: '1.1.0',
-    proyecto,
-    perfil,
-    plataformas,
-    exportaciones,
-    resultadoPlataformas,
-    audio: planAudio,
-    subtitulosPorPlataforma,
-    textos: textosPantalla,
-    visual: { sujeto, rostro, zonasSeguras, removerFondo, fondo, zooms, animaciones, efectos, encuadre },
-    gemini,
-    produccion: planProduccion,
-    aprendizaje: { reglasAplicables: reglasAprendizaje },
-    estado: gemini.estado || 'MODULOS_CONECTADOS',
-    creadoEn: new Date().toISOString()
-  };
+  return { ok: true, version: '1.2.0', proyecto, perfil, plataformas, exportaciones, resultadoPlataformas, audio: planAudio, subtitulosPorPlataforma, textos: textosPantalla, imagenes, visual: { sujeto, rostro, zonasSeguras, removerFondo, fondo, zooms, animaciones, efectos, encuadre }, gemini, produccion: planProduccion, aprendizaje: { reglasAplicables: reglasAprendizaje }, estado: gemini.estado || 'MODULOS_CONECTADOS', creadoEn: new Date().toISOString() };
 }
