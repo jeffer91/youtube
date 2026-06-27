@@ -22,6 +22,7 @@
     "check:entendimiento-real": "node scripts/verificar-entendimiento-real.js",
     "check:gemini-ajustes": "node scripts/verificar-gemini-ajustes-contexto.js",
     "check:transcripcion-textos": "node scripts/verificar-transcripcion-titulos-textos.js",
+    "check:audio-seguro": "node scripts/verificar-audio-sincronizacion-segura.js",
     "check:efectos-catalogo": "node scripts/verificar-catalogo-efectos.js",
     "check:efectos-presets": "node scripts/verificar-presets-efectos.js",
     "check:efectos-aprendizaje": "node scripts/verificar-aprendizaje-efectos.js",
