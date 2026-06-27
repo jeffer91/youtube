@@ -3,11 +3,11 @@ import { inicializarTranscripcionUI, obtenerOpcionesTranscripcion, bloquearContr
 import { obtenerResumenAudio, obtenerResumenTranscripcion } from './resultado-resumen.js';
 import { obtenerResumenEdicionDinamica } from './resultado-edicion-dinamica.js';
 import { mostrarResumenEfectosUI } from './resultado-efectos-ui.js';
-import { obtenerResumenDiagnostico, actualizarEstadoDiagnosticoEnServidor } from './diagnostico-ui.js';
+import { actualizarEstadoDiagnosticoEnServidor } from './diagnostico-ui.js';
 import { validarVideoSeleccionado } from './validar-formulario.js';
 import { obtenerOpcionesEdicionAutomatica, aplicarModoAutomaticoVisual } from './edicion-automatica-ui.js';
 import { inicializarModalErrorEdicion, mostrarModalErrorEdicion } from './error-modal.js';
-import { crearJobIdFrontend, prepararProgresoReal, conectarProgresoReal, actualizarProgresoReal } from './progreso-real-ui.js';
+import { prepararProgresoReal, conectarProgresoReal, actualizarProgresoReal } from './progreso-real-ui.js';
 import { limpiarResultadoPlataformasUI, mostrarResultadoPlataformasUI } from './resultado-plataformas-ui.js';
 import { inicializarConfiguracionProyectoUI, aplicarOpcionesProyectoAFormulario, bloquearControlesConfiguracionProyecto } from './configuracion-proyecto-ui.js';
 import { inicializarHistorialProyectosUI, recargarHistorialProyectosUI } from './historial-proyectos-ui.js';
@@ -17,7 +17,8 @@ import { inicializarEfectosUI, obtenerOpcionesEfectos, bloquearControlesEfectos 
 import { cambiarPantalla } from './navegacion/navegacion.service.js';
 
 const PANTALLA_PROCESADOR = 'nuevo-proyecto';
-const PANTALLA_PRODUCCION = 'produccion';
+const PANTALLA_ENTENDIMIENTO = 'entendimiento';
+const STORAGE_PROYECTO_ETAPAS = 'autovideojeff.proyectoEtapasId';
 
 const elementos = {
   serverStatus: document.getElementById('serverStatus'),
@@ -178,14 +179,16 @@ async function crearUrlPublica(ruta) {
   return `${base}${rutaNormalizada}`;
 }
 
-function navegarAProduccionDespuesDeProcesar() {
+function navegarAEntendimientoDespuesDeProcesar(proyectoId) {
   const contenedorMenu = document.getElementById('mainNavigation');
   const contenedorVista = document.getElementById('pantallaDinamica');
   if (!contenedorMenu || !contenedorVista) return false;
-  cambiarPantalla({ pantallaId: PANTALLA_PRODUCCION, contenedorMenu, contenedorVista });
+  cambiarPantalla({ pantallaId: PANTALLA_ENTENDIMIENTO, contenedorMenu, contenedorVista });
   setTimeout(() => {
-    document.getElementById('productionReviewStatus')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-  }, 80);
+    const input = document.getElementById('entendimientoProyectoId');
+    if (input) input.value = proyectoId;
+    document.getElementById('entendimientoCargarBtn')?.click();
+  }, 120);
   return true;
 }
 
@@ -197,6 +200,13 @@ async function leerRespuestaJsonSegura(respuesta) {
   } catch (_error) {
     return { ok: false, mensaje: texto };
   }
+}
+
+async function apiJson(ruta, opciones = {}) {
+  const respuesta = await fetch(await crearUrlApi(ruta), opciones);
+  const datos = await leerRespuestaJsonSegura(respuesta);
+  if (!respuesta.ok || datos.ok === false) throw new Error(datos.mensaje || `Error HTTP ${respuesta.status}`);
+  return datos;
 }
 
 function actualizarEstadoServidor(ok, mensaje) {
@@ -251,7 +261,58 @@ function obtenerNombreProyectoSeguro(archivo) {
   return archivo?.name?.replace(/\.[^.]+$/, '') || 'Proyecto AutoVideoJeff';
 }
 
-function crearFormularioProcesamiento(jobId) {
+function obtenerPlataformasSeleccionadas() {
+  const seleccionadas = [...document.querySelectorAll('[data-platform-option]')]
+    .filter((item) => item.checked)
+    .map((item) => item.value)
+    .filter(Boolean);
+  return seleccionadas.length ? seleccionadas : ['tiktok', 'reels', 'shorts', 'youtube'];
+}
+
+function obtenerValor(id, respaldo = '') {
+  return document.getElementById(id)?.value || respaldo;
+}
+
+function crearPayloadProyectoEtapas(archivos = []) {
+  const archivo = archivos[0];
+  const nombre = obtenerNombreProyectoSeguro(archivo);
+  const plataforma = elementos.platformInput.value || 'tiktok';
+  return {
+    nombre,
+    nombreProyecto: nombre,
+    perfil: obtenerValor('profileSelect', 'general'),
+    plataforma,
+    plataformas: obtenerPlataformasSeleccionadas(),
+    modoEdicion: obtenerValor('editModeSelect', 'revision_completa'),
+    cantidadVideosProyecto: archivos.length || 1,
+    videosSeleccionados: archivos.map((item) => ({ nombre: item.name, tamano: item.size, tipo: item.type || 'video' })),
+    origen: 'nuevo-proyecto-ui-etapas'
+  };
+}
+
+function crearFormularioSubidaVideos({ archivos = [], nombreProyecto = '' } = {}) {
+  const formulario = new FormData();
+  archivos.forEach((archivo) => formulario.append('videos', archivo));
+  formulario.append('nombreProyecto', nombreProyecto || 'Proyecto AutoVideoJeff');
+  formulario.append('origen', 'nuevo-proyecto-ui-etapas');
+  return formulario;
+}
+
+function crearOpcionesEntendimientoEtapas() {
+  return {
+    origen: 'nuevo-proyecto-ui-etapas',
+    perfil: obtenerValor('profileSelect', 'general'),
+    plataforma: elementos.platformInput.value || 'tiktok',
+    plataformas: obtenerPlataformasSeleccionadas(),
+    modoEdicion: obtenerValor('editModeSelect', 'revision_completa'),
+    ...obtenerOpcionesTranscripcion(),
+    ...obtenerConfiguracionGemini(),
+    ...obtenerOpcionesEdicionAutomatica(),
+    ...obtenerOpcionesEfectos()
+  };
+}
+
+function crearFormularioProcesamientoLegacy(jobId) {
   const archivos = [...(elementos.videoInput.files || [])];
   const archivo = archivos[0];
   validarVideoSeleccionado(archivo);
@@ -273,7 +334,33 @@ function crearFormularioProcesamiento(jobId) {
   return formulario;
 }
 
-async function iniciarProgresoReal(jobId) {
+async function crearProyectoEtapas(archivos) {
+  const payload = crearPayloadProyectoEtapas(archivos);
+  const datos = await apiJson('/api/proyectos', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload)
+  });
+  const proyectoId = datos.proyecto?.proyectoId || datos.proyecto?.id;
+  if (!proyectoId) throw new Error('El servidor creó el proyecto pero no devolvió proyectoId.');
+  localStorage.setItem(STORAGE_PROYECTO_ETAPAS, proyectoId);
+  return { proyectoId, payload, datos };
+}
+
+async function subirVideosProyectoEtapas({ proyectoId, archivos, nombreProyecto }) {
+  const formulario = crearFormularioSubidaVideos({ archivos, nombreProyecto });
+  return await apiJson(`/api/proyectos/${encodeURIComponent(proyectoId)}/videos`, { method: 'POST', body: formulario });
+}
+
+async function procesarEntendimientoProyectoEtapas(proyectoId) {
+  return await apiJson(`/api/proyectos/${encodeURIComponent(proyectoId)}/entendimiento/procesar`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(crearOpcionesEntendimientoEtapas())
+  });
+}
+
+async function iniciarProgresoLegacy(jobId) {
   prepararProgresoReal();
   const url = await crearUrlApi(`/api/progreso/${encodeURIComponent(jobId)}`);
   controladorProgreso = conectarProgresoReal({
@@ -326,6 +413,22 @@ function construirErrorParaModal(datos, respaldoMensaje) {
   return { titulo: 'Fallo de edición', etapa: 'servidor', detalle: datos?.mensaje || respaldoMensaje || 'No se pudo procesar el video.', archivo: 'server.js', recomendacion: 'Revisar el historial de progreso y el error del servidor.' };
 }
 
+async function procesarFormularioPorEtapas(archivos) {
+  prepararProgresoReal();
+  actualizarProgresoReal({ titulo: 'Creando proyecto', detalle: 'Registrando proyecto por etapas.', porcentaje: 8, estado: 'procesando', etapa: 'nuevo-proyecto' });
+  const creado = await crearProyectoEtapas(archivos);
+  const { proyectoId, payload } = creado;
+
+  actualizarProgresoReal({ titulo: 'Subiendo videos', detalle: `Guardando ${archivos.length} video(s) en el proyecto ${proyectoId}.`, porcentaje: 28, estado: 'procesando', etapa: 'videos' });
+  await subirVideosProyectoEtapas({ proyectoId, archivos, nombreProyecto: payload.nombre });
+
+  actualizarProgresoReal({ titulo: 'Procesando entendimiento', detalle: 'Generando transcripción, fotogramas y análisis global.', porcentaje: 55, estado: 'procesando', etapa: 'entendimiento' });
+  const entendimiento = await procesarEntendimientoProyectoEtapas(proyectoId);
+
+  actualizarProgresoReal({ titulo: 'Entendimiento listo', detalle: `Proyecto ${proyectoId} preparado para revisar y crear plan.`, porcentaje: 100, estado: 'finalizado', etapa: 'entendimiento' });
+  return { proyectoId, entendimiento };
+}
+
 async function procesarFormulario(evento) {
   evento.preventDefault();
   if (!esPantallaProcesadorActiva()) return;
@@ -333,35 +436,62 @@ async function procesarFormulario(evento) {
   reiniciarResultado();
   cerrarProgresoActual();
 
-  const jobId = crearJobIdFrontend();
+  const archivos = [...(elementos.videoInput.files || [])];
+  const archivo = archivos[0];
   let modalErrorMostrado = false;
 
   try {
-    const formulario = crearFormularioProcesamiento(jobId);
+    validarVideoSeleccionado(archivo);
     bloquearFormulario(true);
-    await iniciarProgresoReal(jobId);
+    const resultadoEtapas = await procesarFormularioPorEtapas(archivos);
+    await recargarHistorialProyectosUI({ crearUrlApi });
+    mostrarMensaje(`Entendimiento completado. Proyecto activo: ${resultadoEtapas.proyectoId}`, 'ok');
+    navegarAEntendimientoDespuesDeProcesar(resultadoEtapas.proyectoId);
+  } catch (error) {
+    mostrarMensaje(error.message || 'Ocurrió un error al procesar el proyecto por etapas.', 'error');
+    if (!modalErrorMostrado) {
+      mostrarModalErrorEdicion({ titulo: 'Fallo de flujo por etapas', etapa: 'nuevo-proyecto', detalle: error.message || 'Ocurrió un error al procesar el proyecto.', archivo: 'app/app.js', recomendacion: 'Ejecuta Diagnóstico final rediseño y revisa que el servidor local esté activo.' });
+    }
+    console.error('Error al procesar proyecto por etapas:', error);
+  } finally {
+    bloquearFormulario(false);
+  }
+}
+
+async function procesarFormularioLegacy(evento) {
+  evento.preventDefault();
+  if (!esPantallaProcesadorActiva()) return;
+  ocultarMensaje();
+  reiniciarResultado();
+  cerrarProgresoActual();
+
+  const jobId = `legacy-${Date.now()}`;
+  let modalErrorMostrado = false;
+
+  try {
+    const formulario = crearFormularioProcesamientoLegacy(jobId);
+    bloquearFormulario(true);
+    await iniciarProgresoLegacy(jobId);
     const respuesta = await fetch(await crearUrlApi('/api/procesar-video'), { method: 'POST', body: formulario });
     const datos = await leerRespuestaJsonSegura(respuesta);
 
     if (!respuesta.ok || !datos.ok) {
-      const resumenDiagnostico = datos?.diagnostico ? ` ${obtenerResumenDiagnostico(datos)}` : '';
-      const mensaje = `${datos.mensaje || 'No se pudo procesar el video.'}${resumenDiagnostico}`.trim();
+      const mensaje = `${datos.mensaje || 'No se pudo procesar el video.'}`.trim();
       mostrarModalErrorEdicion(construirErrorParaModal(datos, mensaje));
       modalErrorMostrado = true;
       throw new Error(mensaje);
     }
 
-    actualizarProgresoReal({ titulo: 'Video listo', detalle: datos.mensaje || 'Proceso completado correctamente. Abriendo Producción.', porcentaje: 100, estado: 'finalizado', etapa: 'finalizado' });
+    actualizarProgresoReal({ titulo: 'Video listo', detalle: datos.mensaje || 'Proceso legacy completado correctamente.', porcentaje: 100, estado: 'finalizado', etapa: 'finalizado' });
     await mostrarResultado(datos);
     await recargarHistorialProyectosUI({ crearUrlApi });
-    mostrarMensaje(datos.mensaje || 'Proceso completado correctamente. Revisa la línea de tiempo en Producción.', 'ok');
-    navegarAProduccionDespuesDeProcesar();
+    mostrarMensaje(datos.mensaje || 'Proceso completado correctamente.', 'ok');
   } catch (error) {
     mostrarMensaje(error.message || 'Ocurrió un error al procesar el video.', 'error');
     if (!modalErrorMostrado) {
-      mostrarModalErrorEdicion({ titulo: 'Fallo de edición', etapa: 'app', detalle: error.message || 'Ocurrió un error al procesar el video.', archivo: 'app/app.js', recomendacion: 'Revisar la conexión con el servidor y el historial de progreso.' });
+      mostrarModalErrorEdicion({ titulo: 'Fallo de edición legacy', etapa: 'app', detalle: error.message || 'Ocurrió un error al procesar el video.', archivo: 'app/app.js', recomendacion: 'Usar el flujo por etapas salvo que necesites compatibilidad legacy.' });
     }
-    console.error('Error al procesar video:', error);
+    console.error('Error al procesar video legacy:', error);
   } finally {
     bloquearFormulario(false);
   }
