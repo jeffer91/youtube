@@ -6,7 +6,8 @@ const SCRIPTS = Object.freeze([
   'scripts/verificar-planificador-efectos.js',
   'scripts/verificar-compilador-efectos.js',
   'scripts/verificar-integracion-efectos.js',
-  'scripts/verificar-previsualizacion-efectos.js'
+  'scripts/verificar-previsualizacion-efectos.js',
+  'scripts/verificar-efectos-preview-ui.js'
 ]);
 
 function ejecutar(script) {
