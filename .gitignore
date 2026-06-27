@@ -9,12 +9,29 @@ release/
 .env.*
 *.log
 
+# Entornos y caches locales
+.venv/
+.venv-*/
+.pip-cache/
+__pycache__/
+*.pyc
+
+# Datos generados por la app
 datos/temporales/
 datos/videos-originales/
 datos/videos-exportados/
 datos/proyectos/
 datos/audios-mejorados/
 
+# Modelos/binarios pesados descargados localmente
+modelos/transcripcion/
+binarios/transcripcion/
+*.zip
+*.7z
+*.tar
+*.tar.gz
+
+# Credenciales y secretos
 gemini-credencial*
 gemini-config-local*
 *.key
