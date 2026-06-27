@@ -7,11 +7,22 @@ function validarCarpetaProyecto(entrada) {
   return entrada.rutas.carpetaProyecto;
 }
 
-export async function crearReporteTranscripcion({ entrada, transcripcion, archivosTranscripcion, subtitulos, textosFlotantes, capasVideo, opciones = {} } = {}) {
+export async function crearReporteTranscripcion({ entrada, transcripcion, archivosTranscripcion, subtitulos, titulosGanchos = null, textosFlotantes, capasVideo, opciones = {} } = {}) {
   const config = obtenerConfigTranscripcion(opciones);
   const carpetaProyecto = validarCarpetaProyecto(entrada);
   const rutaReporte = path.join(carpetaProyecto, config.archivos.reporteTranscripcion);
-  const reporte = { ok: true, tipo: 'reporte-transcripcion', proyectoId: entrada?.proyecto?.id || null, transcripcion: { ok: Boolean(transcripcion?.ok), omitido: Boolean(transcripcion?.omitido), fuente: transcripcion?.fuente || null, cantidadSegmentos: transcripcion?.cantidadSegmentos || 0, mensaje: transcripcion?.mensaje || null }, archivosTranscripcion: archivosTranscripcion || null, subtitulos: { ok: Boolean(subtitulos?.ok), omitido: Boolean(subtitulos?.omitido), estilo: subtitulos?.estilo || null, segmentosUsados: subtitulos?.segmentosUsados || 0 }, textosFlotantes: { ok: Boolean(textosFlotantes?.ok), omitido: Boolean(textosFlotantes?.omitido), cantidad: textosFlotantes?.cantidad || 0 }, capasVideo: { ok: Boolean(capasVideo?.ok), omitido: Boolean(capasVideo?.omitido), usarSubtitulos: Boolean(capasVideo?.usarSubtitulos), usarTextosFlotantes: Boolean(capasVideo?.usarTextosFlotantes) }, creadoEn: new Date().toISOString() };
+  const reporte = {
+    ok: true,
+    tipo: 'reporte-transcripcion',
+    proyectoId: entrada?.proyecto?.id || null,
+    transcripcion: { ok: Boolean(transcripcion?.ok), omitido: Boolean(transcripcion?.omitido), fuente: transcripcion?.fuente || transcripcion?.motor || null, cantidadSegmentos: transcripcion?.cantidadSegmentos || 0, mensaje: transcripcion?.mensaje || null },
+    archivosTranscripcion: archivosTranscripcion || null,
+    subtitulos: { ok: Boolean(subtitulos?.ok), omitido: Boolean(subtitulos?.omitido), estilo: subtitulos?.estilo || null, segmentosUsados: subtitulos?.segmentosUsados || 0 },
+    titulosGanchos: { ok: Boolean(titulosGanchos?.ok), omitido: Boolean(titulosGanchos?.omitido), titulos: titulosGanchos?.titulos?.length || 0, ganchos: titulosGanchos?.ganchos?.length || 0, ruta: titulosGanchos?.rutaTitulosGanchos || null },
+    textosFlotantes: { ok: Boolean(textosFlotantes?.ok), omitido: Boolean(textosFlotantes?.omitido), cantidad: textosFlotantes?.cantidad || 0 },
+    capasVideo: { ok: Boolean(capasVideo?.ok), omitido: Boolean(capasVideo?.omitido), usarSubtitulos: Boolean(capasVideo?.usarSubtitulos), usarTextosFlotantes: Boolean(capasVideo?.usarTextosFlotantes) },
+    creadoEn: new Date().toISOString()
+  };
   await escribirJson(rutaReporte, reporte);
   return { ok: true, rutaReporte, nombreArchivo: path.basename(rutaReporte), reporte };
 }
