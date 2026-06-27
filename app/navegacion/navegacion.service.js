@@ -1,6 +1,6 @@
 /*
   Modulo UI: navegacion
-  Funcion: renderizar menu compacto y pantalla activa.
+  Funcion: renderizar menu compacto, pantalla activa y paneles propios por pantalla.
 */
 
 import { MENU_PRINCIPAL, obtenerItemMenu } from './menu.config.js';
@@ -36,6 +36,11 @@ function renderBotonMenu(item, activo) {
   return `<button class="aj-menu-btn ${activo ? 'is-active' : ''}" type="button" data-pantalla="${item.id}" title="${item.descripcion || item.titulo}" aria-label="Abrir ${item.titulo}"><strong>${item.titulo}</strong></button>`;
 }
 
+function marcarPantallaActiva(item) {
+  if (typeof document === 'undefined') return;
+  document.body.dataset.pantallaActiva = item.id;
+}
+
 function emitirEventoNavegacion(item) {
   if (typeof document === 'undefined') return;
   document.dispatchEvent(new CustomEvent('autovideo:navegacion', {
@@ -56,6 +61,7 @@ export function renderizarPantalla(contenedor, pantallaId = 'inicio') {
   if (!contenedor) return;
   const item = obtenerItemMenu(pantallaId);
   const render = VISTAS[item.id] || VISTAS.inicio;
+  marcarPantallaActiva(item);
   contenedor.innerHTML = `${render()}${renderizarSubmenu(item.id)}`;
   guardarPantallaActiva(item.id);
   emitirEventoNavegacion(item);
