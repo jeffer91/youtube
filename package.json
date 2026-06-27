@@ -30,6 +30,7 @@
     "check:flujo-produccion": "node scripts/verificar-flujo-produccion-sin-comparacion.js",
     "check:animaciones-render": "node scripts/verificar-animaciones-renderizadas.js",
     "check:bloque01-redisenio": "node scripts/verificar-bloque-01-redisenio-etapas.js",
+    "check:bloque02-redisenio": "node scripts/verificar-bloque-02-shell-escritorio.js",
     "check:efectos-catalogo": "node scripts/verificar-catalogo-efectos.js",
     "check:efectos-presets": "node scripts/verificar-presets-efectos.js",
     "check:efectos-aprendizaje": "node scripts/verificar-aprendizaje-efectos.js",
