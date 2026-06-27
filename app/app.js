@@ -438,20 +438,17 @@ async function procesarFormulario(evento) {
 
   const archivos = [...(elementos.videoInput.files || [])];
   const archivo = archivos[0];
-  let modalErrorMostrado = false;
 
   try {
     validarVideoSeleccionado(archivo);
     bloquearFormulario(true);
     const resultadoEtapas = await procesarFormularioPorEtapas(archivos);
-    await recargarHistorialProyectosUI({ crearUrlApi });
+    await recargarHistorialProyectosUI({ crearUrlApi }).catch((error) => console.warn('No se pudo recargar historial:', error.message));
     mostrarMensaje(`Entendimiento completado. Proyecto activo: ${resultadoEtapas.proyectoId}`, 'ok');
     navegarAEntendimientoDespuesDeProcesar(resultadoEtapas.proyectoId);
   } catch (error) {
     mostrarMensaje(error.message || 'Ocurrió un error al procesar el proyecto por etapas.', 'error');
-    if (!modalErrorMostrado) {
-      mostrarModalErrorEdicion({ titulo: 'Fallo de flujo por etapas', etapa: 'nuevo-proyecto', detalle: error.message || 'Ocurrió un error al procesar el proyecto.', archivo: 'app/app.js', recomendacion: 'Ejecuta Diagnóstico final rediseño y revisa que el servidor local esté activo.' });
-    }
+    mostrarModalErrorEdicion({ titulo: 'Fallo de flujo por etapas', etapa: 'nuevo-proyecto', detalle: error.message || 'Ocurrió un error al procesar el proyecto.', archivo: 'app/app.js', recomendacion: 'Ejecuta Diagnóstico final rediseño y revisa que el servidor local esté activo.' });
     console.error('Error al procesar proyecto por etapas:', error);
   } finally {
     bloquearFormulario(false);
@@ -484,7 +481,7 @@ async function procesarFormularioLegacy(evento) {
 
     actualizarProgresoReal({ titulo: 'Video listo', detalle: datos.mensaje || 'Proceso legacy completado correctamente.', porcentaje: 100, estado: 'finalizado', etapa: 'finalizado' });
     await mostrarResultado(datos);
-    await recargarHistorialProyectosUI({ crearUrlApi });
+    await recargarHistorialProyectosUI({ crearUrlApi }).catch((error) => console.warn('No se pudo recargar historial legacy:', error.message));
     mostrarMensaje(datos.mensaje || 'Proceso completado correctamente.', 'ok');
   } catch (error) {
     mostrarMensaje(error.message || 'Ocurrió un error al procesar el video.', 'error');
