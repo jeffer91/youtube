@@ -92,7 +92,7 @@ function crearConfiguracionMulter(rutasBase) {
 
   return multer({
     storage: almacenamiento,
-    limits: { fileSize: 2 * 1024 * 1024 * 1024, fieldSize: 20 * 1024 * 1024, fields: 120, fieldNameSize: 220 },
+    limits: { fileSize: 2 * 1024 * 1024 * 1024, fieldSize: 20 * 1024 * 1024, fields: 140, fieldNameSize: 220 },
     fileFilter(_req, file, callback) {
       const tipo = file.mimetype || '';
       const extension = path.extname(file.originalname || '').toLowerCase();
@@ -109,6 +109,7 @@ function crearErrorHttp(res, codigo, mensaje, detalle = null) {
 
 function normalizarOpcionesDesdeBody(body = {}) {
   const plataforma = normalizarPlataforma(body.plataforma);
+  const selectorEfectos = normalizarTexto(body.selectorEfectos || body.motorEfectosIA, 'automatico').toLowerCase();
   return {
     perfil: normalizarTexto(body.perfil, 'general'),
     plataformas: normalizarLista(body.plataformas, [plataforma]),
@@ -143,6 +144,11 @@ function normalizarOpcionesDesdeBody(body = {}) {
     intensidadEdicion: normalizarTexto(body.intensidadEdicion || body.modoEdicionDinamica, 'automatica'),
     modoEdicionDinamica: normalizarTexto(body.modoEdicionDinamica || body.intensidadEdicion, 'automatica'),
     agregarEfectosVisualesDinamicos: convertirBooleano(body.agregarEfectosVisualesDinamicos, true),
+    usarMotorEfectos: convertirBooleano(body.usarMotorEfectos, true),
+    selectorEfectos,
+    motorEfectosIA: selectorEfectos,
+    intensidadEfectos: normalizarTexto(body.intensidadEfectos, 'normal').toLowerCase(),
+    maxEfectosVisuales: Math.round(normalizarNumero(body.maxEfectosVisuales, 12, 3, 24)),
     agregarZooms: convertirBooleano(body.agregarZooms, true),
     agregarPunchIn: convertirBooleano(body.agregarPunchIn, true),
     agregarBarraProgreso: convertirBooleano(body.agregarBarraProgreso, true),
@@ -176,6 +182,30 @@ function aplicarCabecerasSinCache(res) {
   res.setHeader('Surrogate-Control', 'no-store');
 }
 
+function crearPredeterminadosEstado() {
+  return {
+    plataforma: PLATAFORMA_PREDETERMINADA,
+    plataformas: ['tiktok', 'reels', 'shorts', 'youtube'],
+    perfil: 'general',
+    modoEdicion: 'revision_completa',
+    exportarMultiplataforma: true,
+    modoVideo: MODO_VIDEO_PREDETERMINADO,
+    modoAudio: MODO_AUDIO_PREDETERMINADO,
+    crearTranscripcion: true,
+    agregarSubtitulos: true,
+    agregarTextosFlotantes: true,
+    edicionDinamica: true,
+    cortarSilencios: true,
+    visualDinamico: true,
+    sonidosEdicion: true,
+    intensidadEdicion: 'automatica',
+    motorEfectos: true,
+    selectorEfectos: 'automatico',
+    intensidadEfectos: 'normal',
+    maxEfectosVisuales: 12
+  };
+}
+
 function crearAplicacionExpress({ modoElectron = false } = {}) {
   const rutasBase = obtenerRutasBase();
   asegurarCarpetasServidor(rutasBase);
@@ -192,7 +222,7 @@ function crearAplicacionExpress({ modoElectron = false } = {}) {
   app.get('/api/estado', async (_req, res) => {
     aplicarCabecerasSinCache(res);
     const diagnostico = await crearDiagnosticoSeguro({ guardarReporte: false });
-    res.json({ ok: true, app: 'AutoVideoJeff', estado: diagnosticoEsBloqueante(diagnostico) ? 'SERVIDOR_CON_DIAGNOSTICO_PENDIENTE' : 'SERVIDOR_ACTIVO', modo: modoElectron ? 'electron' : 'web', predeterminados: { plataforma: PLATAFORMA_PREDETERMINADA, plataformas: ['tiktok', 'reels', 'shorts', 'youtube'], perfil: 'general', modoEdicion: 'revision_completa', exportarMultiplataforma: true, modoVideo: MODO_VIDEO_PREDETERMINADO, modoAudio: MODO_AUDIO_PREDETERMINADO, crearTranscripcion: true, agregarSubtitulos: true, agregarTextosFlotantes: true, edicionDinamica: true, cortarSilencios: true, visualDinamico: true, sonidosEdicion: true, intensidadEdicion: 'automatica' }, modulosNuevos: ['proyectos', 'perfiles', 'exportacion', 'biblioteca', 'gemini', 'produccion', 'aprendizaje'], diagnostico, rutas: { raizDatos: rutasBase.raizDatos, videosExportados: rutasBase.videosExportados, audiosMejorados: rutasBase.audiosMejorados }, fecha: new Date().toISOString() });
+    res.json({ ok: true, app: 'AutoVideoJeff', estado: diagnosticoEsBloqueante(diagnostico) ? 'SERVIDOR_CON_DIAGNOSTICO_PENDIENTE' : 'SERVIDOR_ACTIVO', modo: modoElectron ? 'electron' : 'web', predeterminados: crearPredeterminadosEstado(), modulosNuevos: ['proyectos', 'perfiles', 'exportacion', 'biblioteca', 'gemini', 'produccion', 'aprendizaje', 'efectos'], diagnostico, rutas: { raizDatos: rutasBase.raizDatos, videosExportados: rutasBase.videosExportados, audiosMejorados: rutasBase.audiosMejorados }, fecha: new Date().toISOString() });
   });
 
   app.get('/api/diagnostico', async (_req, res) => {
