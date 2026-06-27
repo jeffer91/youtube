@@ -27,6 +27,7 @@
     "check:efectos-render": "node scripts/verificar-compilador-efectos.js",
     "check:efectos-integracion": "node scripts/verificar-integracion-efectos.js",
     "check:efectos-preview": "node scripts/verificar-previsualizacion-efectos.js",
+    "check:efectos-cierre": "node scripts/verificar-cierre-final-efectos.js",
     "check:efectos": "node scripts/verificar-efectos-autovideo.js",
     "check:biblioteca": "node scripts/verificar-biblioteca.js",
     "check:biblioteca-ui": "node scripts/verificar-biblioteca-ui.js",
