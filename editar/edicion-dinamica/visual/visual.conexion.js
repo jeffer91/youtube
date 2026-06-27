@@ -20,6 +20,7 @@ function crearOmitido({ filtroBase, mensaje, error = null }) {
     barraProgreso: null,
     etiquetas: null,
     animaciones: null,
+    animacionesRender: null,
     errorControlado: error
       ? {
           modulo: 'visual-dinamico',
@@ -33,6 +34,20 @@ function crearOmitido({ filtroBase, mensaje, error = null }) {
 
 function visualDesactivado(opciones = {}) {
   return opciones?.agregarEfectosVisualesDinamicos === false && opciones?.agregarAnimacionesVisuales === false && opciones?.agregarAnimaciones === false;
+}
+
+function crearResumenAnimacionesRender(animaciones = null) {
+  if (!animaciones || animaciones.omitido) return { ok: true, omitido: true, total: 0, animaciones: [], eventos: [], filtros: [], mensaje: 'No hubo animaciones renderizadas.' };
+  return {
+    ...animaciones,
+    ok: true,
+    omitido: false,
+    animaciones: animaciones.eventos || [],
+    eventos: animaciones.eventos || [],
+    total: animaciones.total || animaciones.eventos?.length || 0,
+    renderizadas: true,
+    tiposRenderizados: ['zoom-in-out', 'flash-transicion', 'barras-transicion', 'explosion-texto']
+  };
 }
 
 export async function procesarVisualDinamico({ filtroBase, edicionDinamica = null, transcripcion = null, entendimiento = null, salida = {}, opciones = {}, progreso = null } = {}) {
@@ -60,18 +75,19 @@ export async function procesarVisualDinamico({ filtroBase, edicionDinamica = nul
     await reportarModulo(progreso, { etapa: 'editar', porcentaje: 82, titulo: 'Etiquetas, transiciones y barra listas', detalle: `${etiquetas?.filtros?.length || 0} etiquetas visuales preparadas.`, datos: { etiquetas: etiquetas?.filtros?.length || 0, barraProgreso: Boolean(barraProgreso) }, archivo: 'editar/edicion-dinamica/visual/generar-etiquetas-visuales.service.js' });
 
     const filtro = construirFiltroVisualFfmpeg({ filtroBase, barraProgreso, etiquetas, eventos: eventos.eventos, duracionSegundos: duracion, width: salida.width || 1080, height: salida.height || 1920, opciones });
+    const animacionesRender = crearResumenAnimacionesRender(filtro.animaciones);
 
-    const resultado = { ok: true, omitido: false, mensaje: 'Visual dinámico aplicado: zoom in/out, explosiones, transiciones, etiquetas y barra.', filtroVideo: filtro.filtroVideo, eventosVisuales: eventos.eventos, fuentes: eventos.fuentes, barraProgreso, etiquetas, animaciones: filtro.animaciones, filtrosAplicados: filtro.filtrosAplicados, detalle: filtro.detalle, duracionSegundos: duracion, errorControlado: null, creadoEn: new Date().toISOString() };
+    const resultado = { ok: true, omitido: false, mensaje: 'Visual dinámico aplicado: zoom in/out, explosiones, transiciones, etiquetas y barra.', filtroVideo: filtro.filtroVideo, eventosVisuales: eventos.eventos, fuentes: eventos.fuentes, barraProgreso, etiquetas, animaciones: animacionesRender, animacionesRender, filtrosAplicados: filtro.filtrosAplicados, detalle: filtro.detalle, duracionSegundos: duracion, errorControlado: null, creadoEn: new Date().toISOString() };
     const carpetaVisual = edicionDinamica?.carpetaEdicionDinamica ? path.join(edicionDinamica.carpetaEdicionDinamica, 'visual') : null;
 
     if (carpetaVisual) {
       asegurarCarpeta(carpetaVisual);
       await escribirJson(path.join(carpetaVisual, 'eventos-visuales.json'), eventos);
-      await escribirJson(path.join(carpetaVisual, 'animaciones-visibles.json'), filtro.animaciones || null);
+      await escribirJson(path.join(carpetaVisual, 'animaciones-visibles.json'), animacionesRender);
       await escribirJson(path.join(carpetaVisual, 'visual-dinamico.json'), resultado);
     }
 
-    await reportarModulo(progreso, { etapa: 'editar', porcentaje: 84, titulo: 'Animaciones visibles aplicadas', detalle: `${filtro.animaciones?.total || 0} animaciones · ${filtro.detalle?.explosiones || 0} explosión(es) · ${filtro.detalle?.transiciones || 0} transición(es).`, datos: { eventosVisuales: eventos.eventos.length, filtrosAplicados: filtro.filtrosAplicados || 0, animaciones: filtro.animaciones?.total || 0, explosiones: filtro.detalle?.explosiones || 0, transiciones: filtro.detalle?.transiciones || 0 }, archivo: 'editar/edicion-dinamica/visual/visual.conexion.js' });
+    await reportarModulo(progreso, { etapa: 'editar', porcentaje: 84, titulo: 'Animaciones visibles aplicadas', detalle: `${animacionesRender.total || 0} animaciones · ${filtro.detalle?.explosiones || 0} explosión(es) · ${filtro.detalle?.transiciones || 0} transición(es).`, datos: { eventosVisuales: eventos.eventos.length, filtrosAplicados: filtro.filtrosAplicados || 0, animaciones: animacionesRender.total || 0, explosiones: filtro.detalle?.explosiones || 0, transiciones: filtro.detalle?.transiciones || 0 }, archivo: 'editar/edicion-dinamica/visual/visual.conexion.js' });
 
     return resultado;
   } catch (error) {
