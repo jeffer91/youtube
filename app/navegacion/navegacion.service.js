@@ -82,5 +82,10 @@ export function inicializarNavegacionAutoVideoJeff({ contenedorMenu, contenedorV
     if (!boton) return;
     cambiarPantalla({ pantallaId: boton.dataset.pantalla, contenedorMenu, contenedorVista });
   });
+  contenedorVista.addEventListener('click', (evento) => {
+    const boton = evento.target.closest('[data-pantalla-destino]');
+    if (!boton) return;
+    cambiarPantalla({ pantallaId: boton.dataset.pantallaDestino, contenedorMenu, contenedorVista });
+  });
   return true;
 }
