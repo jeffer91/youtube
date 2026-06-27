@@ -28,6 +28,7 @@
     "check:revision-final-errores": "node scripts/verificar-revision-final-errores.js",
     "check:estilo-ui": "node scripts/verificar-estilo-principal-ui.js",
     "check:flujo-produccion": "node scripts/verificar-flujo-produccion-sin-comparacion.js",
+    "check:animaciones-render": "node scripts/verificar-animaciones-renderizadas.js",
     "check:efectos-catalogo": "node scripts/verificar-catalogo-efectos.js",
     "check:efectos-presets": "node scripts/verificar-presets-efectos.js",
     "check:efectos-aprendizaje": "node scripts/verificar-aprendizaje-efectos.js",
