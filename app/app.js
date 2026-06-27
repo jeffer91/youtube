@@ -2,6 +2,7 @@ import { inicializarGeminiPopup, obtenerConfiguracionGemini, bloquearControlesGe
 import { inicializarTranscripcionUI, obtenerOpcionesTranscripcion, bloquearControlesTranscripcion } from './transcripcion-ui.js';
 import { obtenerResumenAudio, obtenerResumenTranscripcion } from './resultado-resumen.js';
 import { obtenerResumenEdicionDinamica } from './resultado-edicion-dinamica.js';
+import { mostrarResumenEfectosUI } from './resultado-efectos-ui.js';
 import { obtenerResumenDiagnostico, actualizarEstadoDiagnosticoEnServidor } from './diagnostico-ui.js';
 import { validarVideoSeleccionado } from './validar-formulario.js';
 import { obtenerOpcionesEdicionAutomatica, aplicarModoAutomaticoVisual } from './edicion-automatica-ui.js';
@@ -112,6 +113,10 @@ function reiniciarResultado() {
   elementos.audioSummary.textContent = '';
   elementos.transcriptionSummary.hidden = true;
   elementos.transcriptionSummary.textContent = '';
+  elementos.modularSummary.hidden = true;
+  elementos.modularSummary.textContent = '';
+  elementos.productionSummary.hidden = true;
+  elementos.productionSummary.textContent = '';
   limpiarResultadoPlataformasUI(elementos);
 }
 
@@ -276,6 +281,7 @@ async function mostrarResultado(datosEntrada) {
   elementos.audioSummary.textContent = obtenerResumenAudio(datos, elementos.improveAudio.checked);
   elementos.transcriptionSummary.hidden = false;
   elementos.transcriptionSummary.textContent = obtenerResumenTranscripcion(datos);
+  mostrarResumenEfectosUI(datos, elementos.modularSummary);
   mostrarResultadoPlataformasUI(datos, elementos);
   if (urlExportada) {
     elementos.resultVideo.hidden = false;
