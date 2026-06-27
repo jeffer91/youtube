@@ -2,7 +2,7 @@ import fs from 'fs';
 import path from 'path';
 import { spawn } from 'child_process';
 import { fileURLToPath } from 'url';
-import { escribirJson } from '../../..//comun/archivos.js';
+import { escribirJson } from '../../../comun/archivos.js';
 import { prepararAudioMotoresTranscripcion, crearFuenteAudioParaMotor } from '../../servicios/preparar-audio-motores.service.js';
 import {
   ESTADOS_TRANSCRIPCION,
