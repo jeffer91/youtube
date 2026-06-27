@@ -26,6 +26,8 @@ function main() {
   exigir(motor.includes('corte_flash'), 'El motor no genera cortes/transiciones con flash.');
   exigir(motor.includes('scale=w='), 'El motor no aplica zoom real con scale.');
   exigir(motor.includes('crop='), 'El motor no recompone el cuadro después del zoom.');
+  exigir(motor.includes('between(t\\\\,'), 'Las comas de between(t,...) no están escapadas para FFmpeg.');
+  exigir(motor.includes('}\\\\,1+'), 'Las comas de if(...) no están escapadas para FFmpeg.');
 
   const cuadrado = leer('editar/tiktok-cuadrado-centro/tiktok-cuadrado-centro.service.js');
   exigir(cuadrado.includes('aplicarAnimacionesRender'), 'El modo cuadrado no importa animaciones renderizadas.');
@@ -40,7 +42,7 @@ function main() {
   exigir(reporte.includes('animacionesRenderizadas'), 'El reporte final no cuenta animaciones renderizadas.');
   exigir(reporte.includes('render-ffmpeg'), 'El reporte final no marca animaciones de render FFmpeg.');
 
-  console.log('OK animaciones renderizadas: zoom in/out, explosión, cortes flash, barridos y reporte conectados.');
+  console.log('OK animaciones renderizadas: zoom in/out, explosión, cortes flash, barridos y escapes FFmpeg correctos.');
 }
 
 try {
