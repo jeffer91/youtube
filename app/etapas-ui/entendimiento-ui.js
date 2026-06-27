@@ -192,10 +192,13 @@ function enlazarEventos() {
 }
 
 export function inicializarEntendimientoUI() {
+  if (typeof document === 'undefined') return;
   enlazarEventos();
   document.addEventListener('autovideo:navegacion', (evento) => {
     if (evento.detail?.pantallaId === 'entendimiento') setTimeout(enlazarEventos, 0);
   });
 }
 
-document.addEventListener('DOMContentLoaded', inicializarEntendimientoUI);
+if (typeof document !== 'undefined') {
+  document.addEventListener('DOMContentLoaded', inicializarEntendimientoUI);
+}
