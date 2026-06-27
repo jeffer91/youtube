@@ -5,6 +5,7 @@ import { inicializarResultadoFinalUI } from '../resultado-final-ui.js';
 import { inicializarEntendimientoUI } from '../etapas-ui/entendimiento-ui.js';
 import { inicializarPlanEdicionUI } from '../etapas-ui/plan-edicion-ui.js';
 import { inicializarProduccionMaestroUI } from '../etapas-ui/produccion-maestro-ui.js';
+import { inicializarAdaptacionUI } from '../etapas-ui/adaptacion-ui.js';
 
 function asegurarCss(id, href) {
   if (typeof document === 'undefined') return;
@@ -21,6 +22,7 @@ function asegurarEstilosBloques() {
   asegurarCss('entendimientoStyles', './entendimiento.css');
   asegurarCss('planEdicionStyles', './plan-edicion.css');
   asegurarCss('produccionMaestroStyles', './produccion-maestro.css');
+  asegurarCss('adaptacionStyles', './adaptacion.css');
 }
 
 function iniciarNavegacion() {
@@ -35,6 +37,7 @@ function iniciarNavegacion() {
   inicializarEntendimientoUI();
   inicializarPlanEdicionUI();
   inicializarProduccionMaestroUI();
+  inicializarAdaptacionUI();
 }
 
 document.addEventListener('DOMContentLoaded', iniciarNavegacion);
