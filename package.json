@@ -32,6 +32,7 @@
     "check:bloque01-redisenio": "node scripts/verificar-bloque-01-redisenio-etapas.js",
     "check:bloque02-redisenio": "node scripts/verificar-bloque-02-shell-escritorio.js",
     "check:bloque03-redisenio": "node scripts/verificar-bloque-03-estado-etapas.js",
+    "check:bloque04-redisenio": "node scripts/verificar-bloque-04-nuevo-proyecto-limpio.js",
     "check:efectos-catalogo": "node scripts/verificar-catalogo-efectos.js",
     "check:efectos-presets": "node scripts/verificar-presets-efectos.js",
     "check:efectos-aprendizaje": "node scripts/verificar-aprendizaje-efectos.js",
