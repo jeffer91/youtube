@@ -12,6 +12,7 @@
 */
 
 import fs from 'fs';
+import path from 'path';
 import ffmpeg from 'fluent-ffmpeg';
 import ffmpegStatic from 'ffmpeg-static';
 import ffprobeStatic from 'ffprobe-static';
@@ -41,8 +42,38 @@ function validarArchivoEntrada(rutaArchivo, etiqueta) {
   if (!fs.existsSync(rutaArchivo)) throw new Error(`No existe ${etiqueta}: ${rutaArchivo}`);
 }
 
+function asegurarDirectorioSalida(rutaSalida) {
+  const directorio = path.dirname(rutaSalida);
+  if (directorio && directorio !== '.') fs.mkdirSync(directorio, { recursive: true });
+}
+
+function limpiarSalidaAnterior(rutaSalida) {
+  if (!rutaSalida || !fs.existsSync(rutaSalida)) return;
+  try {
+    fs.unlinkSync(rutaSalida);
+  } catch (error) {
+    throw new Error(`No se pudo reemplazar el archivo de salida. Cierra el video si está abierto y vuelve a intentar: ${rutaSalida}. Detalle: ${error.message}`);
+  }
+}
+
 function validarRutaSalida(rutaSalida, etiqueta = 'salida') {
   if (!rutaSalida || typeof rutaSalida !== 'string') throw new Error(`No se indicó ruta de ${etiqueta} para FFmpeg.`);
+  asegurarDirectorioSalida(rutaSalida);
+}
+
+function recortarTexto(valor = '', maximo = 2200) {
+  const texto = String(valor || '').trim();
+  if (texto.length <= maximo) return texto;
+  return texto.slice(-maximo);
+}
+
+function construirErrorFfmpeg(prefijo, error, stdout = '', stderr = '') {
+  const partes = [error?.message || 'Error desconocido de FFmpeg'];
+  const salida = recortarTexto(stdout, 900);
+  const detalle = recortarTexto(stderr, 2200);
+  if (salida) partes.push(`STDOUT: ${salida}`);
+  if (detalle) partes.push(`STDERR: ${detalle}`);
+  return new Error(`${prefijo}: ${partes.join(' | ')}`);
 }
 
 export function validarBinariosFfmpeg() {
@@ -63,6 +94,7 @@ export function limpiarAudioConFfmpeg({ rutaEntrada, rutaSalida, filtroAudio, co
       validarFfmpegListo();
       validarArchivoEntrada(rutaEntrada, 'el video de entrada para limpiar audio');
       validarRutaSalida(rutaSalida, 'audio limpio');
+      limpiarSalidaAnterior(rutaSalida);
       if (!filtroAudio || typeof filtroAudio !== 'string') throw new Error('No se indicó filtro de audio para FFmpeg.');
 
       const comando = ffmpeg(rutaEntrada)
@@ -74,7 +106,7 @@ export function limpiarAudioConFfmpeg({ rutaEntrada, rutaSalida, filtroAudio, co
         .audioChannels(canales)
         .outputOptions(['-map 0:a:0?', '-vn', '-movflags +faststart'])
         .on('end', () => resolve({ ok: true, rutaSalida }))
-        .on('error', (error) => reject(new Error(`FFmpeg no pudo limpiar el audio: ${error.message}`)));
+        .on('error', (error, stdout, stderr) => reject(construirErrorFfmpeg('FFmpeg no pudo limpiar el audio', error, stdout, stderr)));
 
       comando.save(rutaSalida);
     } catch (error) {
@@ -89,6 +121,7 @@ export function exportarConFfmpeg({ rutaEntrada, rutaSalida, filtroVideo, rutaAu
       validarFfmpegListo();
       validarArchivoEntrada(rutaEntrada, 'el video de entrada');
       validarRutaSalida(rutaSalida, 'salida de video');
+      limpiarSalidaAnterior(rutaSalida);
       if (!filtroVideo) throw new Error('No se indicó filtro de video para FFmpeg.');
 
       const usarAudioExterno = Boolean(rutaAudioExterno);
@@ -115,7 +148,7 @@ export function exportarConFfmpeg({ rutaEntrada, rutaSalida, filtroVideo, rutaAu
         .videoFilters(filtroVideo)
         .outputOptions(opcionesSalida)
         .on('end', () => resolve({ ok: true, rutaSalida, audioUsado: usarAudioExterno ? 'mejorado' : 'original', filtroAudioAplicado: Boolean(filtroAudio) }))
-        .on('error', (error) => reject(new Error(`FFmpeg no pudo generar el video: ${error.message}`)))
+        .on('error', (error, stdout, stderr) => reject(construirErrorFfmpeg('FFmpeg no pudo generar el video', error, stdout, stderr)))
         .save(rutaSalida);
     } catch (error) {
       reject(error);
