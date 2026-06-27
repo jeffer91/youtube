@@ -1,4 +1,5 @@
 const TIPOS = ['imagen', 'video', 'audio', 'fondo', 'overlay', 'transicion', 'plantilla'];
+const STORAGE_PROYECTO_ETAPAS = 'autovideojeff.proyectoEtapasId';
 
 function obtenerDocumento() { return typeof document === 'undefined' ? null : document; }
 function escapar(texto = '') { return String(texto).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c])); }
@@ -137,6 +138,72 @@ async function guardarRecurso({ crearUrlApi } = {}) {
   return resultado.recurso;
 }
 
+function obtenerProyectoIdBiblioteca() {
+  const doc = obtenerDocumento();
+  const input = doc?.getElementById('libraryProjectIdInput');
+  const desdeInput = input?.value?.trim() || '';
+  if (desdeInput) return desdeInput;
+  return localStorage.getItem(STORAGE_PROYECTO_ETAPAS) || '';
+}
+
+function sincronizarProyectoIdBiblioteca() {
+  const doc = obtenerDocumento();
+  const input = doc?.getElementById('libraryProjectIdInput');
+  if (input && !input.value) input.value = localStorage.getItem(STORAGE_PROYECTO_ETAPAS) || '';
+}
+
+function actualizarKpisRecomendacion(resumen = {}) {
+  const doc = obtenerDocumento();
+  const set = (id, valor) => { const nodo = doc?.getElementById(id); if (nodo) nodo.textContent = String(valor ?? '—'); };
+  set('libraryRecommendNeeds', resumen.necesidadesAnalizadas);
+  set('libraryRecommendAnalyzed', resumen.recursosDisponibles);
+  set('libraryRecommendSuggestions', resumen.sugerenciasGeneradas);
+  set('libraryRecommendMissing', resumen.necesidadesSinRecurso);
+}
+
+function renderRecomendacionItem(item = {}) {
+  const recursos = Array.isArray(item.recursos) ? item.recursos : [];
+  return `<article class="library-recommend-card is-${escapar(item.estado || 'pendiente')}">
+    <header><div><strong>${escapar(item.necesidad?.nombre || 'Necesidad')}</strong><small>${escapar(item.necesidad?.tipo || 'recurso')} · ${escapar(item.necesidad?.fuente || 'plan')}</small></div><span>${recursos.length} sugerencia(s)</span></header>
+    <p>${escapar(item.necesidad?.descripcion || 'Sin descripción.')}</p>
+    <div class="library-recommend-resources">${recursos.length ? recursos.map((sugerencia) => {
+      const recurso = sugerencia.recurso || {};
+      const riesgos = (sugerencia.riesgos || []).join(' · ');
+      return `<section><div><strong>${escapar(recurso.nombre || 'Recurso')}</strong><span>${escapar(recurso.tipo || 'tipo')} · ${escapar(recurso.categoria || 'general')} · ${escapar(sugerencia.puntaje)} pts</span></div><small>${escapar((sugerencia.razones || []).slice(0, 3).join(' · ') || 'Sin razones')}</small>${riesgos ? `<em>${escapar(riesgos)}</em>` : ''}</section>`;
+    }).join('') : '<div class="library-empty">Sin recurso sugerido. Agrega recursos compatibles a la biblioteca.</div>'}</div>
+  </article>`;
+}
+
+function renderRecomendaciones(resultado = {}) {
+  const doc = obtenerDocumento();
+  const lista = doc?.getElementById('libraryRecommendList');
+  if (!lista) return;
+  const recomendaciones = Array.isArray(resultado.recomendaciones) ? resultado.recomendaciones : [];
+  actualizarKpisRecomendacion(resultado.resumen || {});
+  lista.innerHTML = recomendaciones.length ? recomendaciones.map(renderRecomendacionItem).join('') : '<div class="library-empty">No se generaron recomendaciones con este proyecto.</div>';
+}
+
+async function recomendarRecursosProyecto({ crearUrlApi } = {}) {
+  const doc = obtenerDocumento();
+  const estado = doc?.getElementById('libraryStatus');
+  const proyectoId = obtenerProyectoIdBiblioteca();
+  if (!proyectoId) throw new Error('Falta proyectoId para recomendar recursos.');
+  localStorage.setItem(STORAGE_PROYECTO_ETAPAS, proyectoId);
+  const consulta = doc?.getElementById('libraryRecommendQuery')?.value?.trim() || '';
+  const limitePorNecesidad = Number(doc?.getElementById('libraryRecommendLimit')?.value || 4);
+  if (estado) estado.textContent = 'Recomendando recursos para producción...';
+  const respuesta = await fetch(await crearUrlApi(`/api/proyectos/${encodeURIComponent(proyectoId)}/biblioteca/recomendar`), {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ filtros: { consulta }, limitePorNecesidad })
+  });
+  const datos = await leerJsonSeguro(respuesta);
+  if (!respuesta.ok || !datos.ok) throw new Error(datos.mensaje || 'No se pudieron recomendar recursos.');
+  renderRecomendaciones(datos.recomendaciones || {});
+  if (estado) estado.textContent = 'Recomendaciones de producción generadas.';
+  return datos.recomendaciones;
+}
+
 function inicializarDropZone() {
   const doc = obtenerDocumento(); const zona = doc?.getElementById('libraryDropZone'); const input = doc?.getElementById('libraryFileInput');
   if (!zona || !input || zona.dataset.inicializado === 'true') return;
@@ -156,12 +223,14 @@ export function inicializarBibliotecaUI({ crearUrlApi } = {}) {
     try {
       if (accion === 'choose-file') { doc.getElementById('libraryFileInput')?.click(); return; }
       if (accion === 'reload') await recargarBibliotecaUI({ crearUrlApi });
+      if (accion === 'recommend-project') await recomendarRecursosProyecto({ crearUrlApi });
       if (accion === 'save') { if (estado) estado.textContent = 'Guardando recurso...'; await guardarRecurso({ crearUrlApi }); if (estado) estado.textContent = 'Recurso guardado.'; await recargarBibliotecaUI({ crearUrlApi }); }
     } catch (error) { if (estado) estado.textContent = error.message; }
   });
   doc.addEventListener('change', (evento) => { if (evento.target.closest('[data-library-filter]')) recargarBibliotecaUI({ crearUrlApi }); });
-  doc.addEventListener('keydown', (evento) => { if (evento.key === 'Enter' && evento.target.id === 'librarySearchInput') recargarBibliotecaUI({ crearUrlApi }); });
-  doc.addEventListener('autovideo:navegacion', (evento) => { if (evento.detail?.pantallaId === 'biblioteca') { inicializarDropZone(); recargarBibliotecaUI({ crearUrlApi }); } });
+  doc.addEventListener('keydown', (evento) => { if (evento.key === 'Enter' && evento.target.id === 'librarySearchInput') recargarBibliotecaUI({ crearUrlApi }); if (evento.key === 'Enter' && evento.target.id === 'libraryRecommendQuery') recomendarRecursosProyecto({ crearUrlApi }).catch((error) => { const estado = doc.getElementById('libraryStatus'); if (estado) estado.textContent = error.message; }); });
+  doc.addEventListener('autovideo:navegacion', (evento) => { if (evento.detail?.pantallaId === 'biblioteca') { sincronizarProyectoIdBiblioteca(); inicializarDropZone(); recargarBibliotecaUI({ crearUrlApi }); } });
+  sincronizarProyectoIdBiblioteca();
   inicializarDropZone();
   return true;
 }
