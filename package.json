@@ -19,6 +19,7 @@
     "check:captions": "node scripts/verificar-subtitulos-plataforma.js",
     "check:labels": "node scripts/verificar-textos-relevantes.js",
     "check:visual": "node scripts/verificar-visual.js",
+    "check:entendimiento-real": "node scripts/verificar-entendimiento-real.js",
     "check:efectos-catalogo": "node scripts/verificar-catalogo-efectos.js",
     "check:efectos-presets": "node scripts/verificar-presets-efectos.js",
     "check:efectos-aprendizaje": "node scripts/verificar-aprendizaje-efectos.js",
