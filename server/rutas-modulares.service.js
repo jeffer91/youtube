@@ -22,6 +22,7 @@ import { previsualizarEfectos } from '../editar/efectos/previsualizacion/index.j
 import { listarPaquetesPremiumEfectos, previsualizarEfectosPremium } from '../editar/efectos/premium/index.js';
 import { listarPaquetesSfxPremium, previsualizarSfxPremium } from '../editar/edicion-dinamica/sonidos/premium/index.js';
 import { diagnosticarMotoresTranscripcion } from '../transcripcion/motores/diagnostico-motores-transcripcion.service.js';
+import { obtenerInstalacionGuiadaMotoresTranscripcion } from '../transcripcion/motores/instalacion-guiada-motores.service.js';
 import { registrarRutasEtapas } from './rutas-etapas.service.js';
 
 function responderOk(res, datos = {}) { return res.json({ ok: true, ...datos, fecha: new Date().toISOString() }); }
@@ -33,11 +34,12 @@ export function registrarRutasModulares(app, opciones = {}) {
   const aplicarCabeceras = opciones.aplicarCabecerasSinCache || (() => {});
   registrarRutasEtapas(app, opciones);
 
-  app.get('/api/autovideo/modulos', (_req, res) => { aplicarCabeceras(res); return responderOk(res, { modulos: ['proyectos', 'flujo-etapas', 'api-etapas', 'perfiles', 'exportacion', 'audio', 'subtitulos', 'textos', 'visual', 'efectos', 'efectos-premium', 'sfx-premium', 'biblioteca', 'biblioteca-produccion', 'gemini', 'produccion', 'aprendizaje', 'diagnostico-fuerte', 'diagnostico-final-redisenio', 'auditoria-integral', 'reintento-etapa', 'transcripcion-diagnostico'], flujo: ['nuevo-proyecto', 'entendimiento', 'plan-edicion', 'produccion', 'adaptacion-plataformas', 'resultado'], bibliotecaExternaAlFlujo: true }); });
+  app.get('/api/autovideo/modulos', (_req, res) => { aplicarCabeceras(res); return responderOk(res, { modulos: ['proyectos', 'flujo-etapas', 'api-etapas', 'perfiles', 'exportacion', 'audio', 'subtitulos', 'textos', 'visual', 'efectos', 'efectos-premium', 'sfx-premium', 'biblioteca', 'biblioteca-produccion', 'gemini', 'produccion', 'aprendizaje', 'diagnostico-fuerte', 'diagnostico-final-redisenio', 'auditoria-integral', 'reintento-etapa', 'transcripcion-diagnostico', 'transcripcion-instalacion-guiada'], flujo: ['nuevo-proyecto', 'entendimiento', 'plan-edicion', 'produccion', 'adaptacion-plataformas', 'resultado'], bibliotecaExternaAlFlujo: true }); });
   app.get('/api/autovideo/diagnostico/fuerte', async (_req, res) => { try { aplicarCabeceras(res); const diagnostico = await crearDiagnosticoFuerte({ guardarReporte: true }); return responderOk(res, { diagnostico }); } catch (error) { return responderError(res, error, 500); } });
   app.get('/api/autovideo/diagnostico/auditoria-integral', async (_req, res) => { try { aplicarCabeceras(res); const auditoria = await crearAuditoriaIntegral({ guardarReporte: true }); return responderOk(res, { auditoria }); } catch (error) { return responderError(res, error, 500); } });
   app.get('/api/autovideo/diagnostico/final-redisenio', async (_req, res) => { try { aplicarCabeceras(res); const diagnostico = await crearDiagnosticoFinalRedisenio({ guardarReporte: true }); return responderOk(res, { diagnostico }); } catch (error) { return responderError(res, error, 500); } });
   app.get('/api/autovideo/transcripcion/motores/diagnostico', async (req, res) => { try { aplicarCabeceras(res); const diagnostico = await diagnosticarMotoresTranscripcion({ opciones: req.query || {} }); return responderOk(res, { diagnostico }); } catch (error) { return responderError(res, error, 500); } });
+  app.get('/api/autovideo/transcripcion/motores/instalacion', (_req, res) => { try { aplicarCabeceras(res); return responderOk(res, { guia: obtenerInstalacionGuiadaMotoresTranscripcion() }); } catch (error) { return responderError(res, error, 500); } });
   app.post('/api/autovideo/reintento/plan', (req, res) => { try { aplicarCabeceras(res); return responderOk(res, { reintento: crearPlanReintento(req.body || {}) }); } catch (error) { return responderError(res, error, 400); } });
 
   app.get('/api/autovideo/perfiles', (_req, res) => { aplicarCabeceras(res); return responderOk(res, { perfiles: listarPerfiles() }); });
