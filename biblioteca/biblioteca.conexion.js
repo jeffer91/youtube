@@ -11,3 +11,4 @@ export { guardarRecursoBiblioteca } from './guardar-recurso.service.js';
 export { buscarRecursosBiblioteca, buscarPrimerRecurso } from './buscar-recurso.service.js';
 export { clasificarRecurso } from './clasificar-recurso.service.js';
 export { validarLicenciaRecurso, marcarLicenciaRevisada } from './validar-licencia-recurso.service.js';
+export { recomendarRecursosProduccion } from './seleccionar-recursos-produccion.service.js';
