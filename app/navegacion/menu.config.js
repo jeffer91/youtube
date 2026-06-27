@@ -7,6 +7,7 @@ export const MENU_PRINCIPAL = Object.freeze([
   { id: 'inicio', titulo: 'Inicio', descripcion: 'Resumen general de la app', vista: 'inicio' },
   { id: 'nuevo-proyecto', titulo: 'Nuevo proyecto', descripcion: 'Nombre, videos y primer procesamiento', vista: 'nuevo-proyecto' },
   { id: 'entendimiento', titulo: 'Entendimiento', descripcion: 'Transcripción, fotogramas y análisis global', vista: 'entendimiento' },
+  { id: 'plan-edicion', titulo: 'Plan de edición', descripcion: 'Subtítulos, textos, recursos, efectos y timeline', vista: 'plan-edicion' },
   { id: 'biblioteca', titulo: 'Biblioteca', descripcion: 'Recursos generales y categorias', vista: 'biblioteca' },
   { id: 'produccion', titulo: 'Produccion', descripcion: 'Revision, reemplazo y aprobacion', vista: 'produccion' },
   { id: 'historial', titulo: 'Historial', descripcion: 'Proyectos recientes y exportaciones', vista: 'historial' },
