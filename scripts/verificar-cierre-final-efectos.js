@@ -13,7 +13,9 @@ const ARCHIVOS_REQUERIDOS = Object.freeze([
   'diagnostico/efectos/diagnostico-efectos.service.js',
   'app/efectos-ui.js',
   'app/resultado-efectos-ui.js',
+  'salida/exportar-simple/exportar.service.js',
   'server/rutas-modulares.service.js',
+  'scripts/verificar-fallback-exportacion-efectos.js',
   'docs/efectos-automaticos.md',
   'docs/cierre-motor-efectos.md'
 ]);
@@ -28,6 +30,7 @@ const SCRIPTS_REQUERIDOS = Object.freeze([
   'check:efectos-integracion',
   'check:efectos-preview',
   'check:efectos-cierre',
+  'check:efectos-fallback',
   'check:efectos'
 ]);
 
@@ -90,13 +93,20 @@ function validarUi() {
   exigir(resultado.includes('obtenerResumenEfectos'), 'No existe resumen de efectos para resultado final.');
 }
 
+function validarFallbackSalida() {
+  const salida = leer('salida/exportar-simple/exportar.service.js');
+  exigir(salida.includes('exportarConFallbackVisual'), 'La salida no tiene fallback visual para errores de FFmpeg.');
+  exigir(salida.includes('fallbackVisualUsado'), 'La salida no registra si usó fallback visual.');
+}
+
 function main() {
   validarArchivos();
   validarPlanificador();
   validarServidor();
   validarPackage();
   validarUi();
-  console.log('OK cierre final efectos: arquitectura, UI, API, scripts, documentacion y planificador conectados.');
+  validarFallbackSalida();
+  console.log('OK cierre final efectos: arquitectura, fallback, UI, API, scripts, documentacion y planificador conectados.');
 }
 
 try {
