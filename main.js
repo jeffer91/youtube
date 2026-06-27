@@ -58,13 +58,16 @@ function mostrarErrorCarga(error) {
 
 function crearVentana(urlServidor) {
   ventanaPrincipal = new BrowserWindow({
-    width: 1200,
-    height: 820,
-    minWidth: 960,
-    minHeight: 640,
+    title: 'AutoVideoJeff - Editor profesional de escritorio',
+    width: 1600,
+    height: 940,
+    minWidth: 1180,
+    minHeight: 720,
     show: false,
     backgroundColor: '#eef3fb',
     icon: obtenerIconoSeguro(),
+    autoHideMenuBar: true,
+    maximizable: true,
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
@@ -80,11 +83,13 @@ function crearVentana(urlServidor) {
 
   ventanaPrincipal.once('ready-to-show', () => {
     clearTimeout(mostrarPorSeguridad);
+    ventanaPrincipal.maximize();
     mostrarVentanaSiExiste();
   });
 
   ventanaPrincipal.webContents.on('did-finish-load', () => {
     clearTimeout(mostrarPorSeguridad);
+    if (!ventanaPrincipal.isMaximized()) ventanaPrincipal.maximize();
     mostrarVentanaSiExiste();
   });
 
