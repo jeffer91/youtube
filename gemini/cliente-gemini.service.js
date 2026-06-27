@@ -1,11 +1,12 @@
 /*
-  Bloque 18
-  Funcion: cliente real de Gemini con fallback seguro.
+  Nueva etapa estructural - Bloque 2
+  Funcion: cliente real de Gemini con fallback seguro y contexto editorial completo.
 */
 
 import { obtenerConfigGemini } from './gemini.config.js';
 import { extraerJsonSeguro, crearRespuestaFallback } from './validar-respuesta-gemini.service.js';
 import { construirBloquePerfilGemini } from './perfiles-gemini.config.js';
+import { construirContextoEditorialGemini } from './contexto-editorial-gemini.service.js';
 
 function obtenerClaveGemini(opciones = {}) {
   return opciones.geminiCredencial || opciones.apiKey || opciones.api_key || process.env.GEMINI_API_KEY || '';
@@ -22,15 +23,15 @@ function crearPromptTarea(tarea = {}, opciones = {}) {
   const perfil = payload.perfil || tarea.perfil || {};
   const guiaUsuario = opciones.geminiGuia || opciones.guia || '';
   return [
-    'Eres el asistente de edicion de AutoVideoJeff.',
-    'Trabajas con videos donde Jeff aparece hablando a camara.',
-    'Responde solamente JSON valido, sin markdown, sin explicaciones fuera del JSON.',
+    construirContextoEditorialGemini(tarea, opciones),
+    'INSTRUCCIONES DEL PERFIL:',
     construirBloquePerfilGemini(perfil),
     guiaUsuario ? `Guia adicional de Jeff: ${guiaUsuario}` : '',
     Array.isArray(tarea.instrucciones) ? tarea.instrucciones.join('\n') : '',
     'Payload de trabajo:',
     JSON.stringify(payload, null, 2),
     'Reglas de respuesta:',
+    '- Responde solamente JSON valido, sin markdown, sin explicaciones fuera del JSON.',
     '- Usa textos breves y utiles.',
     '- No inventes fuentes ni licencias.',
     '- Si sugieres recursos, indica tema, motivo, tipo, licencia requerida y prioridad.',
@@ -117,6 +118,7 @@ export async function ejecutarTareaGeminiReal(tarea = {}, opciones = {}) {
       modelo: config.modelo,
       data,
       textoOriginal: texto,
+      contextoEditorial: true,
       creadoEn: new Date().toISOString()
     };
   } catch (error) {
