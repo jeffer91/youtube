@@ -3,16 +3,39 @@
   Funcion: punto unico de conexion para inteligencia de edicion con Gemini.
 */
 
-export { GEMINI_CONFIG, obtenerConfigGemini } from './gemini.config.js';
-export { GEMINI_INSTRUCCIONES_PERFIL, obtenerInstruccionesPerfilGemini, construirBloquePerfilGemini } from './perfiles-gemini.config.js';
-export { validarRespuestaGemini, extraerJsonSeguro, crearRespuestaFallback } from './validar-respuesta-gemini.service.js';
-export { prepararAnalisisTranscripcion, crearAnalisisTranscripcionFallback } from './analizar-transcripcion.service.js';
-export { prepararSugerenciaRecursos, crearSugerenciasRecursosFallback } from './sugerir-recursos.service.js';
-export { prepararSugerenciaTextos, crearTextosFallback } from './sugerir-textos.service.js';
-export { prepararSugerenciaGraficos, crearGraficosFallback } from './sugerir-graficos.service.js';
-export { prepararSugerenciaEstiloEdicion, crearEstiloEdicionFallback } from './sugerir-estilo-edicion.service.js';
-export { ejecutarTareaGeminiReal } from './cliente-gemini.service.js';
-export { ejecutarPaqueteGeminiEdicion } from './ejecutar-paquete-gemini.service.js';
+import { GEMINI_CONFIG, obtenerConfigGemini } from './gemini.config.js';
+import { GEMINI_INSTRUCCIONES_PERFIL, obtenerInstruccionesPerfilGemini, construirBloquePerfilGemini } from './perfiles-gemini.config.js';
+import { validarRespuestaGemini, extraerJsonSeguro, crearRespuestaFallback } from './validar-respuesta-gemini.service.js';
+import { prepararAnalisisTranscripcion, crearAnalisisTranscripcionFallback } from './analizar-transcripcion.service.js';
+import { prepararSugerenciaRecursos, crearSugerenciasRecursosFallback } from './sugerir-recursos.service.js';
+import { prepararSugerenciaTextos, crearTextosFallback } from './sugerir-textos.service.js';
+import { prepararSugerenciaGraficos, crearGraficosFallback } from './sugerir-graficos.service.js';
+import { prepararSugerenciaEstiloEdicion, crearEstiloEdicionFallback } from './sugerir-estilo-edicion.service.js';
+import { ejecutarTareaGeminiReal } from './cliente-gemini.service.js';
+import { ejecutarPaqueteGeminiEdicion } from './ejecutar-paquete-gemini.service.js';
+
+export {
+  GEMINI_CONFIG,
+  obtenerConfigGemini,
+  GEMINI_INSTRUCCIONES_PERFIL,
+  obtenerInstruccionesPerfilGemini,
+  construirBloquePerfilGemini,
+  validarRespuestaGemini,
+  extraerJsonSeguro,
+  crearRespuestaFallback,
+  prepararAnalisisTranscripcion,
+  crearAnalisisTranscripcionFallback,
+  prepararSugerenciaRecursos,
+  crearSugerenciasRecursosFallback,
+  prepararSugerenciaTextos,
+  crearTextosFallback,
+  prepararSugerenciaGraficos,
+  crearGraficosFallback,
+  prepararSugerenciaEstiloEdicion,
+  crearEstiloEdicionFallback,
+  ejecutarTareaGeminiReal,
+  ejecutarPaqueteGeminiEdicion
+};
 
 export function crearPaqueteGeminiEdicion({ proyecto = {}, perfil = {}, transcripcion = {}, analisis = null, biblioteca = [], plataformas = [], opciones = {} } = {}) {
   const analisisBase = analisis || crearAnalisisTranscripcionFallback({ transcripcion, perfil: perfil.id || proyecto.perfil || 'general' });
