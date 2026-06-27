@@ -1,3 +1,5 @@
+import { generarAnimacionesFfmpeg } from './generar-animaciones-ffmpeg.service.js';
+
 function numero(valor, respaldo = 0) {
   const n = Number(valor);
   return Number.isFinite(n) ? n : respaldo;
@@ -26,7 +28,7 @@ function filtroZoomSuave({ width = 1080, height = 1920, activo = true, factor = 
   return `crop=w=${ancho}:h=${alto}:x=(iw-ow)/2:y=(ih-oh)/2,scale=${Math.round(numero(width, 1080))}:${Math.round(numero(height, 1920))}`;
 }
 
-export function construirFiltroVisualFfmpeg({ filtroBase, barraProgreso = null, etiquetas = null, width = 1080, height = 1920, opciones = {} } = {}) {
+export function construirFiltroVisualFfmpeg({ filtroBase, barraProgreso = null, etiquetas = null, eventos = [], duracionSegundos = 0, width = 1080, height = 1920, opciones = {} } = {}) {
   if (!filtroBase || typeof filtroBase !== 'string') {
     throw new Error('No se puede construir filtro visual dinámico sin filtro base.');
   }
@@ -34,24 +36,33 @@ export function construirFiltroVisualFfmpeg({ filtroBase, barraProgreso = null, 
   const perfilVisual = obtenerZoomPerfil(opciones);
   const filtros = [filtroBase];
   const zoom = filtroZoomSuave({ width, height, activo: opciones?.agregarZooms !== false, factor: perfilVisual.factor });
+  const animaciones = generarAnimacionesFfmpeg({ eventos, duracionSegundos, width, height, opciones });
 
   if (zoom) filtros.push(zoom);
+  for (const item of animaciones?.filtrosMovimiento || []) filtros.push(item);
   if (barraProgreso?.filtro) filtros.push(barraProgreso.filtro);
 
   for (const item of etiquetas?.filtros || []) {
     if (item?.filtro) filtros.push(item.filtro);
   }
 
+  for (const item of animaciones?.filtrosOverlay || []) filtros.push(item);
+
   return {
     ok: true,
     filtroVideo: filtros.filter(Boolean).join(','),
     filtrosAplicados: filtros.length - 1,
+    animaciones,
     detalle: {
       perfil: perfilVisual.perfil,
       perfilNombre: perfilVisual.nombre,
       zoomSuave: Boolean(zoom),
+      zoomInOut: Boolean(animaciones?.filtrosMovimiento?.length),
+      explosiones: animaciones?.filtrosOverlay?.filter((item) => item.includes('drawtext')).length || 0,
+      transiciones: animaciones?.eventos?.length || 0,
       barraProgreso: Boolean(barraProgreso?.filtro),
-      etiquetas: etiquetas?.filtros?.length || 0
+      etiquetas: etiquetas?.filtros?.length || 0,
+      animaciones: animaciones?.total || 0
     }
   };
 }
