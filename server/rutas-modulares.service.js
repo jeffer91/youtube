@@ -6,7 +6,7 @@
 import { listarPerfiles, obtenerPerfil } from '../perfiles/perfiles.conexion.js';
 import { obtenerIdsPlataformas, obtenerPlataformaExportacion, prepararExportaciones } from '../exportacion/exportacion.conexion.js';
 import { crearProyecto, listarProyectos, cargarProyecto } from '../proyectos/proyectos.conexion.js';
-import { listarCategoriasBiblioteca, buscarRecursosBiblioteca, guardarRecursoBiblioteca, recomendarRecursosProduccion } from '../biblioteca/biblioteca.conexion.js';
+import { listarCategoriasBiblioteca, listarEstilosVideo, buscarRecursosBiblioteca, guardarRecursoBiblioteca, recomendarRecursosProduccion } from '../biblioteca/biblioteca.conexion.js';
 import { listarRecursosProyecto, guardarRecursoProyecto } from '../biblioteca-proyecto/biblioteca-proyecto.conexion.js';
 import { crearPlanProduccion, guardarPlanProduccion, cargarPlanProduccion } from '../produccion/produccion.conexion.js';
 import { cargarMemoriaEdicion, guardarCorreccionAprendizaje } from '../aprendizaje/aprendizaje.conexion.js';
@@ -30,6 +30,7 @@ function responderOk(res, datos = {}) { return res.json({ ok: true, ...datos, fe
 function responderError(res, error, codigo = 500) { return res.status(codigo).json({ ok: false, mensaje: error?.message || 'Error en rutas modulares.', fecha: new Date().toISOString() }); }
 function normalizarProyectoSimple(datos = {}) { return { nombre: datos.nombre || datos.titulo || 'Nuevo proyecto AutoVideoJeff', perfil: datos.perfil || 'general', modoEdicion: datos.modoEdicion || 'revision_completa', plataformas: Array.isArray(datos.plataformas) ? datos.plataformas : ['tiktok', 'reels', 'shorts', 'youtube'] }; }
 function crearTareaPruebaGemini() { return { tarea: 'probar_conexion_gemini', payload: { perfil: 'general', plataforma: 'tiktok', transcripcion: { textoCompleto: 'Prueba de conexión de AutoVideoJeff.' }, momentosClave: [{ inicio: 0, fin: 2, tipo: 'prueba', motivo: 'Confirmar que Gemini responde con JSON válido.' }], efectosPermitidos: ['titulo_inicial', 'texto_impacto', 'barra_progreso'] }, instrucciones: ['Devuelve exactamente un JSON con ok=true, mensaje corto y una sugerencia de edición.'] }; }
+function normalizarListaTexto(valor = []) { if (Array.isArray(valor)) return valor.map((item) => String(item).trim()).filter(Boolean); if (typeof valor === 'string' && valor.trim()) return valor.split(',').map((item) => item.trim()).filter(Boolean); return []; }
 
 export function registrarRutasModulares(app, opciones = {}) {
   const aplicarCabeceras = opciones.aplicarCabecerasSinCache || (() => {});
@@ -63,8 +64,9 @@ export function registrarRutasModulares(app, opciones = {}) {
   app.post('/api/autovideo/proyectos', async (req, res) => { try { aplicarCabeceras(res); const proyecto = await crearProyecto(normalizarProyectoSimple(req.body || {})); return responderOk(res, { proyecto }); } catch (error) { return responderError(res, error, 400); } });
 
   app.get('/api/autovideo/biblioteca/categorias', (_req, res) => { aplicarCabeceras(res); return responderOk(res, { categorias: listarCategoriasBiblioteca() }); });
-  app.get('/api/autovideo/biblioteca', async (req, res) => { try { aplicarCabeceras(res); const recursos = await buscarRecursosBiblioteca({ consulta: req.query.q || '', tipo: req.query.tipo || '', categoria: req.query.categoria || '', perfil: req.query.perfil || '' }); return responderOk(res, { recursos }); } catch (error) { return responderError(res, error); } });
-  app.post('/api/autovideo/biblioteca', async (req, res) => { try { aplicarCabeceras(res); const recurso = await guardarRecursoBiblioteca(req.body || {}); return responderOk(res, { recurso }); } catch (error) { return responderError(res, error, 400); } });
+  app.get('/api/autovideo/biblioteca/estilos', (_req, res) => { aplicarCabeceras(res); return responderOk(res, { estilos: listarEstilosVideo() }); });
+  app.get('/api/autovideo/biblioteca', async (req, res) => { try { aplicarCabeceras(res); const recursos = await buscarRecursosBiblioteca({ consulta: req.query.q || '', tipo: req.query.tipo || '', categoria: req.query.categoria || '', estilo: req.query.estilo || req.query.perfil || '' }); return responderOk(res, { recursos }); } catch (error) { return responderError(res, error); } });
+  app.post('/api/autovideo/biblioteca', async (req, res) => { try { aplicarCabeceras(res); const payload = { ...(req.body || {}), estilos: normalizarListaTexto(req.body?.estilos || req.body?.perfiles || req.body?.perfil || req.body?.estilo) }; const resultado = await guardarRecursoBiblioteca(payload, { accionDuplicado: req.body?.accionDuplicado || 'preguntar' }); return responderOk(res, resultado?.recurso ? resultado : { recurso: resultado }); } catch (error) { return responderError(res, error, 400); } });
   app.post('/api/proyectos/:proyectoId/biblioteca/recomendar', async (req, res) => { try { aplicarCabeceras(res); const recomendaciones = await recomendarRecursosProduccion({ proyectoId: req.params.proyectoId, filtros: req.body?.filtros || req.body || {}, limitePorNecesidad: Number(req.body?.limitePorNecesidad || 4), guardar: true }); return responderOk(res, { recomendaciones }); } catch (error) { return responderError(res, error, 400); } });
   app.get('/api/proyectos/:proyectoId/biblioteca/recomendar', async (req, res) => { try { aplicarCabeceras(res); const recomendaciones = await recomendarRecursosProduccion({ proyectoId: req.params.proyectoId, filtros: { consulta: req.query.q || '', tipo: req.query.tipo || '', categoria: req.query.categoria || '', perfil: req.query.perfil || '' }, limitePorNecesidad: Number(req.query.limite || 4), guardar: false }); return responderOk(res, { recomendaciones }); } catch (error) { return responderError(res, error, 400); } });
 
