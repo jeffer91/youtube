@@ -33,7 +33,8 @@ export function obtenerOpcionesTranscripcion() {
     estiloTextosFlotantes: elementos.estiloTextosFlotantes?.value || 'badge',
     maxTextosFlotantes: elementos.maxTextosFlotantes?.value || '6',
     idiomaTranscripcion: elementos.idiomaTranscripcion?.value || 'es',
-    modoTranscripcion: 'manual'
+    modoTranscripcion: 'multimotor',
+    usarTranscripcionMultimotor: 'true'
   };
 }
 
