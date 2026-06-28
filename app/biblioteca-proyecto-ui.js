@@ -1,4 +1,5 @@
 const STORAGE_PROYECTO_ETAPAS = 'autovideojeff.proyectoEtapasId';
+const STORAGE_BIBLIOTECA_AREA = 'autovideojeff.bibliotecaArea';
 const TIPOS = ['video', 'imagen', 'audio'];
 const FORMATOS = ['horizontal-16-9', 'vertical-9-16', 'cuadrado-1-1', 'audio', 'imagen', 'desconocido'];
 
@@ -454,12 +455,13 @@ function irABibliotecaProyectoDesdeEntendimiento(evento) {
   evento.stopImmediatePropagation();
   const proyectoId = $('entendimientoProyectoId')?.value?.trim() || localStorage.getItem(STORAGE_PROYECTO_ETAPAS) || '';
   if (proyectoId) localStorage.setItem(STORAGE_PROYECTO_ETAPAS, proyectoId);
-  document.querySelector('[data-pantalla="biblioteca-proyecto"]')?.click();
+  localStorage.setItem(STORAGE_BIBLIOTECA_AREA, 'proyecto');
+  document.querySelector('[data-pantalla="biblioteca"]')?.click();
   setTimeout(() => {
     const input = $('projectLibraryProjectId');
     if (input && proyectoId) input.value = proyectoId;
     $('projectLibraryLoadBtn')?.click();
-  }, 160);
+  }, 180);
 }
 
 function inicializarPuenteEntendimiento() {
@@ -512,13 +514,27 @@ function enlazarEventos() {
   cargarBibliotecaProyecto().catch((error) => setMensaje(error.message, 'warn'));
 }
 
+function activarBibliotecaProyecto() {
+  setTimeout(() => {
+    enlazarEventos();
+    const root = document.querySelector('[data-project-library-root]');
+    if (!root) return;
+    const proyectoId = obtenerProyectoId();
+    if (proyectoId) cargarBibliotecaProyecto().catch((error) => setMensaje(error.message, 'warn'));
+    else actualizarVistaInteligente();
+  }, 0);
+}
+
 export function inicializarBibliotecaProyectoUI() {
   if (typeof document === 'undefined') return;
   inicializarPuenteEntendimiento();
   document.addEventListener('autovideo:navegacion', (evento) => {
-    if (evento.detail?.pantallaId === 'biblioteca-proyecto') setTimeout(enlazarEventos, 0);
+    if (evento.detail?.pantallaId === 'biblioteca' || evento.detail?.pantallaId === 'biblioteca-proyecto') activarBibliotecaProyecto();
   });
-  enlazarEventos();
+  document.addEventListener('autovideo:biblioteca-area', (evento) => {
+    if (evento.detail?.area === 'proyecto') activarBibliotecaProyecto();
+  });
+  activarBibliotecaProyecto();
 }
 
 if (typeof document !== 'undefined') {
