@@ -17,6 +17,7 @@ import { iniciarServidor, detenerServidor } from './server.js';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const TIEMPO_MAXIMO_ESPERA_VENTANA_MS = 3500;
+const PUERTO_DESARROLLO = 3000;
 
 let ventanaPrincipal = null;
 let servidorLocal = null;
@@ -30,13 +31,26 @@ function prepararElectronSeguro() {
 
 prepararElectronSeguro();
 
-function configurarRutasDeDatos() {
+function resolverRutaDatosElectron() {
+  if (process.env.AUTOVIDEOJEFF_ROOT_DIR) return process.env.AUTOVIDEOJEFF_ROOT_DIR;
+
   /*
-    En modo Electron no conviene guardar videos/proyectos dentro de la carpeta
-    instalada de la app. Esta variable hace que comun/archivos.js use la carpeta
-    de datos del usuario y mantenga el resto de módulos compatibles.
+    En desarrollo conviene guardar en la carpeta local del proyecto para que las
+    pruebas por terminal coincidan con D:\AutoVideoJeff\datos\proyectos.
+    En la app instalada sí se usa userData para no escribir dentro del instalador.
   */
-  process.env.AUTOVIDEOJEFF_ROOT_DIR = electronApp.getPath('userData');
+  return electronApp.isPackaged ? electronApp.getPath('userData') : __dirname;
+}
+
+function configurarRutasDeDatos() {
+  process.env.AUTOVIDEOJEFF_ROOT_DIR = resolverRutaDatosElectron();
+  console.log(`[Electron] Carpeta raíz de datos: ${process.env.AUTOVIDEOJEFF_ROOT_DIR}`);
+}
+
+function resolverPuertoElectron() {
+  const puertoEnv = Number(process.env.PORT);
+  if (Number.isFinite(puertoEnv) && puertoEnv > 0) return puertoEnv;
+  return electronApp.isPackaged ? 0 : PUERTO_DESARROLLO;
 }
 
 function obtenerIconoSeguro() {
@@ -131,11 +145,12 @@ async function iniciarAplicacion() {
   configurarRutasDeDatos();
 
   servidorLocal = await iniciarServidor({
-    puerto: process.env.PORT || 0,
+    puerto: resolverPuertoElectron(),
     host: '127.0.0.1',
     modoElectron: true
   });
 
+  console.log(`[Electron] Servidor local: ${servidorLocal.url}`);
   crearVentana(servidorLocal.url);
 }
 
