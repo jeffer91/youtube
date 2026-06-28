@@ -7,6 +7,7 @@ export const MENU_PRINCIPAL = Object.freeze([
   { id: 'inicio', titulo: 'Inicio', descripcion: 'Resumen general de la app', vista: 'inicio' },
   { id: 'nuevo-proyecto', titulo: 'Nuevo proyecto', descripcion: 'Nombre, videos y primer procesamiento', vista: 'nuevo-proyecto' },
   { id: 'entendimiento', titulo: 'Entendimiento', descripcion: 'Transcripción, fotogramas y análisis global', vista: 'entendimiento' },
+  { id: 'biblioteca-proyecto', titulo: 'Biblioteca proyecto', descripcion: 'Recursos temporales después de entender el video', vista: 'biblioteca-proyecto' },
   { id: 'plan-edicion', titulo: 'Plan de edición', descripcion: 'Subtítulos, textos, recursos, efectos y timeline', vista: 'plan-edicion' },
   { id: 'biblioteca', titulo: 'Biblioteca', descripcion: 'Recursos generales y categorias', vista: 'biblioteca' },
   { id: 'produccion', titulo: 'Producción maestro', descripcion: 'Render maestro, auditoría, preview y antes/después', vista: 'produccion' },
@@ -21,6 +22,7 @@ export const MENU_PRINCIPAL = Object.freeze([
 export const FLUJO_PROYECTO = Object.freeze([
   { id: 'nuevo-proyecto', titulo: 'Nuevo proyecto' },
   { id: 'entendimiento', titulo: 'Entendimiento' },
+  { id: 'biblioteca-proyecto', titulo: 'Biblioteca proyecto' },
   { id: 'plan-edicion', titulo: 'Plan de edición' },
   { id: 'produccion', titulo: 'Producción maestro' },
   { id: 'adaptacion', titulo: 'Adaptación' },
