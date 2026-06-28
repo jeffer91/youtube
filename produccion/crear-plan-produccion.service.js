@@ -1,6 +1,6 @@
 /*
   Modulo: produccion
-  Funcion: armar el plan revisable desde los modulos previos con línea de tiempo.
+  Funcion: armar el plan revisable desde modulos previos, incluyendo JSON tecnico ejecutable.
 */
 
 import { crearPlanProduccionModelo, crearElementoProduccion } from './produccion.modelo.js';
@@ -11,14 +11,41 @@ function elementosDesdeLista(lista = [], tipo, extra = {}) {
   return lista.map((item, indice) => crearElementoProduccion({
     id: item.id || `${tipo}-${indice + 1}`,
     tipo,
-    nombre: item.nombre || item.texto || item.tipo || `${tipo} ${indice + 1}`,
-    descripcion: item.descripcion || item.motivo || item.texto || '',
+    nombre: item.nombre || item.texto || item.textoPantalla || item.accion || item.tipo || `${tipo} ${indice + 1}`,
+    descripcion: item.descripcion || item.motivo || item.texto || item.textoPantalla || '',
     inicio: item.inicio ?? item.start ?? null,
     fin: item.fin ?? item.end ?? null,
-    recurso: item.recurso || null,
+    recurso: item.recurso || item.recursoBiblioteca || null,
     datos: item,
     ...extra
   }));
+}
+
+function elementosDesdePlanEjecutable(planEjecutable = {}, perfil = 'general') {
+  const timeline = Array.isArray(planEjecutable.timeline) ? planEjecutable.timeline : [];
+  return timeline.map((accion, indice) => {
+    const tipo = accion.subtitulo ? PRODUCCION_CONFIG.tiposElemento.subtitulo
+      : accion.textoPantalla ? PRODUCCION_CONFIG.tiposElemento.texto
+        : accion.efecto ? PRODUCCION_CONFIG.tiposElemento.efecto
+          : accion.audio ? PRODUCCION_CONFIG.tiposElemento.audio
+            : PRODUCCION_CONFIG.tiposElemento.recurso;
+    return crearElementoProduccion({
+      id: `ejecutable-${accion.id || indice + 1}`,
+      tipo,
+      nombre: accion.textoPantalla || accion.subtitulo || accion.efecto || accion.audio || accion.accion || `Accion ${indice + 1}`,
+      descripcion: accion.motivo || 'Accion proveniente del JSON tecnico ejecutable.',
+      inicio: accion.inicio,
+      fin: accion.fin,
+      recurso: accion.recursoBiblioteca || null,
+      perfil,
+      origen: 'plan-ejecutable',
+      datos: {
+        ...accion,
+        planEjecutable: true,
+        biblioteca: accion.recursoBiblioteca ? { id: accion.recursoBiblioteca, origen: 'referenciado' } : null
+      }
+    });
+  });
 }
 
 function extraerAnimaciones(visual = {}) {
@@ -41,8 +68,10 @@ function extraerZooms(visual = {}) {
   return [];
 }
 
-export function crearPlanProduccion({ proyecto = {}, recursos = [], subtitulos = [], textos = [], graficos = [], tablas = [], imagenes = [], visual = {}, audio = null, duracionSegundos = 0 } = {}) {
+export function crearPlanProduccion({ proyecto = {}, recursos = [], subtitulos = [], textos = [], graficos = [], tablas = [], imagenes = [], visual = {}, audio = null, duracionSegundos = 0, planEjecutable = null } = {}) {
+  const elementosEjecutables = planEjecutable?.tipo === 'plan-ejecutable-produccion' ? elementosDesdePlanEjecutable(planEjecutable, proyecto.perfil) : [];
   const elementos = [
+    ...elementosEjecutables,
     ...elementosDesdeLista(recursos, PRODUCCION_CONFIG.tiposElemento.recurso, { perfil: proyecto.perfil }),
     ...elementosDesdeLista(imagenes, PRODUCCION_CONFIG.tiposElemento.imagen, { perfil: proyecto.perfil }),
     ...elementosDesdeLista(subtitulos, PRODUCCION_CONFIG.tiposElemento.subtitulo, { perfil: proyecto.perfil }),
@@ -62,9 +91,12 @@ export function crearPlanProduccion({ proyecto = {}, recursos = [], subtitulos =
     perfil: proyecto.perfil || 'general',
     modo: proyecto.modoEdicion || PRODUCCION_CONFIG.modos.revisionCompleta,
     estado: PRODUCCION_CONFIG.estados.enRevision,
-    resumen: 'Plan de Produccion creado para revisar, aprobar, eliminar, cambiar tiempos o reemplazar elementos antes de exportar.',
+    resumen: planEjecutable?.tipo === 'plan-ejecutable-produccion'
+      ? 'Plan de Produccion creado desde JSON tecnico ejecutable y elementos revisables.'
+      : 'Plan de Produccion creado para revisar, aprobar, eliminar, cambiar tiempos o reemplazar elementos antes de exportar.',
     duracionSegundos,
-    elementos
+    elementos,
+    planEjecutable
   });
 
   return sincronizarLineaTiempoConElementos(plan);
