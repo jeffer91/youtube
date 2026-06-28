@@ -52,6 +52,11 @@ function normalizarEstadoTecnico(valor = ESTADOS_TECNICOS_RECURSO.PENDIENTE) {
   return Object.values(ESTADOS_TECNICOS_RECURSO).includes(limpio) ? limpio : BIBLIOTECA_CONFIG.estadoTecnicoPorDefecto;
 }
 
+function numeroONull(valor) {
+  const numero = Number(valor);
+  return Number.isFinite(numero) ? numero : null;
+}
+
 export function detectarTipoArchivoBiblioteca({ nombreArchivo = '', mime = '', tipo = '' } = {}) {
   const tipoLimpio = limpiarNombreRecurso(tipo || '');
   if (obtenerTiposBiblioteca().includes(tipoLimpio)) return tipoLimpio;
@@ -76,7 +81,7 @@ export function detectarFormatoInicialRecurso({ tipo = '', formato = '', orienta
   const o = limpiarNombreRecurso(orientacion || '');
   if (['horizontal', 'landscape', 'youtube'].includes(o)) return FORMATOS_RECURSO_BIBLIOTECA.HORIZONTAL;
   if (['vertical', 'portrait', 'tiktok', 'reels', 'shorts'].includes(o)) return FORMATOS_RECURSO_BIBLIOTECA.VERTICAL;
-  if (['cuadrado', 'square'].includes(o)) return FORMATOS_RECURSO_BIBLIOTECA.CUADRADO;
+  if (['cuadrado', 'cuadrada', 'square'].includes(o)) return FORMATOS_RECURSO_BIBLIOTECA.CUADRADO;
 
   const w = Number(ancho);
   const h = Number(alto);
@@ -96,7 +101,7 @@ function normalizarArchivo(datos = {}, tipo = 'video') {
   return {
     nombreOriginal,
     nombreGuardado: limpiarTexto(datos.nombreGuardado || datos.archivo?.nombreGuardado || datos.nombreArchivo || nombreOriginal),
-    extension,
+    extension: limpiarTexto(datos.extension || datos.archivo?.extension || extension),
     mime: limpiarTexto(datos.mime || datos.mimetype || datos.archivo?.mime || ''),
     tipo,
     pesoBytes: Number(datos.pesoBytes || datos.size || datos.archivo?.pesoBytes || 0) || 0,
@@ -108,14 +113,20 @@ function normalizarArchivo(datos = {}, tipo = 'video') {
 }
 
 export function crearRecursoModelo(datos = {}) {
+  const analisis = datos.analisisArchivo && typeof datos.analisisArchivo === 'object' ? datos.analisisArchivo : (datos.analisis && typeof datos.analisis === 'object' ? datos.analisis : {});
   const nombre = limpiarTexto(datos.nombre || datos.titulo || datos.nombreArchivo || datos.originalname || datos.archivo?.nombreOriginal, 'Recurso sin nombre');
-  const tipo = detectarTipoArchivoBiblioteca({ nombreArchivo: datos.nombreArchivo || datos.originalname || datos.archivo?.nombreOriginal || nombre, mime: datos.mime || datos.mimetype || datos.archivo?.mime, tipo: datos.tipo });
+  const tipo = detectarTipoArchivoBiblioteca({ nombreArchivo: datos.nombreArchivo || datos.originalname || datos.archivo?.nombreOriginal || nombre, mime: datos.mime || datos.mimetype || datos.archivo?.mime, tipo: datos.tipo || analisis.tipo });
   const categoria = obtenerCategoriaBiblioteca(datos.categoria || 'otro');
   const estilos = normalizarListaEstilosVideo(datos.estilos || datos.perfiles || datos.perfil || datos.estilo || datos.estiloVideo || ['general']);
   const alcance = normalizarAlcance(datos.alcance || datos.biblioteca || BIBLIOTECA_CONFIG.alcancePorDefecto);
   const archivo = normalizarArchivo(datos, tipo);
-  const formatoDetectado = detectarFormatoInicialRecurso({ tipo, formato: datos.formato || datos.tamanoFormato || datos.tamañoFormato, orientacion: datos.orientacion, ancho: datos.ancho, alto: datos.alto });
-  const estadoTecnico = normalizarEstadoTecnico(datos.estadoTecnico || datos.estado);
+  const ancho = numeroONull(datos.ancho ?? analisis.ancho);
+  const alto = numeroONull(datos.alto ?? analisis.alto);
+  const formatoCandidato = datos.formatoManual ? datos.formato : (datos.formato || datos.tamanoFormato || datos.tamañoFormato || analisis.formatoDetectado || '');
+  const formatoDetectado = detectarFormatoInicialRecurso({ tipo, formato: formatoCandidato, orientacion: datos.orientacion || analisis.orientacion, ancho, alto });
+  const estadoTecnico = normalizarEstadoTecnico(datos.estadoTecnico || datos.estado || analisis.estadoTecnico);
+  const duracionSegundos = numeroONull(datos.duracionSegundos ?? analisis.duracionSegundos);
+  const resolucion = limpiarTexto(datos.resolucion || analisis.resolucion || (ancho && alto ? `${ancho}x${alto}` : ''));
 
   return {
     id: datos.id || crearIdRecurso(nombre),
@@ -137,6 +148,14 @@ export function crearRecursoModelo(datos = {}) {
     tamanoFormato: formatoDetectado,
     tamañoFormato: formatoDetectado,
     formatoManual: Boolean(datos.formatoManual || datos.tamanoFormatoManual || datos.tamañoFormatoManual),
+    duracionSegundos,
+    ancho,
+    alto,
+    resolucion,
+    orientacion: limpiarTexto(datos.orientacion || analisis.orientacion || 'desconocida'),
+    tieneAudio: Boolean(datos.tieneAudio ?? analisis.tieneAudio ?? tipo === 'audio'),
+    tieneVideo: Boolean(datos.tieneVideo ?? analisis.tieneVideo ?? tipo === 'video'),
+    miniatura: datos.miniatura || analisis.miniatura || null,
     archivo,
     ruta: archivo.rutaAbsoluta || datos.ruta || '',
     rutaRelativa: archivo.rutaRelativa || datos.rutaRelativa || '',
@@ -157,6 +176,7 @@ export function crearRecursoModelo(datos = {}) {
     reemplazaA: datos.reemplazaA || null,
     uso: datos.uso || { total: 0, proyectos: [] },
     metadata: datos.metadata && typeof datos.metadata === 'object' ? datos.metadata : {},
+    analisisArchivo: analisis,
     creadoEn: datos.creadoEn || new Date().toISOString(),
     actualizadoEn: datos.actualizadoEn || new Date().toISOString()
   };
