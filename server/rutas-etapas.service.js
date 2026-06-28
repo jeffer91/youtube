@@ -87,15 +87,58 @@ function crearProyectoIdDesdeNombre(nombre) {
   return crearIdProyecto(base || 'autovideo');
 }
 
-function resumenArchivo(file, destino = null) {
+function existeArchivo(rutaArchivo) {
+  try {
+    return Boolean(rutaArchivo && fs.existsSync(rutaArchivo) && fs.statSync(rutaArchivo).isFile());
+  } catch (_error) {
+    return false;
+  }
+}
+
+function crearVideoId(indice) {
+  return `video-${String(indice + 1).padStart(2, '0')}`;
+}
+
+function resumenArchivo(file, destino = null, indice = 0) {
+  const nombreSeguro = destino ? path.basename(destino) : normalizarNombreArchivo(file.originalname || file.filename || `video-${indice + 1}.mp4`);
+  const videoId = crearVideoId(indice);
   return {
+    id: videoId,
+    videoId,
+    indice,
+    orden: indice + 1,
+    etiqueta: `Video ${String(indice + 1).padStart(2, '0')}`,
     nombreOriginal: file.originalname,
     nombreTemporal: file.filename,
+    nombreSeguro,
+    extension: path.extname(nombreSeguro).toLowerCase(),
     tipo: file.mimetype || 'video',
     tamanoBytes: file.size || 0,
     rutaTemporal: file.path,
     rutaProyecto: destino,
+    rutaOriginal: destino,
+    origen: 'api-etapas-upload',
+    existe: existeArchivo(destino),
+    estado: existeArchivo(destino) ? 'listo' : 'faltante',
     guardadoEn: new Date().toISOString()
+  };
+}
+
+function crearResumenVideosGuardados({ proyectoId, videos = [], carpetaVideos, rutaJson }) {
+  const validos = videos.filter((video) => video.existe && video.rutaProyecto);
+  return {
+    ok: validos.length > 0,
+    proyectoId,
+    total: videos.length,
+    totalValidos: validos.length,
+    modo: validos.length > 1 ? 'multivideo' : 'video-unico',
+    esMultivideo: validos.length > 1,
+    videoPrincipalId: validos[0]?.videoId || null,
+    ids: videos.map((video) => video.videoId),
+    carpetaVideos,
+    rutaJson,
+    videos,
+    actualizadoEn: new Date().toISOString()
   };
 }
 
@@ -109,22 +152,18 @@ async function guardarVideosProyecto({ proyectoId, archivos = [] } = {}) {
 
   const videos = [];
   for (const file of archivos) {
-    const nombre = `${String(videos.length + 1).padStart(2, '0')}-${normalizarNombreArchivo(file.originalname)}`;
+    const indice = videos.length;
+    const nombre = `${String(indice + 1).padStart(2, '0')}-${normalizarNombreArchivo(file.originalname)}`;
     const destino = path.join(carpetaVideos, nombre);
     await copiarArchivoSeguro(file.path, destino);
-    videos.push(resumenArchivo(file, destino));
+    videos.push(resumenArchivo(file, destino, indice));
   }
 
   const rutaJson = path.join(carpetaProyecto, 'videos-originales.json');
-  await escribirJson(rutaJson, {
-    ok: true,
-    proyectoId,
-    total: videos.length,
-    videos,
-    actualizadoEn: new Date().toISOString()
-  });
+  const resumen = crearResumenVideosGuardados({ proyectoId, videos, carpetaVideos, rutaJson });
+  await escribirJson(rutaJson, resumen);
 
-  return { videos, rutaJson, carpetaVideos };
+  return { videos, rutaJson, carpetaVideos, resumen };
 }
 
 async function eliminarTemporales(archivos = []) {
@@ -139,7 +178,7 @@ async function eliminarTemporales(archivos = []) {
 
 async function cargarVideosProyecto(proyectoId) {
   const ruta = path.join(obtenerCarpetaProyecto(proyectoId), 'videos-originales.json');
-  return await leerJsonSiExiste(ruta, { ok: true, proyectoId, total: 0, videos: [] });
+  return await leerJsonSiExiste(ruta, { ok: true, proyectoId, total: 0, totalValidos: 0, modo: 'sin-videos', esMultivideo: false, videos: [] });
 }
 
 async function crearProyectoEtapas(req, res, aplicarCabeceras) {
@@ -206,12 +245,19 @@ async function subirVideos(req, res, aplicarCabeceras) {
         datos: {
           ...(estadoActual.datos || {}),
           videosOriginales: guardado.videos.length,
-          rutaVideosOriginales: guardado.rutaJson
+          videosOriginalesValidos: guardado.resumen.totalValidos,
+          modoVideosOriginales: guardado.resumen.modo,
+          esMultivideo: guardado.resumen.esMultivideo,
+          videoPrincipalId: guardado.resumen.videoPrincipalId,
+          rutaVideosOriginales: guardado.rutaJson,
+          idsVideosOriginales: guardado.resumen.ids
         }
       },
-      mensaje: 'Videos originales registrados para el flujo por etapas.'
+      mensaje: guardado.resumen.esMultivideo
+        ? `${guardado.videos.length} videos originales registrados para el flujo por etapas.`
+        : 'Video original registrado para el flujo por etapas.'
     });
-    return responderOk(res, { proyectoId, videos: guardado.videos, estado });
+    return responderOk(res, { proyectoId, videos: guardado.videos, resumenVideos: guardado.resumen, estado });
   } catch (error) {
     return responderError(res, error, 400);
   } finally {
