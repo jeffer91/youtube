@@ -9,6 +9,9 @@ function $(id) { return document.getElementById(id); }
 function texto(valor, respaldo = '-') { const limpio = String(valor ?? '').trim(); return limpio || respaldo; }
 function escapar(valor) { return texto(valor, '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;'); }
 function numero(valor) { const n = Number(valor); return Number.isFinite(n) ? n : null; }
+function numeroSeguro(valor, respaldo = 0) { const n = Number(valor); return Number.isFinite(n) ? n : respaldo; }
+function arr(valor) { return Array.isArray(valor) ? valor : []; }
+function setTexto(id, valor) { const el = $(id); if (el) el.textContent = String(valor ?? '-'); }
 
 async function obtenerBaseApi() {
   const apiElectron = window.AutoVideoJeff?.servidor?.obtenerEstado;
@@ -95,6 +98,119 @@ function obtenerContexto(plan = {}) { return plan.contextoPlan || plan.fuente?.c
 function obtenerPlanPorPartes(plan = {}) { return plan.planPorPartes || plan.fuente?.planPorPartes || {}; }
 function obtenerPlanEjecutable(plan = {}) { return plan.planEjecutable || plan.planPorPartes?.planEjecutable || plan.planProduccion?.planEjecutable || null; }
 function obtenerEditorPlan(plan = {}) { return plan.editorPlan || plan.planPorPartes?.editorPlan || plan.planProduccion?.editorPlan || {}; }
+function obtenerAccionesEjecutables(plan = {}) { return arr(obtenerPlanEjecutable(plan)?.timeline); }
+
+function textoBusquedaItem(item = {}) {
+  const datos = item.datos || {};
+  return [
+    item.tipo,
+    item.accion,
+    item.pista,
+    item.nombre,
+    item.titulo,
+    item.descripcion,
+    item.textoPantalla,
+    item.subtitulo,
+    item.efecto,
+    item.audio,
+    item.transicion,
+    item.recursoBiblioteca,
+    datos.tipo,
+    datos.tipoPlan,
+    datos.estilo,
+    datos.estiloSubtitulos,
+    datos.nombre,
+    datos.descripcion,
+    datos.motivo,
+    datos.audio,
+    datos.sonido,
+    datos.efecto
+  ].filter(Boolean).join(' ').toLowerCase();
+}
+
+function itemIncluye(item = {}, palabras = []) {
+  const base = textoBusquedaItem(item);
+  return palabras.some((palabra) => base.includes(palabra));
+}
+
+function contarElementosTipo(elementos = [], tipo = '') {
+  return elementos.filter((item) => item.tipo === tipo).length;
+}
+
+function contarItemsPorPalabras(items = [], palabras = []) {
+  return items.filter((item) => itemIncluye(item, palabras)).length;
+}
+
+function obtenerProveedorPlan(plan = {}) {
+  const partes = obtenerPlanPorPartes(plan);
+  const ejecutable = obtenerPlanEjecutable(plan);
+  return texto(
+    partes.resumen?.mejorProveedor ||
+    partes.resumen?.proveedorPrincipal ||
+    ejecutable?.proveedor ||
+    partes.mejorOpcionPlan?.proveedor ||
+    partes.opcionesPlan?.seleccionAutomatica?.proveedor,
+    'fallback'
+  );
+}
+
+function describirTipoSubtitulos({ plan = {}, elementos = [], acciones = [] } = {}) {
+  const resumen = plan.resumen || {};
+  const subtitulos = elementos.filter((item) => item.tipo === 'subtitulo');
+  const accionesConSubtitulo = acciones.filter((item) => texto(item.subtitulo, '').length > 0);
+  const total = Math.max(numeroSeguro(resumen.subtitulos, 0), subtitulos.length, accionesConSubtitulo.length);
+  if (total <= 0) return 'Sin subtitulos';
+
+  const tipos = new Set();
+  if ([...subtitulos, ...accionesConSubtitulo].some((item) => itemIncluye(item, ['global', 'transcripcion', 'segmento']))) tipos.add('Globales');
+  if (accionesConSubtitulo.length > 0) tipos.add('Ejecutables');
+  if (subtitulos.some((item) => itemIncluye(item, ['manual']))) tipos.add('Manual');
+  if (subtitulos.some((item) => itemIncluye(item, ['tiktok', 'profesional']))) tipos.add('TikTok profesional');
+
+  return [...tipos].slice(0, 2).join(' + ') || 'Desde transcripcion';
+}
+
+function construirResumenTecnico(plan = {}) {
+  const resumen = plan.resumen || {};
+  const elementos = obtenerElementos(plan);
+  const acciones = obtenerAccionesEjecutables(plan);
+  const recursos = arr(plan.planProduccion?.elementos).filter((item) => item.tipo === 'recurso');
+  const efectosVisuales = Math.max(
+    numeroSeguro(resumen.efectos, 0) + numeroSeguro(resumen.zooms, 0),
+    contarElementosTipo(elementos, 'efecto') + contarElementosTipo(elementos, 'zoom'),
+    contarItemsPorPalabras(acciones, ['efecto', 'fx', 'zoom', 'punch', 'transicion'])
+  );
+  const animaciones = Math.max(
+    numeroSeguro(resumen.animaciones, 0),
+    contarElementosTipo(elementos, 'animacion'),
+    contarItemsPorPalabras(acciones, ['animacion', 'animation', 'entrada_titulo', 'salida_cierre'])
+  );
+  const audioBase = contarElementosTipo(elementos, 'audio');
+  const efectosAudio = Math.max(
+    acciones.filter((item) => texto(item.audio, '').length > 0 && !itemIncluye(item, ['musica', 'música', 'music', 'background'])).length,
+    contarItemsPorPalabras(elementos, ['sfx', 'sonido', 'efecto audio', 'audio effect'])
+  );
+  const musicaFondo = Math.max(
+    contarItemsPorPalabras(acciones, ['musica', 'música', 'music', 'background', 'fondo musical']),
+    contarItemsPorPalabras(elementos, ['musica', 'música', 'music', 'background', 'fondo musical']),
+    contarItemsPorPalabras(recursos, ['musica', 'música', 'music', 'background', 'fondo musical'])
+  );
+  const tipoSubtitulos = describirTipoSubtitulos({ plan, elementos, acciones });
+  const proveedor = obtenerProveedorPlan(plan);
+
+  return {
+    proveedor,
+    efectosVisuales,
+    animaciones,
+    tipoSubtitulos,
+    audioBase,
+    efectosAudio,
+    musicaFondo,
+    musicaTexto: musicaFondo > 0 ? `Si (${musicaFondo})` : 'No definida',
+    efectosAudioTexto: audioBase > 0 ? `${efectosAudio} SFX / ${audioBase} base` : `${efectosAudio} SFX`,
+    accionesEjecutables: acciones.length
+  };
+}
 
 function renderKpis(plan = {}) {
   const resumen = plan.resumen || {};
@@ -106,25 +222,33 @@ function renderKpis(plan = {}) {
   const resumenBiblioteca = biblioteca.resumen || {};
   const resumenContexto = contexto.resumen || contexto || {};
   const resumenPartes = partes.resumen || partes || {};
-  $('planTotalElementos').textContent = String(resumen.totalElementos ?? elementos.length ?? 0);
-  $('planSubtitulos').textContent = String(resumen.subtitulos ?? elementos.filter((e) => e.tipo === 'subtitulo').length);
-  $('planTextos').textContent = String(resumen.textos ?? elementos.filter((e) => e.tipo === 'texto').length);
-  $('planRecursos').textContent = String(resumen.recursos ?? elementos.filter((e) => e.tipo === 'recurso').length);
-  const bibliotecaEl = $('planBiblioteca');
-  if (bibliotecaEl) bibliotecaEl.textContent = `${resumenBiblioteca.seleccionadosProyecto ?? resumen.recursosBibliotecaProyecto ?? 0}P / ${resumenBiblioteca.seleccionadosGeneral ?? resumen.recursosBibliotecaGeneral ?? 0}G`;
-  const contextoEl = $('planContexto');
-  if (contextoEl) contextoEl.textContent = resumen.contextoListoParaIA || resumenContexto.listoParaIA ? `${resumenContexto.totalPartes ?? resumen.contextoPartes ?? 0} partes` : 'Revisar';
-  const partesEl = $('planPartes');
-  if (partesEl) partesEl.textContent = `${resumenPartes.validadas ?? resumen.planPartesValidadas ?? 0}/${resumenPartes.totalPartes ?? resumen.planPartesTotal ?? 0}`;
-  const editorEl = $('planEditor');
-  if (editorEl) editorEl.textContent = editorPlan.aprobado || resumen.planAprobadoParaProduccion ? 'Aprobado' : editorPlan.totalCambios ? 'Editado' : 'Pendiente';
-  $('planListo').textContent = resumen.listoParaProduccion && (editorPlan.aprobado || resumen.planAprobadoParaProduccion) ? 'Si' : 'Revisar';
+  const tecnico = construirResumenTecnico(plan);
+  setTexto('planTotalElementos', String(resumen.totalElementos ?? elementos.length ?? 0));
+  setTexto('planSubtitulos', String(resumen.subtitulos ?? elementos.filter((e) => e.tipo === 'subtitulo').length));
+  setTexto('planTextos', String(resumen.textos ?? elementos.filter((e) => e.tipo === 'texto').length));
+  setTexto('planRecursos', String(resumen.recursos ?? elementos.filter((e) => e.tipo === 'recurso').length));
+  setTexto('planBiblioteca', `${resumenBiblioteca.seleccionadosProyecto ?? resumen.recursosBibliotecaProyecto ?? 0}P / ${resumenBiblioteca.seleccionadosGeneral ?? resumen.recursosBibliotecaGeneral ?? 0}G`);
+  setTexto('planContexto', resumen.contextoListoParaIA || resumenContexto.listoParaIA ? `${resumenContexto.totalPartes ?? resumen.contextoPartes ?? 0} partes` : 'Revisar');
+  setTexto('planPartes', `${resumenPartes.validadas ?? resumen.planPartesValidadas ?? 0}/${resumenPartes.totalPartes ?? resumen.planPartesTotal ?? 0}`);
+  setTexto('planProveedorIA', tecnico.proveedor);
+  setTexto('planEfectosVisuales', String(tecnico.efectosVisuales));
+  setTexto('planAnimaciones', String(tecnico.animaciones));
+  setTexto('planTipoSubtitulos', tecnico.tipoSubtitulos);
+  setTexto('planEfectosAudio', tecnico.efectosAudioTexto);
+  setTexto('planMusicaFondo', tecnico.musicaTexto);
+  setTexto('planEditor', editorPlan.aprobado || resumen.planAprobadoParaProduccion ? 'Aprobado' : editorPlan.totalCambios ? 'Editado' : 'Pendiente');
+  setTexto('planListo', resumen.listoParaProduccion && (editorPlan.aprobado || resumen.planAprobadoParaProduccion) ? 'Si' : 'Revisar');
 }
 
 function renderLectura(plan = {}) {
   const lectura = Array.isArray(plan.lectura) ? plan.lectura : [];
-  $('planLecturaEstado').textContent = String(lectura.length);
-  $('planLectura').innerHTML = lectura.length ? `<ol>${lectura.map((item) => `<li>${escapar(item)}</li>`).join('')}</ol>` : '<div class="plan-empty">El plan no tiene lectura editorial.</div>';
+  const tecnico = construirResumenTecnico(plan);
+  const lecturaTecnica = [
+    `Resumen tecnico: ${tecnico.efectosVisuales} efecto(s) visual(es), ${tecnico.animaciones} animacion(es), subtitulos ${tecnico.tipoSubtitulos.toLowerCase()}, ${tecnico.efectosAudioTexto} y musica de fondo: ${tecnico.musicaTexto.toLowerCase()}.`
+  ];
+  const lecturaFinal = lectura.length ? [...lectura, ...lecturaTecnica] : lecturaTecnica;
+  setTexto('planLecturaEstado', String(lecturaFinal.length));
+  $('planLectura').innerHTML = lecturaFinal.length ? `<ol>${lecturaFinal.map((item) => `<li>${escapar(item)}</li>`).join('')}</ol>` : '<div class="plan-empty">El plan no tiene lectura editorial.</div>';
 }
 
 function renderFuente(plan = {}) {
@@ -136,7 +260,8 @@ function renderFuente(plan = {}) {
   const resumenBiblioteca = biblioteca.resumen || {};
   const resumenContexto = contexto.resumen || contexto || {};
   const resumenPartes = partes.resumen || partes || {};
-  $('planFuenteEstado').textContent = fuente.etapaOrigen ? 'Conectada' : 'Sin datos';
+  const tecnico = construirResumenTecnico(plan);
+  setTexto('planFuenteEstado', fuente.etapaOrigen ? 'Conectada' : 'Sin datos');
   $('planFuente').innerHTML = `
     <article><strong>Etapa origen</strong><span>${escapar(fuente.etapaOrigen || '-')}</span></article>
     <article><strong>Transcripcion</strong><span>${fuente.tieneTranscripcion ? 'Disponible' : 'Pendiente o conservadora'}</span></article>
@@ -145,6 +270,11 @@ function renderFuente(plan = {}) {
     <article><strong>Biblioteca proyecto</strong><span>${escapar(resumenBiblioteca.seleccionadosProyecto ?? 0)} seleccionados de ${escapar(resumenBiblioteca.totalProyecto ?? 0)}</span></article>
     <article><strong>Contexto IA</strong><span>${resumenContexto.listoParaIA ? 'Listo' : 'Pendiente'} - ${escapar(resumenContexto.totalPartes ?? 0)} partes</span></article>
     <article><strong>Plan por partes</strong><span>${escapar(resumenPartes.validadas ?? 0)}/${escapar(resumenPartes.totalPartes ?? 0)} validadas</span></article>
+    <article><strong>Proveedor IA</strong><span>${escapar(tecnico.proveedor)}</span></article>
+    <article><strong>Efectos visuales</strong><span>${escapar(tecnico.efectosVisuales)} efecto(s) incluyendo zooms si aplica</span></article>
+    <article><strong>Animaciones</strong><span>${escapar(tecnico.animaciones)} animacion(es)</span></article>
+    <article><strong>Subtitulos</strong><span>${escapar(tecnico.tipoSubtitulos)}</span></article>
+    <article><strong>Audio</strong><span>${escapar(tecnico.efectosAudioTexto)} - musica fondo: ${escapar(tecnico.musicaTexto)}</span></article>
     <article><strong>Necesidades</strong><span>${necesidades.map(escapar).join(' - ') || 'Sin necesidades criticas'}</span></article>
   `;
 }
@@ -220,7 +350,7 @@ function renderEditor(plan = {}) {
 function renderTimeline(plan = {}) {
   const pistas = obtenerTimeline(plan);
   const elementos = obtenerElementos(plan);
-  $('planTimelineEstado').textContent = String(pistas.length || elementos.length);
+  setTexto('planTimelineEstado', String(pistas.length || elementos.length));
   if (!pistas.length) {
     const agrupados = elementos.slice(0, 12);
     $('planTimeline').innerHTML = agrupados.length ? agrupados.map(renderTimelineItem).join('') : '<div class="plan-empty">No hay linea de tiempo cargada.</div>';
@@ -242,7 +372,7 @@ function renderTimelineItem(item = {}) {
 
 function renderElementos(plan = {}) {
   const elementos = obtenerElementos(plan);
-  $('planElementosEstado').textContent = String(elementos.length);
+  setTexto('planElementosEstado', String(elementos.length));
   if (!elementos.length) { $('planElementos').innerHTML = '<div class="plan-empty">No hay elementos revisables en el plan.</div>'; return; }
   const rows = elementos.slice(0, 100).map((item) => {
     const biblioteca = item.biblioteca || item.datos?.biblioteca || null;
@@ -291,9 +421,11 @@ async function procesarPlan() {
   setChip('Planificando...', 'normal');
   const datos = await api(`/api/proyectos/${encodeURIComponent(proyectoId)}/plan/procesar`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ origen: 'pantalla-plan-edicion' }) });
   renderResultado(datos);
+  const plan = extraerPlan(datos);
   const resumen = datos.biblioteca?.resumen || datos.resultado?.biblioteca?.resumen || {};
   const partes = datos.planPorPartes?.resumen || datos.resultado?.planPorPartes?.resumen || {};
-  setMensaje(datos.mensaje || `Plan creado: ${resumen.seleccionadosProyecto || 0} temporales, ${resumen.seleccionadosGeneral || 0} generales y ${partes.validadas || 0}/${partes.totalPartes || 0} partes. Revisa y aprueba antes de producir.`, 'ok');
+  const tecnico = construirResumenTecnico(plan);
+  setMensaje(datos.mensaje || `Plan creado: ${resumen.seleccionadosProyecto || 0} temporales, ${resumen.seleccionadosGeneral || 0} generales, ${partes.validadas || 0}/${partes.totalPartes || 0} partes, ${tecnico.efectosVisuales} efecto(s) visual(es), ${tecnico.animaciones} animacion(es), ${tecnico.efectosAudioTexto} y musica: ${tecnico.musicaTexto}. Revisa y aprueba antes de producir.`, 'ok');
 }
 
 async function editarPlan(operacion, accionId = '') {
