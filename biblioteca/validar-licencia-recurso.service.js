@@ -22,12 +22,13 @@ export function validarLicenciaRecurso(recurso = {}) {
   };
 }
 
-export function marcarLicenciaRevisada(recurso = {}, licencia = 'libre') {
+export function marcarLicenciaRevisada(recurso = {}, licencia = 'propio') {
   return {
     ...recurso,
     licencia,
-    estado: recurso.estado === 'rechazado' ? recurso.estado : 'aprobado',
-    aprobado: recurso.estado !== 'rechazado',
+    licenciaRevisada: true,
+    estadoTecnico: recurso.estadoTecnico || recurso.estado || 'pendiente',
+    estado: recurso.estadoTecnico || recurso.estado || 'pendiente',
     actualizadoEn: new Date().toISOString()
   };
 }
