@@ -47,6 +47,11 @@ function normalizarAlcance(valor = ALCANCES_BIBLIOTECA.GENERAL) {
   return Object.values(ALCANCES_BIBLIOTECA).includes(limpio) ? limpio : ALCANCES_BIBLIOTECA.GENERAL;
 }
 
+function normalizarEstadoTecnico(valor = ESTADOS_TECNICOS_RECURSO.PENDIENTE) {
+  const limpio = limpiarNombreRecurso(valor || ESTADOS_TECNICOS_RECURSO.PENDIENTE);
+  return Object.values(ESTADOS_TECNICOS_RECURSO).includes(limpio) ? limpio : BIBLIOTECA_CONFIG.estadoTecnicoPorDefecto;
+}
+
 export function detectarTipoArchivoBiblioteca({ nombreArchivo = '', mime = '', tipo = '' } = {}) {
   const tipoLimpio = limpiarNombreRecurso(tipo || '');
   if (obtenerTiposBiblioteca().includes(tipoLimpio)) return tipoLimpio;
@@ -110,7 +115,7 @@ export function crearRecursoModelo(datos = {}) {
   const alcance = normalizarAlcance(datos.alcance || datos.biblioteca || BIBLIOTECA_CONFIG.alcancePorDefecto);
   const archivo = normalizarArchivo(datos, tipo);
   const formatoDetectado = detectarFormatoInicialRecurso({ tipo, formato: datos.formato || datos.tamanoFormato || datos.tamañoFormato, orientacion: datos.orientacion, ancho: datos.ancho, alto: datos.alto });
-  const estadoTecnico = Object.values(ESTADOS_TECNICOS_RECURSO).includes(datos.estadoTecnico) ? datos.estadoTecnico : (datos.estado || BIBLIOTECA_CONFIG.estadoTecnicoPorDefecto);
+  const estadoTecnico = normalizarEstadoTecnico(datos.estadoTecnico || datos.estado);
 
   return {
     id: datos.id || crearIdRecurso(nombre),
@@ -145,6 +150,7 @@ export function crearRecursoModelo(datos = {}) {
     licencia: datos.licencia || BIBLIOTECA_CONFIG.licenciaPorDefecto,
     estadoTecnico,
     estado: estadoTecnico,
+    estadoUso: datos.estadoUso || null,
     errores: Array.isArray(datos.errores) ? datos.errores : [],
     advertencias: Array.isArray(datos.advertencias) ? datos.advertencias : [],
     duplicadoDe: datos.duplicadoDe || null,
