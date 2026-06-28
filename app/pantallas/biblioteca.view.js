@@ -3,71 +3,85 @@ export function renderBibliotecaView() {
     <section class="aj-view-card library-page">
       <div class="library-hero">
         <div>
-          <p class="eyebrow">Biblioteca inteligente</p>
-          <h2>Recursos para edición y producción</h2>
-          <p>Arrastra recursos, clasifícalos y genera sugerencias automáticas para el proyecto según entendimiento y plan de edición.</p>
+          <p class="eyebrow">Biblioteca</p>
+          <h2>Recursos permanentes para AutoVideoJeff</h2>
+          <p>Sube un recurso a la vez, clasifícalo por estilo de video y categoría, y déjalo listo para que la app lo use automáticamente.</p>
         </div>
-        <span class="aj-status-chip">Bloque 12</span>
+        <span class="aj-status-chip">Biblioteca 2</span>
       </div>
 
-      <section class="library-recommend-panel">
-        <header>
-          <div>
-            <p class="eyebrow">Recursos para producción</p>
-            <h3>Recomendador por proyecto</h3>
-            <p>Usa el plan de edición para sugerir imágenes, videos, fondos, overlays, transiciones, plantillas y audios útiles.</p>
-          </div>
-        </header>
-        <div class="library-recommend-toolbar">
-          <label><span>ID del proyecto</span><input id="libraryProjectIdInput" type="text" placeholder="Pega aquí el proyectoId" autocomplete="off" /></label>
-          <label><span>Consulta opcional</span><input id="libraryRecommendQuery" type="search" placeholder="Ej: gol, explicación, cierre, estadio" /></label>
-          <label><span>Límite por necesidad</span><select id="libraryRecommendLimit"><option value="3">3</option><option value="4" selected>4</option><option value="5">5</option><option value="8">8</option></select></label>
-          <button class="library-button is-smart" type="button" data-library-action="recommend-project">Recomendar recursos</button>
+      <nav class="library-tabs" aria-label="Pestañas de biblioteca">
+        <button class="library-tab is-active" type="button" data-library-tab="carga">Carga</button>
+        <button class="library-tab" type="button" data-library-tab="recursos">Recursos</button>
+      </nav>
+
+      <section id="libraryTabCarga" class="library-tab-panel is-active" data-library-panel="carga">
+        <div class="library-upload-layout">
+          <section class="library-upload-main">
+            <div id="libraryDropZone" class="library-drop-zone">
+              <input id="libraryFileInput" type="file" accept="video/*,image/*,audio/*,.mp4,.mov,.m4v,.avi,.mkv,.webm,.jpg,.jpeg,.png,.webp,.gif,.mp3,.wav,.m4a,.aac,.ogg,.flac" hidden />
+              <div>
+                <strong>Subir un archivo</strong>
+                <span>Video, imagen o audio. Un recurso a la vez.</span>
+              </div>
+              <button class="library-button" type="button" data-library-action="choose-file">Elegir archivo</button>
+            </div>
+
+            <article id="librarySelectedFileCard" class="library-selected-file">
+              <span>Archivo seleccionado</span>
+              <strong id="librarySelectedFileName">Ningún archivo seleccionado.</strong>
+              <small id="librarySelectedFileMeta">Selecciona un archivo para clasificarlo.</small>
+            </article>
+          </section>
+
+          <aside class="library-upload-side">
+            <p class="eyebrow">Clasificación compacta</p>
+            <h3>Datos del recurso</h3>
+            <form class="library-form library-form--compact" onsubmit="return false;">
+              <label class="library-wide"><span>Estilo de video</span><select id="libraryNewStyles" multiple size="4"></select><small>Puede pertenecer a varios estilos.</small></label>
+              <label><span>Categoría</span><select id="libraryNewCategory"></select></label>
+              <label><span>Otra categoría</span><input id="libraryNewCustomCategory" type="text" placeholder="Opcional" /></label>
+              <label><span>Nombre</span><input id="libraryNewName" type="text" placeholder="Ej: Intro 11 contra 11" /></label>
+              <label><span>Tipo</span><select id="libraryNewType"><option value="video">Video</option><option value="imagen">Imagen</option><option value="audio">Audio</option></select></label>
+              <label><span>Tamaño/formato</span><select id="libraryNewFormat"><option value="desconocido">Detectar / desconocido</option><option value="horizontal-16-9">Horizontal 16:9</option><option value="vertical-9-16">Vertical 9:16</option><option value="cuadrado-1-1">Cuadrado 1:1</option><option value="audio">Audio</option><option value="imagen">Imagen</option></select></label>
+              <label class="library-wide"><span>Etiquetas</span><input id="libraryNewTags" type="text" placeholder="intro, fútbol, logo, cierre" /></label>
+              <label class="library-wide is-hidden"><span>Ruta local</span><input id="libraryNewPath" type="text" /></label>
+              <input id="libraryNewOriginalName" type="hidden" />
+              <input id="libraryNewMime" type="hidden" />
+              <input id="libraryNewSize" type="hidden" />
+              <div class="library-actions library-wide">
+                <button class="library-button is-save" type="button" data-library-action="save">Guardar en biblioteca general</button>
+                <button class="library-button is-muted" type="button" data-library-action="clear-form">Limpiar</button>
+              </div>
+            </form>
+            <div id="libraryDuplicateBox" class="library-duplicate-box" hidden>
+              <strong>Recurso posiblemente repetido</strong>
+              <p id="libraryDuplicateText">Decide si quieres reemplazarlo o guardarlo como copia.</p>
+              <div class="library-actions">
+                <button class="library-button is-save" type="button" data-library-action="duplicate-replace">Reemplazar</button>
+                <button class="library-button" type="button" data-library-action="duplicate-copy">Duplicar</button>
+              </div>
+            </div>
+          </aside>
         </div>
-        <div class="library-recommend-kpis">
-          <article><span>Necesidades</span><strong id="libraryRecommendNeeds">—</strong></article>
-          <article><span>Recursos analizados</span><strong id="libraryRecommendAnalyzed">—</strong></article>
-          <article><span>Sugerencias</span><strong id="libraryRecommendSuggestions">—</strong></article>
-          <article><span>Sin recurso</span><strong id="libraryRecommendMissing">—</strong></article>
-        </div>
-        <div id="libraryRecommendList" class="library-recommend-list"><div class="library-empty">Genera recomendaciones para ver recursos sugeridos por elemento del plan.</div></div>
       </section>
 
-      <section id="libraryDropZone" class="library-drop-zone">
-        <input id="libraryFileInput" type="file" hidden />
-        <div>
-          <strong>Arrastra un recurso aquí</strong>
-          <span>Imagen, video, audio, fondo, overlay, transición o plantilla.</span>
+      <section id="libraryTabRecursos" class="library-tab-panel" data-library-panel="recursos" hidden>
+        <div class="library-toolbar">
+          <input id="librarySearchInput" data-library-filter type="search" placeholder="Buscar por nombre, etiqueta o categoría" />
+          <select id="libraryTypeFilter" data-library-filter><option value="">Todos los tipos</option><option value="video">Video</option><option value="imagen">Imagen</option><option value="audio">Audio</option></select>
+          <select id="libraryCategoryFilter" data-library-filter><option value="">Todas las categorías</option></select>
+          <select id="libraryProfileFilter" data-library-filter><option value="">Todos los estilos</option></select>
+          <select id="libraryViewMode" data-library-filter><option value="cards">Tarjetas</option><option value="table">Tabla</option></select>
+          <button class="library-button" type="button" data-library-action="reload">Actualizar</button>
         </div>
-        <button class="library-button" type="button" data-library-action="choose-file">Elegir recurso</button>
+
+        <div class="library-resource-header">
+          <p id="libraryResourcesSummary" class="mini-summary">Biblioteca pendiente de carga.</p>
+          <p id="libraryStatus" class="library-status">Sube un recurso o presiona actualizar.</p>
+        </div>
+        <div id="libraryResourcesList" class="library-resources-list"></div>
       </section>
-
-      <form class="library-form library-form--featured" onsubmit="return false;">
-        <label><span>Nombre</span><input id="libraryNewName" type="text" placeholder="Ej: Fondo estadio" /></label>
-        <label><span>Tipo</span><select id="libraryNewType"><option value="imagen">Imagen</option><option value="video">Video</option><option value="audio">Audio</option><option value="fondo">Fondo</option><option value="overlay">Overlay</option><option value="transicion">Transición</option><option value="plantilla">Plantilla</option></select></label>
-        <label><span>Categoría</span><input id="libraryNewCategory" type="text" value="general" placeholder="fútbol, cine, educación..." /></label>
-        <label><span>Tipo de edición</span><select id="libraryNewEditType"><option value="gancho_visual">Gancho visual</option><option value="apoyo_visual" selected>Apoyo visual</option><option value="transicion">Transición</option><option value="fondo">Fondo</option><option value="overlay">Overlay</option><option value="cierre">Cierre</option><option value="sonido">Sonido</option></select></label>
-        <label><span>Tono</span><select id="libraryNewTone"><option value="energetico">Energético</option><option value="profesional">Profesional</option><option value="emocional">Emocional</option><option value="epico">Épico</option><option value="educativo">Educativo</option><option value="neutral" selected>Neutral</option></select></label>
-        <label><span>Perfil</span><input id="libraryNewProfile" type="text" placeholder="general o perfil específico" /></label>
-        <label><span>Tema</span><input id="libraryNewTopic" type="text" placeholder="Tema relacionado" /></label>
-        <label><span>Momento sugerido</span><input id="libraryNewMoment" type="text" placeholder="inicio, medio, cierre, gol, explicación..." /></label>
-        <label class="library-wide"><span>Ruta local</span><input id="libraryNewPath" type="text" placeholder="C:/recursos/archivo.mp4" /></label>
-        <label class="library-wide"><span>URL</span><input id="libraryNewUrl" type="text" placeholder="https://..." /></label>
-        <label><span>Licencia</span><input id="libraryNewLicense" type="text" value="pendiente_revision" /></label>
-        <div class="library-actions"><button class="library-button is-save" type="button" data-library-action="save">Guardar recurso</button></div>
-      </form>
-
-      <div class="library-toolbar">
-        <input id="librarySearchInput" data-library-filter type="search" placeholder="Buscar por tema, nombre o frase" />
-        <select id="libraryTypeFilter" data-library-filter><option value="">Todos los tipos</option><option value="imagen">Imagen</option><option value="video">Video</option><option value="audio">Audio</option><option value="fondo">Fondo</option><option value="overlay">Overlay</option><option value="transicion">Transición</option><option value="plantilla">Plantilla</option></select>
-        <select id="libraryCategoryFilter" data-library-filter><option value="">Todas las categorías</option></select>
-        <select id="libraryProfileFilter" data-library-filter><option value="">Todos los perfiles</option><option value="11-contra-11">11 contra 11</option><option value="jeff-isekai">Jeff Isekai</option><option value="creciaula">Creciaula</option><option value="general">General</option><option value="institucional">Institucional</option><option value="el-don-historia">El Don Historia</option><option value="jeff-verso">Jeff Verso</option></select>
-      </div>
-
-      <div class="library-actions"><button class="library-button" type="button" data-library-action="reload">Actualizar biblioteca</button></div>
-      <p id="libraryResourcesSummary" class="mini-summary">Biblioteca pendiente de carga.</p>
-      <p id="libraryStatus" class="library-status">Arrastra un recurso o presiona actualizar.</p>
-      <div id="libraryResourcesList" class="library-resources-list"></div>
     </section>
   `;
 }
