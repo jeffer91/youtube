@@ -2,8 +2,9 @@ import fs from 'fs';
 import path from 'path';
 import { spawn } from 'child_process';
 import { fileURLToPath } from 'url';
-import { escribirJson } from '../../../comun/archivos.js';
+import { escribirJson, obtenerRutaRaiz } from '../../../comun/archivos.js';
 import { prepararAudioMotoresTranscripcion, crearFuenteAudioParaMotor } from '../../servicios/preparar-audio-motores.service.js';
+import { obtenerPythonPreferido, resolverPythonParaModulo } from '../python-local.service.js';
 import {
   ESTADOS_TRANSCRIPCION,
   MOTORES_TRANSCRIPCION,
@@ -40,23 +41,63 @@ function existeCarpeta(rutaCarpeta) {
 }
 
 function obtenerPython(opciones = {}) {
-  return String(
-    opciones.pythonPath ||
-    opciones.pythonVosk ||
-    process.env.AUTOVIDEOJEFF_PYTHON ||
-    process.env.PYTHON ||
-    (process.platform === 'win32' ? 'python' : 'python3')
-  ).trim();
+  return obtenerPythonPreferido(opciones, ['pythonVosk']);
+}
+
+function buscarModeloVoskLocal() {
+  const raiz = obtenerRutaRaiz();
+  const candidatosDirectos = [
+    path.join(raiz, 'vosk-model-small-es-0.42'),
+    path.join(raiz, 'vosk-model-small-es'),
+    path.join(raiz, 'modelos', 'vosk-model-small-es-0.42'),
+    path.join(raiz, 'modelos', 'vosk-model-small-es'),
+    path.join(raiz, 'modelos', 'transcripcion', 'vosk-model-small-es-0.42'),
+    path.join(raiz, 'modelos', 'transcripcion', 'vosk-model-small-es'),
+    path.join(raiz, 'modelos', 'vosk', 'vosk-model-small-es-0.42'),
+    path.join(raiz, 'modelos', 'vosk', 'vosk-model-small-es')
+  ];
+  const directo = candidatosDirectos.find(existeCarpeta);
+  if (directo) return directo;
+
+  const carpetasPadre = [
+    raiz,
+    path.join(raiz, 'modelos'),
+    path.join(raiz, 'modelos', 'transcripcion'),
+    path.join(raiz, 'modelos', 'vosk')
+  ];
+
+  for (const carpeta of carpetasPadre) {
+    if (!existeCarpeta(carpeta)) continue;
+    const encontrada = fs.readdirSync(carpeta)
+      .map((nombre) => path.join(carpeta, nombre))
+      .find((ruta) => existeCarpeta(ruta) && path.basename(ruta).toLowerCase().startsWith('vosk-model'));
+    if (encontrada) return encontrada;
+  }
+
+  return '';
+}
+
+function buscarZipModeloVoskLocal() {
+  const raiz = obtenerRutaRaiz();
+  const candidatos = [
+    path.join(raiz, 'vosk-model-small-es-0.42.zip'),
+    path.join(raiz, 'modelos', 'vosk-model-small-es-0.42.zip'),
+    path.join(raiz, 'modelos', 'transcripcion', 'vosk-model-small-es-0.42.zip'),
+    path.join(raiz, 'modelos', 'vosk', 'vosk-model-small-es-0.42.zip')
+  ];
+  return candidatos.find(existeArchivo) || '';
 }
 
 function resolverModeloVosk(opciones = {}) {
-  return String(
+  const configurado = String(
     opciones.voskModel ||
     opciones.rutaModeloVosk ||
     process.env.AUTOVIDEOJEFF_VOSK_MODEL ||
     process.env.VOSK_MODEL ||
     ''
   ).trim();
+  if (configurado) return configurado;
+  return buscarModeloVoskLocal();
 }
 
 function obtenerConfigVosk(opciones = {}) {
@@ -66,6 +107,7 @@ function obtenerConfigVosk(opciones = {}) {
     timeoutMs: Number(opciones.voskTimeoutMs || VOSK_CONFIG.timeoutMs),
     python: obtenerPython(opciones),
     modelo: resolverModeloVosk(opciones),
+    zipModeloDetectado: buscarZipModeloVoskLocal(),
     words: opciones.voskWords !== false
   };
 }
@@ -136,6 +178,13 @@ function crearResultadoError({ mensaje, error = null, metadata = {} }) {
   });
 }
 
+function mensajeModeloFaltante(config = {}) {
+  if (config.zipModeloDetectado) {
+    return `Falta extraer el modelo Vosk. Se encontró ZIP: ${config.zipModeloDetectado}. Extrae ese ZIP y vuelve a procesar.`;
+  }
+  return 'Falta la carpeta del modelo Vosk. Configura AUTOVIDEOJEFF_VOSK_MODEL o coloca una carpeta vosk-model dentro de modelos/vosk.';
+}
+
 export async function verificarVosk({ opciones = {} } = {}) {
   const config = obtenerConfigVosk(opciones);
   if (!existeArchivo(RUNNER_VOSK)) {
@@ -148,23 +197,26 @@ export async function verificarVosk({ opciones = {} } = {}) {
       motor: MOTORES_TRANSCRIPCION.VOSK,
       python: config.python,
       modelo: config.modelo,
-      mensaje: 'Falta la carpeta del modelo Vosk. Configura AUTOVIDEOJEFF_VOSK_MODEL o voskModel.'
+      zipModeloDetectado: config.zipModeloDetectado,
+      mensaje: mensajeModeloFaltante(config)
     };
   }
 
-  const resultado = await ejecutarProceso({
-    comando: config.python,
-    args: ['-c', 'import vosk; print("ok")'],
+  const resolucion = await resolverPythonParaModulo({
+    modulo: 'vosk',
+    opciones,
+    clavesOpciones: ['pythonVosk'],
     timeoutMs: 15000
   });
 
   return {
-    ok: resultado.ok && resultado.stdout.includes('ok'),
+    ok: resolucion.ok,
     motor: MOTORES_TRANSCRIPCION.VOSK,
-    python: config.python,
+    python: resolucion.ok ? resolucion.python : config.python,
     modelo: config.modelo,
-    mensaje: resultado.ok ? 'Vosk disponible.' : 'Vosk no está instalado o Python no está disponible.',
-    detalle: resultado.ok ? null : resultado.error
+    mensaje: resolucion.ok ? 'Vosk disponible.' : 'Vosk no está instalado en ningún Python local detectado.',
+    detalle: resolucion.ok ? null : resolucion.mensaje,
+    intentos: resolucion.ok ? undefined : resolucion.intentos
   };
 }
 
@@ -172,15 +224,29 @@ export async function transcribirConVosk({ entrada, audio = null, opciones = {} 
   const config = obtenerConfigVosk(opciones);
   if (!config.modelo) {
     return crearResultadoError({
-      mensaje: 'Falta modelo de Vosk. Configura rutaModeloVosk, voskModel o AUTOVIDEOJEFF_VOSK_MODEL.',
+      mensaje: mensajeModeloFaltante(config),
       metadata: { config }
     });
   }
 
   if (!existeCarpeta(config.modelo)) {
     return crearResultadoError({
-      mensaje: `No existe la carpeta del modelo Vosk: ${config.modelo}`,
+      mensaje: mensajeModeloFaltante(config),
       metadata: { config }
+    });
+  }
+
+  const resolucionPython = await resolverPythonParaModulo({
+    modulo: 'vosk',
+    opciones,
+    clavesOpciones: ['pythonVosk'],
+    timeoutMs: 15000
+  });
+  const python = resolucionPython.ok ? resolucionPython.python : config.python;
+  if (!resolucionPython.ok) {
+    return crearResultadoError({
+      mensaje: 'Vosk no está instalado en el Python local detectado.',
+      metadata: { config, resolucionPython }
     });
   }
 
@@ -203,7 +269,7 @@ export async function transcribirConVosk({ entrada, audio = null, opciones = {} 
     '--words', config.words ? 'true' : 'false'
   ];
 
-  const proceso = await ejecutarProceso({ comando: config.python, args, timeoutMs: config.timeoutMs });
+  const proceso = await ejecutarProceso({ comando: python, args, timeoutMs: config.timeoutMs });
   const rawArchivo = existeArchivo(rutaRaw) ? JSON.parse(await fs.promises.readFile(rutaRaw, 'utf-8')) : null;
   const rawStdout = parsearJsonSeguro(proceso.stdout);
   const raw = rawArchivo || rawStdout;
@@ -211,7 +277,7 @@ export async function transcribirConVosk({ entrada, audio = null, opciones = {} 
   if (!raw) {
     return crearResultadoError({
       mensaje: proceso.error || 'Vosk no devolvió JSON válido.',
-      metadata: { proceso, config, fuenteAudio }
+      metadata: { proceso, config: { ...config, python }, fuenteAudio }
     });
   }
 
@@ -219,7 +285,7 @@ export async function transcribirConVosk({ entrada, audio = null, opciones = {} 
     return crearResultadoError({
       mensaje: raw.mensaje || 'Vosk falló.',
       error: new Error(raw.error?.mensaje || raw.mensaje || 'Vosk falló.'),
-      metadata: { proceso, config, fuenteAudio, raw }
+      metadata: { proceso, config: { ...config, python }, fuenteAudio, raw }
     });
   }
 
@@ -233,7 +299,7 @@ export async function transcribirConVosk({ entrada, audio = null, opciones = {} 
     confianza: raw.confianza || null,
     fuenteAudio,
     mensaje: raw.mensaje || 'Transcripción generada con Vosk.',
-    metadata: { ...(raw.metadata || {}), python: config.python, proceso: { code: proceso.code, duracionMs: proceso.duracionMs }, rutaRaw }
+    metadata: { ...(raw.metadata || {}), python, proceso: { code: proceso.code, duracionMs: proceso.duracionMs }, rutaRaw }
   });
 
   const resultado = crearResultadoMotorTranscripcion({
