@@ -1,16 +1,18 @@
-export function renderBibliotecaView() {
+import { renderBibliotecaProyectoView } from './biblioteca-proyecto.view.js';
+
+function renderBibliotecaGeneralPanel() {
   return `
-    <section class="aj-view-card library-page">
-      <div class="library-hero">
+    <section class="library-general-panel" data-library-general-root>
+      <div class="library-section-head">
         <div>
-          <p class="eyebrow">Biblioteca</p>
-          <h2>Recursos permanentes para AutoVideoJeff</h2>
-          <p>Sube un recurso a la vez, clasifícalo por estilo de video y categoría, y déjalo listo para que la app lo use automáticamente.</p>
+          <p class="eyebrow">Biblioteca general</p>
+          <h3>Recursos permanentes</h3>
+          <p>Guarda intros, logos, sonidos, plantillas y recursos que se podrán reutilizar en varios videos.</p>
         </div>
-        <span class="aj-status-chip">Biblioteca 2</span>
+        <span class="library-section-chip">Permanente</span>
       </div>
 
-      <nav class="library-tabs" aria-label="Pestañas de biblioteca">
+      <nav class="library-tabs" aria-label="Pestañas de biblioteca general">
         <button class="library-tab is-active" type="button" data-library-tab="carga">Carga</button>
         <button class="library-tab" type="button" data-library-tab="recursos">Recursos</button>
       </nav>
@@ -21,7 +23,7 @@ export function renderBibliotecaView() {
             <div id="libraryDropZone" class="library-drop-zone">
               <input id="libraryFileInput" type="file" accept="video/*,image/*,audio/*,.mp4,.mov,.m4v,.avi,.mkv,.webm,.jpg,.jpeg,.png,.webp,.gif,.mp3,.wav,.m4a,.aac,.ogg,.flac" hidden />
               <div>
-                <strong>Subir un archivo</strong>
+                <strong>Subir un archivo permanente</strong>
                 <span>Video, imagen o audio. Un recurso a la vez.</span>
               </div>
               <button class="library-button" type="button" data-library-action="choose-file">Elegir archivo</button>
@@ -81,6 +83,40 @@ export function renderBibliotecaView() {
           <p id="libraryStatus" class="library-status">Sube un recurso o presiona actualizar.</p>
         </div>
         <div id="libraryResourcesList" class="library-resources-list"></div>
+      </section>
+    </section>
+  `;
+}
+
+export function renderBibliotecaView() {
+  return `
+    <section class="aj-view-card library-page library-unified-page" data-library-unified-root>
+      <div class="library-hero">
+        <div>
+          <p class="eyebrow">Biblioteca</p>
+          <h2>Recursos para el Plan de edición</h2>
+          <p>Administra en un solo lugar la biblioteca general permanente y la biblioteca temporal del proyecto actual.</p>
+        </div>
+        <span class="aj-status-chip">General + Proyecto</span>
+      </div>
+
+      <nav class="library-area-tabs" aria-label="Biblioteca general y proyecto">
+        <button class="library-area-tab is-active" type="button" data-biblioteca-area-tab="general">
+          <strong>General</strong>
+          <span>Recursos permanentes</span>
+        </button>
+        <button class="library-area-tab" type="button" data-biblioteca-area-tab="proyecto">
+          <strong>Proyecto</strong>
+          <span>Recursos temporales del video</span>
+        </button>
+      </nav>
+
+      <section class="library-area-panel is-active" data-biblioteca-area-panel="general">
+        ${renderBibliotecaGeneralPanel()}
+      </section>
+
+      <section class="library-area-panel" data-biblioteca-area-panel="proyecto" hidden>
+        ${renderBibliotecaProyectoView()}
       </section>
     </section>
   `;
