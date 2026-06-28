@@ -3,7 +3,7 @@ import path from 'path';
 import ffmpeg from 'fluent-ffmpeg';
 import ffmpegStatic from 'ffmpeg-static';
 import { asegurarCarpeta, escribirJson, crearRutaRelativaParaWeb, obtenerRutasDatosBase } from '../../comun/archivos.js';
-import { obtenerConfigTranscripcion } from '../../transcripcion/transcripcion.config.js';
+import { analizarFotogramasLocal } from './analisis-visual-local.service.js';
 
 function resolverRutaFfmpeg() {
   return typeof ffmpegStatic === 'string' ? ffmpegStatic : ffmpegStatic?.path;
@@ -80,16 +80,16 @@ function crearAnalisisVisualBasico({ frame, index, total, analisis }) {
   const porcentaje = duracion > 0 ? Math.round((numero(frame.segundo, 0) / duracion) * 100) : null;
   const descripcion = `Fotograma ${frame.id} extraído en ${frame.segundo}s${porcentaje !== null ? ` (${porcentaje}% del video)` : ''}. Ubicación narrativa: ${posicion}.`;
   return {
-    ok: false,
+    ok: true,
     fuente: 'lectura-tecnica-local',
     descripcion,
     escena: posicion,
     objetos: [],
-    personas: 'pendiente de análisis visual con IA',
-    textoVisible: 'pendiente de análisis visual con IA',
-    accion: 'pendiente de análisis visual con IA',
+    personas: 'no evaluado todavía por OpenCV',
+    textoVisible: 'no evaluado localmente',
+    accion: 'frame extraído para análisis de continuidad',
     valorEditorial: index === 0 ? 'Sirve para revisar el gancho inicial.' : index === total - 1 ? 'Sirve para revisar el cierre.' : 'Sirve para revisar ritmo y continuidad.',
-    recomendacion: 'Activar Gemini para describir visualmente qué aparece en este fotograma.'
+    recomendacion: 'Ejecutar análisis visual local para medir cambios, movimiento, iluminación y encuadre.'
   };
 }
 
@@ -111,92 +111,17 @@ function crearRegistroFotograma({ rutaArchivo, rutaPreview, segundo, index, tota
   return { ...base, descripcionVisual: analisisVisual.descripcion, analisisVisual };
 }
 
-function limpiarJsonGemini(textoRespuesta) {
-  const textoLimpio = String(textoRespuesta || '').replace(/```json/gi, '').replace(/```/g, '').trim();
-  const inicio = textoLimpio.indexOf('{');
-  const fin = textoLimpio.lastIndexOf('}');
-  if (inicio < 0 || fin < inicio) return { ok: false, error: 'Gemini no devolvió JSON reconocible.' };
-  try {
-    return { ok: true, data: JSON.parse(textoLimpio.slice(inicio, fin + 1)) };
-  } catch (error) {
-    return { ok: false, error: error.message };
-  }
-}
-
-function obtenerTextoGeminiDesdeRespuesta(json) {
-  const partes = json?.candidates?.[0]?.content?.parts || [];
-  return partes.map((parte) => parte.text || '').filter(Boolean).join('\n');
-}
-
-function crearEndpointGemini({ modelo, apiKey }) {
-  return `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(modelo || 'gemini-1.5-flash')}:generateContent?key=${encodeURIComponent(apiKey)}`;
-}
-
-function crearPromptVisual({ fotogramas, analisis }) {
-  return [
-    'Eres un editor profesional de video. Analiza los fotogramas clave para entender qué aparece visualmente antes de crear el plan de edición.',
-    'No identifiques personas por nombre propio. Describe solo escena, objetos, acciones, texto visible y valor editorial.',
-    `Duración aproximada: ${analisis?.duracionSegundos || 'desconocida'} segundos. Orientación: ${analisis?.orientacion || 'desconocida'}.`,
-    'Devuelve solamente JSON válido sin markdown con esta forma exacta:',
-    '{"fotogramas":[{"id":"frame-01","descripcion":"qué se ve","escena":"tipo de escena","objetos":["objeto"],"personas":"descripción general","textoVisible":"texto visible o ninguno","accion":"qué ocurre","valorEditorial":"para qué sirve en edición","recomendacion":"qué hacer con este frame"}]}',
-    'Fotogramas a analizar:',
-    fotogramas.map((frame) => `${frame.id}: segundo ${frame.segundo}`).join('\n')
-  ].join('\n');
-}
-
-async function analizarFotogramasConGemini({ fotogramas, analisis, opciones }) {
-  const config = obtenerConfigTranscripcion(opciones);
-  if (!config.gemini.usarGemini || !config.gemini.credencial) {
-    return { ok: false, omitido: true, fuente: 'sin-gemini', mensaje: 'Gemini no está activo para describir fotogramas.' };
-  }
-
-  const framesValidos = fotogramas.filter((frame) => frame.rutaArchivo && fs.existsSync(frame.rutaArchivo)).slice(0, 8);
-  if (!framesValidos.length) return { ok: false, omitido: true, fuente: 'sin-frames', mensaje: 'No hay fotogramas válidos para describir.' };
-
-  const parts = [{ text: crearPromptVisual({ fotogramas: framesValidos, analisis }) }];
-  for (const frame of framesValidos) {
-    const buffer = await fs.promises.readFile(frame.rutaArchivo);
-    parts.push({ text: `Analiza este fotograma con id ${frame.id}, segundo ${frame.segundo}.` });
-    parts.push({ inlineData: { mimeType: 'image/jpeg', data: buffer.toString('base64') } });
-  }
-
-  const body = {
-    contents: [{ role: 'user', parts }],
-    generationConfig: {
-      temperature: Number(config.gemini.temperatura || 0.2),
-      maxOutputTokens: Number(opciones.geminiMaxOutputTokensVision || 4096),
-      responseMimeType: 'application/json'
-    }
-  };
-
-  try {
-    const respuesta = await fetch(crearEndpointGemini({ modelo: config.gemini.modelo, apiKey: config.gemini.credencial }), {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body)
-    });
-    const json = await respuesta.json().catch(() => ({}));
-    if (!respuesta.ok) throw new Error(json?.error?.message || `Gemini visión respondió HTTP ${respuesta.status}`);
-    const limpio = limpiarJsonGemini(obtenerTextoGeminiDesdeRespuesta(json));
-    if (!limpio.ok) throw new Error(limpio.error);
-    const descripciones = Array.isArray(limpio.data?.fotogramas) ? limpio.data.fotogramas : [];
-    return { ok: descripciones.length > 0, omitido: false, fuente: 'gemini-vision', descripciones, mensaje: `${descripciones.length} fotogramas descritos con Gemini.` };
-  } catch (error) {
-    return { ok: false, omitido: true, fuente: 'gemini-vision-error', mensaje: `No se pudieron describir fotogramas con Gemini: ${error.message}` };
-  }
-}
-
-function mezclarDescripcionesVisuales(fotogramas, resultadoGemini) {
-  if (!resultadoGemini?.ok || !Array.isArray(resultadoGemini.descripciones)) return fotogramas;
-  const porId = new Map(resultadoGemini.descripciones.map((item) => [String(item.id || '').trim(), item]));
+function mezclarAnalisisVisualLocal(fotogramas = [], resultadoLocal = {}) {
+  if (!resultadoLocal?.ok || !Array.isArray(resultadoLocal.descripciones)) return fotogramas;
+  const porId = new Map(resultadoLocal.descripciones.map((item) => [String(item.id || '').trim(), item]));
   return fotogramas.map((frame) => {
     const encontrado = porId.get(frame.id);
     if (!encontrado) return frame;
     const analisisVisual = {
       ...frame.analisisVisual,
       ...encontrado,
-      ok: true,
-      fuente: 'gemini-vision'
+      ok: Boolean(encontrado.ok),
+      fuente: encontrado.fuente || resultadoLocal.fuente || 'vision-local'
     };
     return {
       ...frame,
@@ -208,15 +133,19 @@ function mezclarDescripcionesVisuales(fotogramas, resultadoGemini) {
 
 function analizarFotogramasBasico(fotogramas = [], analisis = {}, analisisVisualGlobal = null) {
   const duracion = numero(analisis?.duracionSegundos, 0);
+  const resumenLocal = analisisVisualGlobal?.resumen || {};
   return {
     total: fotogramas.length,
     puntosAnalizados: fotogramas.map((frame) => frame.segundo),
     cobertura: duracion > 0 ? Number(((fotogramas.length / Math.max(1, Math.ceil(duracion / 10))) * 100).toFixed(1)) : null,
-    lecturaVisual: fotogramas.length > 0 ? 'Fotogramas extraídos y descritos para análisis visual y selección de momentos.' : 'No se pudieron extraer fotogramas.',
+    lecturaVisual: fotogramas.length > 0 ? 'Fotogramas extraídos y analizados localmente para continuidad visual, cambios de escena, iluminación, nitidez y encuadre.' : 'No se pudieron extraer fotogramas.',
     fuenteDescripcion: analisisVisualGlobal?.fuente || 'lectura-tecnica-local',
+    escenasDetectadas: resumenLocal.escenasDetectadas ?? (Array.isArray(analisisVisualGlobal?.escenas) ? analisisVisualGlobal.escenas.length : 0),
+    cambiosFuertes: resumenLocal.cambiosFuertes ?? 0,
+    hayCambiosEnGrabacion: Boolean(resumenLocal.hayCambiosEnGrabacion),
     advertencias: [
       ...(fotogramas.length === 0 ? ['Sin fotogramas disponibles para análisis visual.'] : []),
-      ...(analisisVisualGlobal?.ok ? [] : [analisisVisualGlobal?.mensaje || 'Descripción visual semántica no disponible.'])
+      ...(analisisVisualGlobal?.ok ? [] : [analisisVisualGlobal?.mensaje || 'Análisis visual local no disponible. Instalar opencv-python y scenedetect.'])
     ].filter(Boolean)
   };
 }
@@ -252,8 +181,8 @@ export async function extraerFotogramasClave({ entrada, analisis, opciones = {} 
     }
   }
 
-  const analisisVisualGlobal = await analizarFotogramasConGemini({ fotogramas, analisis, opciones });
-  const fotogramasConDescripcion = mezclarDescripcionesVisuales(fotogramas, analisisVisualGlobal);
+  const analisisVisualGlobal = await analizarFotogramasLocal({ entrada, rutaVideo, fotogramas, opciones });
+  const fotogramasConDescripcion = mezclarAnalisisVisualLocal(fotogramas, analisisVisualGlobal);
   const analisisFotogramas = analizarFotogramasBasico(fotogramasConDescripcion, analisis, analisisVisualGlobal);
   const resultado = {
     ok: fotogramasConDescripcion.length > 0,
@@ -267,7 +196,7 @@ export async function extraerFotogramasClave({ entrada, analisis, opciones = {} 
     analisisFotogramas,
     analisisVisualGlobal,
     errores,
-    mensaje: fotogramasConDescripcion.length > 0 ? `${fotogramasConDescripcion.length} fotogramas clave extraídos.` : 'No se pudieron extraer fotogramas clave.',
+    mensaje: fotogramasConDescripcion.length > 0 ? `${fotogramasConDescripcion.length} fotogramas clave extraídos y analizados localmente.` : 'No se pudieron extraer fotogramas clave.',
     creadoEn: new Date().toISOString()
   };
 
