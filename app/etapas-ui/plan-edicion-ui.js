@@ -1,6 +1,6 @@
 /*
-  Bloque 9: Pantalla Plan de edición
-  Función: cargar, crear y mostrar el plan de edición desde la UI.
+  Bloque 9 + Biblioteca Bloque 5: Pantalla Plan de edición
+  Función: cargar, crear y mostrar el plan de edición con biblioteca general + biblioteca proyecto.
 */
 
 const STORAGE_PROYECTO_ETAPAS = 'autovideojeff.proyectoEtapasId';
@@ -90,13 +90,21 @@ function obtenerTimeline(plan = {}) {
   return [];
 }
 
+function obtenerBiblioteca(plan = {}) {
+  return plan.biblioteca || plan.fuente?.biblioteca || {};
+}
+
 function renderKpis(plan = {}) {
   const resumen = plan.resumen || {};
   const elementos = obtenerElementos(plan);
+  const biblioteca = obtenerBiblioteca(plan);
+  const resumenBiblioteca = biblioteca.resumen || {};
   $('planTotalElementos').textContent = String(resumen.totalElementos ?? elementos.length ?? 0);
   $('planSubtitulos').textContent = String(resumen.subtitulos ?? elementos.filter((e) => e.tipo === 'subtitulo').length);
   $('planTextos').textContent = String(resumen.textos ?? elementos.filter((e) => e.tipo === 'texto').length);
   $('planRecursos').textContent = String(resumen.recursos ?? elementos.filter((e) => e.tipo === 'recurso').length);
+  const bibliotecaEl = $('planBiblioteca');
+  if (bibliotecaEl) bibliotecaEl.textContent = `${resumenBiblioteca.seleccionadosProyecto ?? resumen.recursosBibliotecaProyecto ?? 0}P / ${resumenBiblioteca.seleccionadosGeneral ?? resumen.recursosBibliotecaGeneral ?? 0}G`;
   $('planEfectos').textContent = String((resumen.efectos ?? 0) + (resumen.zooms ?? 0) + (resumen.animaciones ?? 0));
   $('planListo').textContent = resumen.listoParaProduccion ? 'Sí' : 'Revisar';
 }
@@ -110,11 +118,16 @@ function renderLectura(plan = {}) {
 function renderFuente(plan = {}) {
   const fuente = plan.fuente || {};
   const necesidades = Array.isArray(fuente.necesidades) ? fuente.necesidades : [];
+  const biblioteca = obtenerBiblioteca(plan);
+  const resumenBiblioteca = biblioteca.resumen || {};
   $('planFuenteEstado').textContent = fuente.etapaOrigen ? 'Conectada' : 'Sin datos';
   $('planFuente').innerHTML = `
     <article><strong>Etapa origen</strong><span>${escapar(fuente.etapaOrigen || '—')}</span></article>
     <article><strong>Transcripción</strong><span>${fuente.tieneTranscripcion ? 'Disponible' : 'Pendiente o conservadora'}</span></article>
     <article><strong>Momentos clave</strong><span>${escapar(fuente.momentosClave ?? 0)}</span></article>
+    <article><strong>Biblioteca general</strong><span>${escapar(resumenBiblioteca.seleccionadosGeneral ?? 0)} seleccionados de ${escapar(resumenBiblioteca.totalGeneral ?? 0)} disponibles</span></article>
+    <article><strong>Biblioteca proyecto</strong><span>${escapar(resumenBiblioteca.seleccionadosProyecto ?? 0)} seleccionados de ${escapar(resumenBiblioteca.totalProyecto ?? 0)} temporales</span></article>
+    <article><strong>Regla biblioteca</strong><span>${escapar(biblioteca.regla || fuente.biblioteca?.regla || 'Referenciar recursos sin copiarlos.')}</span></article>
     <article><strong>Necesidades</strong><span>${necesidades.map(escapar).join(' · ') || 'Sin necesidades críticas'}</span></article>
   `;
 }
@@ -137,7 +150,8 @@ function renderTimeline(plan = {}) {
 function renderTimelineItem(item = {}) {
   const inicio = numero(item.inicio);
   const fin = numero(item.fin);
-  return `<div class="plan-timeline-item"><span>${escapar(item.tipo || item.pista || 'item')}</span><strong>${escapar(item.nombre || item.titulo || item.id || 'Elemento')}</strong><small>${inicio !== null ? inicio + 's' : '—'} - ${fin !== null ? fin + 's' : '—'}</small></div>`;
+  const biblioteca = item.biblioteca ? ` · ${item.biblioteca.origen || item.biblioteca.alcance}` : '';
+  return `<div class="plan-timeline-item"><span>${escapar(item.tipo || item.pista || 'item')}${escapar(biblioteca)}</span><strong>${escapar(item.nombre || item.titulo || item.id || 'Elemento')}</strong><small>${inicio !== null ? inicio + 's' : '—'} - ${fin !== null ? fin + 's' : '—'}</small></div>`;
 }
 
 function renderElementos(plan = {}) {
@@ -147,16 +161,22 @@ function renderElementos(plan = {}) {
     $('planElementos').innerHTML = '<div class="plan-empty">No hay elementos revisables en el plan.</div>';
     return;
   }
-  const rows = elementos.slice(0, 80).map((item) => `
-    <tr>
-      <td><strong>${escapar(item.nombre || item.titulo || item.id)}</strong><small>${escapar(item.descripcion || item.comentario || '')}</small></td>
-      <td>${escapar(item.tipo)}</td>
-      <td>${escapar(item.inicio ?? '—')}</td>
-      <td>${escapar(item.fin ?? '—')}</td>
-      <td><span class="plan-pill ${item.aprobado ? 'is-ok' : item.rechazado ? 'is-bad' : 'is-warn'}">${item.aprobado ? 'aprobado' : item.rechazado ? 'rechazado' : 'revisión'}</span></td>
-    </tr>
-  `).join('');
-  $('planElementos').innerHTML = `<div class="plan-table-wrap"><table class="plan-table"><thead><tr><th>Elemento</th><th>Tipo</th><th>Inicio</th><th>Fin</th><th>Estado</th></tr></thead><tbody>${rows}</tbody></table></div>`;
+  const rows = elementos.slice(0, 100).map((item) => {
+    const biblioteca = item.biblioteca || item.datos?.biblioteca || null;
+    const origen = biblioteca?.origen || biblioteca?.alcance || 'plan';
+    const nombreBiblioteca = biblioteca?.nombre ? `<small>Biblioteca ${escapar(origen)}: ${escapar(biblioteca.nombre)}</small>` : '';
+    return `
+      <tr>
+        <td><strong>${escapar(item.nombre || item.titulo || item.id)}</strong><small>${escapar(item.descripcion || item.comentario || '')}</small>${nombreBiblioteca}</td>
+        <td>${escapar(item.tipo)}</td>
+        <td>${escapar(origen)}</td>
+        <td>${escapar(item.inicio ?? '—')}</td>
+        <td>${escapar(item.fin ?? '—')}</td>
+        <td><span class="plan-pill ${item.aprobado ? 'is-ok' : item.rechazado ? 'is-bad' : 'is-warn'}">${item.aprobado ? 'aprobado' : item.rechazado ? 'rechazado' : 'revisión'}</span></td>
+      </tr>
+    `;
+  }).join('');
+  $('planElementos').innerHTML = `<div class="plan-table-wrap"><table class="plan-table"><thead><tr><th>Elemento</th><th>Tipo</th><th>Origen</th><th>Inicio</th><th>Fin</th><th>Estado</th></tr></thead><tbody>${rows}</tbody></table></div>`;
 }
 
 function renderResultado(datos = {}) {
@@ -196,7 +216,8 @@ async function procesarPlan() {
   setChip('Planificando...', 'normal');
   const datos = await api(`/api/proyectos/${encodeURIComponent(proyectoId)}/plan/procesar`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ origen: 'pantalla-plan-edicion' }) });
   renderResultado(datos);
-  setMensaje(datos.mensaje || 'Plan de edición creado correctamente.', 'ok');
+  const resumen = datos.biblioteca?.resumen || datos.resultado?.biblioteca?.resumen || {};
+  setMensaje(datos.mensaje || `Plan creado con biblioteca: ${resumen.seleccionadosProyecto || 0} temporales y ${resumen.seleccionadosGeneral || 0} generales.`, 'ok');
 }
 
 async function producirPlaceholder() {
