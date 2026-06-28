@@ -5,7 +5,7 @@ export function renderEntendimientoView() {
         <div>
           <p class="eyebrow">Etapa 1</p>
           <h2>Entendimiento del video</h2>
-          <p>Revisa qué entendió AutoVideoJeff antes de crear el plan de edición. Esta pantalla lee el resultado real del backend de entendimiento.</p>
+          <p>Revisa qué entendió AutoVideoJeff antes de cargar recursos temporales y crear el plan de edición. Esta pantalla lee el resultado real del backend de entendimiento.</p>
         </div>
         <span class="aj-status-chip" id="entendimientoEstadoChip">Esperando proyecto</span>
       </div>
@@ -54,7 +54,7 @@ export function renderEntendimientoView() {
         <article><span>Fotogramas</span><strong id="entendimientoFotogramas">—</strong></article>
         <article><span>Momentos clave</span><strong id="entendimientoMomentos">—</strong></article>
         <article><span>Motores</span><strong id="entendimientoMotores">—</strong></article>
-        <article><span>Listo para plan</span><strong id="entendimientoListo">—</strong></article>
+        <article><span>Listo para biblioteca</span><strong id="entendimientoListo">—</strong></article>
       </section>
 
       <section class="entendimiento-layout">
@@ -85,9 +85,9 @@ export function renderEntendimientoView() {
       <footer class="entendimiento-footer">
         <div>
           <strong>Siguiente paso</strong>
-          <span>Cuando el entendimiento esté completo, se podrá crear el plan de edición en el próximo bloque.</span>
+          <span>Cuando el entendimiento esté completo, carga recursos temporales en Biblioteca proyecto antes de crear el plan.</span>
         </div>
-        <button id="entendimientoCrearPlanBtn" class="primary-button" type="button" disabled>Crear plan de edición</button>
+        <button id="entendimientoCrearPlanBtn" class="primary-button" type="button" disabled>Abrir biblioteca proyecto</button>
       </footer>
     </section>
   `;
