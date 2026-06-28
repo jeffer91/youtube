@@ -79,6 +79,36 @@ function obtenerResumen(resultado = {}) {
   return resultado.resumenEtapa || resultado.resumen || resultado.reporteEntendimiento?.resumen || {};
 }
 
+function obtenerLineaTiempo(resultado = {}) {
+  return resultado.lineaTiempoGlobal || resultado.entendimientoGlobal?.lineaTiempoGlobal || {};
+}
+
+function obtenerResumenLinea(resultado = {}) {
+  return obtenerLineaTiempo(resultado).resumen || {};
+}
+
+function obtenerTotalVideos(resultado = {}) {
+  const resumen = obtenerResumen(resultado);
+  const linea = obtenerResumenLinea(resultado);
+  return numero(resumen.videosOriginales ?? resumen.totalVideos ?? linea.totalVideos ?? resultado.multivideo?.totalVideos ?? resultado.videosEntendimiento?.totalValidos) || 1;
+}
+
+function esMultivideo(resultado = {}) {
+  return Boolean(obtenerTotalVideos(resultado) > 1 || resultado.multivideo?.activo || obtenerResumen(resultado).esMultivideo);
+}
+
+function formatearDuracion(segundos) {
+  const valor = numero(segundos);
+  if (valor === null) return '—';
+  const total = Math.max(0, Math.round(valor));
+  const horas = Math.floor(total / 3600);
+  const minutos = Math.floor((total % 3600) / 60);
+  const seg = total % 60;
+  if (horas) return `${horas}h ${String(minutos).padStart(2, '0')}m ${String(seg).padStart(2, '0')}s`;
+  if (minutos) return `${minutos}m ${String(seg).padStart(2, '0')}s`;
+  return `${seg}s`;
+}
+
 function obtenerSrcFrame(frame = {}) {
   const src = frame.urlPublica || frame.rutaPublica || frame.rutaPreviewPublica || frame.rutaRelativa || '';
   if (!src) return '';
@@ -94,6 +124,7 @@ function motorBonito(motor = '') {
     'whisper-cpp': 'whisper.cpp',
     vosk: 'Vosk',
     gemini: 'Gemini',
+    'global-multivideo': 'Global multivideo',
     'transcripcion-simple': 'Simple',
     'modulo-transcripcion': 'Módulo anterior'
   };
@@ -134,14 +165,15 @@ function crearOpcionesTranscripcion(resultado = {}) {
   const opciones = [];
   const vistos = new Set();
   const transcripcionBase = resultado.transcripcion || {};
-  const principal = resultado.transcripcionPrincipal || transcripcionBase.transcripcionPrincipal || (tieneTexto(transcripcionBase.textoCompleto) ? transcripcionBase : null);
+  const principal = resultado.transcripcionGlobal || resultado.transcripcionPrincipal || transcripcionBase.transcripcionPrincipal || (tieneTexto(transcripcionBase.textoCompleto) ? transcripcionBase : null);
 
   if (principal) {
+    const principalEsGlobal = principal.tipo === 'transcripcion-global-multivideo' || resultado.multivideo?.transcripcionGlobal;
     opciones.push({
       id: 'principal',
       tipo: 'principal',
       motor: principal.motor || transcripcionBase.motorPrincipal || transcripcionBase.motor || 'principal',
-      etiqueta: 'Principal',
+      etiqueta: principalEsGlobal ? 'Global' : 'Principal',
       ok: Boolean(principal.ok || principal.textoCompleto),
       estado: principal.estado || (principal.textoCompleto ? 'ok' : 'pendiente'),
       mensaje: principal.mensaje || transcripcionBase.observacion || 'Transcripción principal seleccionada.',
@@ -208,12 +240,15 @@ function aplicarPrincipalEnResultadoLocal(seleccion = {}) {
 
 function renderKpis(resultado = {}) {
   const resumen = obtenerResumen(resultado);
-  const duracion = numero(resumen.duracionSegundos);
+  const linea = obtenerResumenLinea(resultado);
+  const duracion = numero(resumen.duracionTotalSegundos ?? resumen.duracionSegundos ?? linea.duracionTotalSegundos);
+  const totalVideos = obtenerTotalVideos(resultado);
   const opcionesTranscripcion = crearOpcionesTranscripcion(resultado);
-  $('entendimientoOrientacion').textContent = texto(resumen.orientacion || resultado.analisis?.orientacion);
-  $('entendimientoDuracion').textContent = duracion !== null ? `${duracion}s` : '—';
-  $('entendimientoAudio').textContent = resumen.tieneAudio ? 'Sí' : 'No / pendiente';
-  $('entendimientoFotogramas').textContent = String(resumen.fotogramasExtraidos ?? resultado.fotogramas?.cantidadExtraida ?? 0);
+  const orientacion = resumen.orientacion || linea.orientacionPredominante || resultado.analisis?.orientacion;
+  $('entendimientoOrientacion').textContent = totalVideos > 1 ? `${texto(orientacion)} · ${totalVideos} videos` : texto(orientacion);
+  $('entendimientoDuracion').textContent = formatearDuracion(duracion);
+  $('entendimientoAudio').textContent = resumen.todosTienenAudio ? 'Sí, todos' : resumen.tieneAudio ? 'Sí' : 'No / pendiente';
+  $('entendimientoFotogramas').textContent = String(resumen.fotogramasExtraidos ?? resumen.fotogramasGlobales ?? resultado.fotogramas?.cantidadExtraida ?? 0);
   $('entendimientoMomentos').textContent = String(resumen.momentosClave ?? resultado.analisisVideo?.momentosClave?.length ?? 0);
   const motoresEl = $('entendimientoMotores');
   if (motoresEl) motoresEl.textContent = String(resumen.transcripcionesGeneradas ?? opcionesTranscripcion.length ?? 0);
@@ -237,7 +272,9 @@ function renderMetaTranscripcion(opcion = {}) {
   const resumen = opcion.resumen || transcripcion.resumen || {};
   const segmentos = Array.isArray(transcripcion.segmentos) ? transcripcion.segmentos.length : 0;
   const palabras = resumen.palabras ?? (transcripcion.textoCompleto ? String(transcripcion.textoCompleto).split(/\s+/).filter(Boolean).length : 0);
+  const videos = resumen.videosTotales || resumen.videosConTexto || transcripcion.textosPorVideo?.length || null;
   const partes = [`Motor: ${motorBonito(opcion.motor)}`, `Estado: ${estadoBonito(opcion.estado)}`, `Segmentos: ${segmentos}`, `Palabras: ${palabras}`];
+  if (videos) partes.push(`Videos: ${videos}`);
   if (opcion.error?.mensaje) partes.push(`Error: ${opcion.error.mensaje}`);
   else if (opcion.mensaje) partes.push(opcion.mensaje);
   meta.innerHTML = partes.map((parte) => `<span>${escapar(parte)}</span>`).join('');
@@ -247,21 +284,32 @@ function renderAccionesTranscripcion(opcion = {}) {
   const contenedor = $('entendimientoTranscripcionAcciones');
   if (!contenedor) return;
   const esPrincipal = opcion.id === 'principal';
+  const esGlobal = opcion.transcripcion?.tipo === 'transcripcion-global-multivideo';
   const puedeUsar = !esPrincipal && opcion.ok && tieneTexto(opcion.transcripcion?.textoCompleto) && opcion.motor;
   contenedor.innerHTML = `
     <button type="button" class="secondary-button entendimiento-usar-principal-btn" data-usar-transcripcion-principal ${puedeUsar ? '' : 'disabled'}>
-      ${esPrincipal ? 'Esta ya es la principal' : 'Usar esta como principal'}
+      ${esPrincipal ? (esGlobal ? 'Esta ya es la global principal' : 'Esta ya es la principal') : 'Usar esta como principal'}
     </button>
     <span>${puedeUsar ? `Seleccionará ${escapar(motorBonito(opcion.motor))} como texto base del plan.` : 'Solo se puede elegir una transcripción con texto útil.'}</span>
   `;
+}
+
+function etiquetaSegmento(segmento = {}) {
+  const video = segmento.videoId ? `${segmento.videoId} · ` : '';
+  const inicio = segmento.inicioGlobal ?? segmento.inicio ?? segmento.start ?? 0;
+  const fin = segmento.finGlobal ?? segmento.fin ?? segmento.end ?? 'fin';
+  return `${video}${inicio}s - ${fin}s`;
 }
 
 function renderDetalleTranscripcion(opcion = {}) {
   const transcripcion = opcion.transcripcion || {};
   const textoCompleto = texto(transcripcion.textoCompleto, opcion.mensaje || transcripcion.mensaje || transcripcion.observacion || 'Sin texto transcrito todavía. La estructura de segmentos está preparada para el plan de edición.');
   const segmentos = Array.isArray(transcripcion.segmentos) ? transcripcion.segmentos : [];
-  $('entendimientoTranscripcionEstado').textContent = transcripcion.textoCompleto ? `${motorBonito(opcion.motor)} · texto real` : `${motorBonito(opcion.motor)} · ${segmentos.length} segmento(s)`;
-  $('entendimientoTranscripcion').innerHTML = `<p>${escapar(textoCompleto)}</p>` + (segmentos.length ? `<ol>${segmentos.slice(0, 12).map((s) => `<li><strong>${escapar(s.inicio)}s - ${escapar(s.fin ?? 'fin')}s</strong><span>${escapar(s.texto || s.nota || 'Segmento preparado')}</span></li>`).join('')}</ol>` : '');
+  const esGlobal = transcripcion.tipo === 'transcripcion-global-multivideo';
+  $('entendimientoTranscripcionEstado').textContent = transcripcion.textoCompleto
+    ? `${esGlobal ? 'Global multivideo' : motorBonito(opcion.motor)} · texto real`
+    : `${motorBonito(opcion.motor)} · ${segmentos.length} segmento(s)`;
+  $('entendimientoTranscripcion').innerHTML = `<p>${escapar(textoCompleto)}</p>` + (segmentos.length ? `<ol>${segmentos.slice(0, 20).map((s) => `<li><strong>${escapar(etiquetaSegmento(s))}</strong><span>${escapar(s.texto || s.nota || 'Segmento preparado')}</span></li>`).join('')}</ol>` : '');
   renderMetaTranscripcion(opcion);
   renderAccionesTranscripcion(opcion);
 }
@@ -274,35 +322,56 @@ function renderTranscripcion(resultado = {}) {
   renderDetalleTranscripcion(activa);
 }
 
+function obtenerFrames(resultado = {}) {
+  return Array.isArray(resultado.fotogramasGlobales?.fotogramas)
+    ? resultado.fotogramasGlobales.fotogramas
+    : Array.isArray(resultado.fotogramas?.fotogramas)
+      ? resultado.fotogramas.fotogramas
+      : [];
+}
+
 function renderFrames(resultado = {}) {
-  const frames = Array.isArray(resultado.fotogramas?.fotogramas) ? resultado.fotogramas.fotogramas : [];
-  $('entendimientoFramesEstado').textContent = String(frames.length);
+  const frames = obtenerFrames(resultado);
+  const totalVideos = obtenerTotalVideos(resultado);
+  $('entendimientoFramesEstado').textContent = totalVideos > 1 ? `${frames.length} globales` : String(frames.length);
   const contenedor = $('entendimientoFrames');
   if (!frames.length) {
     contenedor.innerHTML = '<div class="entendimiento-empty">No hay fotogramas disponibles para este proyecto.</div>';
     return;
   }
-  contenedor.innerHTML = frames.slice(0, 8).map((frame) => {
+  contenedor.innerHTML = frames.slice(0, 16).map((frame) => {
     const src = obtenerSrcFrame(frame);
     const visual = frame.analisisVisual || {};
     const descripcion = frame.descripcionVisual || visual.descripcion || visual.escena || 'Sin descripción visual todavía.';
     const escena = visual.escena ? `<span>${escapar(visual.escena)}</span>` : '';
     const accion = visual.accion ? `<span>${escapar(visual.accion)}</span>` : '';
-    return `<article class="entendimiento-frame"><div>${src ? `<img src="${escapar(src)}" alt="${escapar(descripcion)}" />` : '<span>Sin preview</span>'}</div><strong>${escapar(frame.id)}</strong><small>${escapar(frame.segundo)}s · ${escapar(frame.estado)}</small><p class="entendimiento-frame-desc">${escapar(descripcion)}</p>${escena || accion ? `<div class="entendimiento-frame-tags">${escena}${accion}</div>` : ''}</article>`;
+    const video = frame.videoId ? `<span>${escapar(frame.videoId)}</span>` : '';
+    const tiempo = frame.segundoGlobal !== undefined ? `${frame.segundoGlobal}s global` : `${frame.segundo}s`;
+    const local = frame.segundoLocal !== undefined ? ` · ${frame.segundoLocal}s local` : '';
+    return `<article class="entendimiento-frame"><div>${src ? `<img src="${escapar(src)}" alt="${escapar(descripcion)}" />` : '<span>Sin preview</span>'}</div><strong>${escapar(frame.id)}</strong><small>${escapar(tiempo)}${escapar(local)} · ${escapar(frame.estado)}</small><p class="entendimiento-frame-desc">${escapar(descripcion)}</p>${video || escena || accion ? `<div class="entendimiento-frame-tags">${video}${escena}${accion}</div>` : ''}</article>`;
   }).join('');
 }
 
 function renderGlobal(resultado = {}) {
   const analisis = resultado.analisisVideo || {};
   const editorial = analisis.resumenEditorial || resultado.reporteEntendimiento?.resumen?.editorial || {};
+  const resumen = obtenerResumen(resultado);
+  const linea = obtenerResumenLinea(resultado);
   const momentos = Array.isArray(analisis.momentosClave) ? analisis.momentosClave : [];
-  $('entendimientoGlobalEstado').textContent = analisis.ok ? 'Generado' : 'Pendiente';
+  const lineaTiempo = Array.isArray(resultado.lineaTiempoGlobal?.lineaTiempo) ? resultado.lineaTiempoGlobal.lineaTiempo : [];
+  const totalVideos = obtenerTotalVideos(resultado);
+  $('entendimientoGlobalEstado').textContent = analisis.ok ? (totalVideos > 1 ? 'Global multivideo' : 'Generado') : 'Pendiente';
   $('entendimientoGlobal').innerHTML = `
-    <article><strong>Formato detectado</strong><span>${escapar(editorial.formatoDetectado || 'desconocido')}</span></article>
+    <article><strong>Videos analizados</strong><span>${escapar(resumen.videosProcesados ?? linea.videosAnalizados ?? totalVideos)} / ${escapar(totalVideos)}</span></article>
+    <article><strong>Duración total</strong><span>${escapar(formatearDuracion(resumen.duracionTotalSegundos ?? resumen.duracionSegundos ?? linea.duracionTotalSegundos))}</span></article>
+    <article><strong>Formato detectado</strong><span>${escapar(editorial.formatoDetectado || linea.orientacionPredominante || 'desconocido')}</span></article>
     <article><strong>Tipo de duración</strong><span>${escapar(editorial.duracionTipo || 'desconocida')}</span></article>
+    <article><strong>Transcripción global</strong><span>${escapar(resumen.segmentosTranscripcion ?? resultado.transcripcion?.segmentos?.length ?? 0)} segmentos · ${escapar(resumen.palabrasTranscripcion ?? resultado.transcripcion?.resumen?.palabras ?? 0)} palabras</span></article>
+    <article><strong>Fotogramas globales</strong><span>${escapar(resumen.fotogramasExtraidos ?? resultado.fotogramas?.cantidadExtraida ?? 0)}</span></article>
     <article><strong>Lectura</strong><span>${escapar(editorial.lectura || 'Sin lectura editorial todavía.')}</span></article>
     <article><strong>Recomendación</strong><span>${escapar(editorial.recomendacionInicial || 'Revisar entendimiento antes de planificar.')}</span></article>
-    <article><strong>Momentos principales</strong><span>${momentos.slice(0, 5).map((m) => `${m.inicio}s ${m.tipo}`).join(' · ') || 'Sin momentos'}</span></article>
+    <article><strong>Momentos principales</strong><span>${momentos.slice(0, 8).map((m) => `${m.videoId ? `${m.videoId} · ` : ''}${m.inicioGlobal ?? m.inicio}s ${m.tipo || 'momento'}`).join(' · ') || 'Sin momentos'}</span></article>
+    ${lineaTiempo.length ? `<article><strong>Línea de tiempo</strong><span>${lineaTiempo.slice(0, 6).map((item) => `${item.videoId}: ${item.inicioGlobal}s-${item.finGlobal}s`).join(' · ')}${lineaTiempo.length > 6 ? ' · ...' : ''}</span></article>` : ''}
   `;
 }
 
@@ -385,7 +454,7 @@ function renderResultado(datos = {}) {
   const listo = Boolean(obtenerResumen(resultado).listoParaEditar || resultado.reporteEntendimiento?.listoParaEditar);
   const planBtn = $('entendimientoCrearPlanBtn');
   if (planBtn) planBtn.disabled = !listo;
-  setChip(listo ? 'Entendido' : 'Revisar', listo ? 'ok' : 'warn');
+  setChip(listo ? (esMultivideo(resultado) ? 'Entendido global' : 'Entendido') : 'Revisar', listo ? 'ok' : 'warn');
 }
 
 async function cargarEntendimiento() {
