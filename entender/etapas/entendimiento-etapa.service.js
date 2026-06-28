@@ -16,6 +16,7 @@ import {
 import { normalizarVideosEntendimiento } from './normalizar-videos-entendimiento.service.js';
 import { crearLineaTiempoMultivideo } from './linea-tiempo-multivideo.service.js';
 import { procesarEntendimientoMultivideo } from './entendimiento-multivideo.service.js';
+import { unirEntendimientoMultivideo } from './unir-entendimiento-multivideo.service.js';
 
 function numero(valor, respaldo = 0) {
   const n = Number(valor);
@@ -31,15 +32,16 @@ async function cargarVideosOriginalesProyecto(proyectoId) {
   return await leerJsonSiExiste(ruta, { ok: true, proyectoId, total: 0, totalValidos: 0, modo: 'sin-videos', esMultivideo: false, videos: [] });
 }
 
-function crearResumenEntendimiento(resultado, videosNormalizados = null, lineaTiempoGlobal = null) {
+function crearResumenEntendimiento(resultado, videosNormalizados = null, lineaTiempoGlobal = null, entendimientoGlobal = null) {
   const transcripcionesPorMotor = Array.isArray(resultado?.transcripcionesPorMotor) ? resultado.transcripcionesPorMotor : [];
-  const resumenTranscripcion = resultado?.resumenTranscripcion || resultado?.transcripcion?.resumenTranscripcion || null;
+  const resumenTranscripcion = resultado?.resumenTranscripcion || resultado?.transcripcion?.resumenTranscripcion || resultado?.transcripcion?.resumen || null;
   const motorPrincipal = resultado?.resumen?.motorTranscripcionPrincipal || resultado?.transcripcionPrincipal?.motor || resultado?.transcripcion?.motor || null;
   const resumenLinea = lineaTiempoGlobal?.resumen || {};
   const resumenResultado = resultado?.resumen || {};
-  const totalVideos = resumenLinea.totalVideos || videosNormalizados?.totalValidos || resumenResultado.videosOriginales || 1;
+  const resumenGlobal = entendimientoGlobal?.resumen || {};
+  const totalVideos = resumenLinea.totalVideos || videosNormalizados?.totalValidos || resumenResultado.videosOriginales || resumenGlobal.totalVideos || 1;
   const esMultivideo = Boolean(resumenLinea.esMultivideo || videosNormalizados?.esMultivideo || totalVideos > 1);
-  const duracionGlobal = numero(resumenLinea.duracionTotalSegundos || resumenResultado.duracionTotalSegundos, 0);
+  const duracionGlobal = numero(resumenLinea.duracionTotalSegundos || resumenResultado.duracionTotalSegundos || resumenGlobal.duracionTotalSegundos, 0);
   return {
     orientacion: resumenLinea.orientacionPredominante || resumenResultado.orientacion || resultado?.analisis?.orientacion || 'desconocida',
     duracionSegundos: duracionGlobal > 0 ? duracionGlobal : (resumenResultado.duracionSegundos || resultado?.analisis?.duracionSegundos || null),
@@ -47,18 +49,19 @@ function crearResumenEntendimiento(resultado, videosNormalizados = null, lineaTi
     duracionVideoPrincipalSegundos: resumenResultado.duracionVideoPrincipalSegundos || resultado?.analisis?.duracionVideoPrincipalSegundos || null,
     tieneAudio: Boolean(resumenLinea.tieneAudio || resumenResultado.tieneAudio || resultado?.analisis?.tieneAudio),
     todosTienenAudio: Boolean(resumenLinea.todosTienenAudio),
-    tieneTranscripcionReal: Boolean(resumenResultado.tieneTranscripcionReal || resultado?.resumen?.tieneTranscripcionReal),
+    tieneTranscripcionReal: Boolean(resumenResultado.tieneTranscripcionReal || resultado?.resumen?.tieneTranscripcionReal || resultado?.transcripcion?.textoCompleto),
     motorTranscripcionPrincipal: motorPrincipal,
-    transcripcionesGeneradas: resumenResultado.transcripcionesGeneradas || transcripcionesPorMotor.length,
+    transcripcionesGeneradas: resumenGlobal.transcripcionesPorMotor || resumenResultado.transcripcionesGeneradas || transcripcionesPorMotor.length,
     resumenTranscripcion,
-    fotogramasExtraidos: resumenResultado.fotogramasExtraidos || resultado?.fotogramas?.cantidadExtraida || 0,
-    segmentosTranscripcion: resumenResultado.segmentosTranscripcion || 0,
-    listoParaEditar: Boolean(resumenResultado.listoParaEditar || resultado?.resumen?.listoParaEditar),
-    momentosClave: resumenResultado.momentosClave || (Array.isArray(resultado?.analisisVideo?.momentosClave) ? resultado.analisisVideo.momentosClave.length : 0),
+    fotogramasExtraidos: resumenGlobal.fotogramasGlobales || resumenResultado.fotogramasExtraidos || resultado?.fotogramas?.cantidadExtraida || 0,
+    segmentosTranscripcion: resumenGlobal.segmentosGlobales || resumenResultado.segmentosTranscripcion || resultado?.transcripcion?.segmentos?.length || 0,
+    palabrasTranscripcion: resumenGlobal.palabrasGlobales || resultado?.transcripcion?.resumen?.palabras || 0,
+    listoParaEditar: Boolean(resumenResultado.listoParaEditar || resultado?.resumen?.listoParaEditar || resultado?.transcripcion?.textoCompleto),
+    momentosClave: resumenGlobal.momentosGlobales || resumenResultado.momentosClave || (Array.isArray(resultado?.analisisVideo?.momentosClave) ? resultado.analisisVideo.momentosClave.length : 0),
     necesidades: Array.isArray(resultado?.analisisVideo?.necesidades) ? resultado.analisisVideo.necesidades : [],
     videosOriginales: totalVideos,
     videosPreparados: totalVideos,
-    videosProcesados: resumenResultado.videosProcesados || 0,
+    videosProcesados: resumenResultado.videosProcesados || resumenGlobal.videosProcesados || 0,
     videosFallidos: resumenResultado.videosFallidos || 0,
     videosAnalizadosEnLineaTiempo: resumenLinea.videosAnalizados || 0,
     videosConAudio: resumenLinea.videosConAudio || 0,
@@ -67,7 +70,46 @@ function crearResumenEntendimiento(resultado, videosNormalizados = null, lineaTi
     esMultivideo,
     videoPrincipalId: videosNormalizados?.videoPrincipal?.videoId || resultado?.entrada?.video?.videoId || null,
     lineaTiempoGlobal: Boolean(lineaTiempoGlobal?.ok),
-    entendimientoPorVideo: Array.isArray(resultado?.resultadosPorVideo)
+    entendimientoPorVideo: Array.isArray(resultado?.resultadosPorVideo),
+    entendimientoGlobal: Boolean(entendimientoGlobal?.ok)
+  };
+}
+
+function aplicarUnionGlobal(resultadoEntendimiento = {}, entendimientoGlobal = null) {
+  if (!entendimientoGlobal?.ok) return resultadoEntendimiento;
+  return {
+    ...resultadoEntendimiento,
+    transcripcionGlobal: entendimientoGlobal.transcripcionGlobal,
+    transcripcionPrincipal: entendimientoGlobal.transcripcionPrincipal,
+    transcripcion: entendimientoGlobal.transcripcion,
+    transcripcionesPorMotor: entendimientoGlobal.transcripcionesPorMotor,
+    fotogramasGlobales: entendimientoGlobal.fotogramasGlobales,
+    fotogramas: entendimientoGlobal.fotogramas,
+    analisisVideoGlobal: entendimientoGlobal.analisisVideoGlobal,
+    analisisVideo: entendimientoGlobal.analisisVideo,
+    entendimientoGlobal,
+    resumen: {
+      ...(resultadoEntendimiento.resumen || {}),
+      duracionSegundos: entendimientoGlobal.resumen?.duracionTotalSegundos || resultadoEntendimiento.resumen?.duracionSegundos || null,
+      duracionTotalSegundos: entendimientoGlobal.resumen?.duracionTotalSegundos || resultadoEntendimiento.resumen?.duracionTotalSegundos || null,
+      tieneTranscripcionReal: Boolean(entendimientoGlobal.transcripcionGlobal?.textoCompleto || resultadoEntendimiento.resumen?.tieneTranscripcionReal),
+      motorTranscripcionPrincipal: entendimientoGlobal.transcripcionGlobal?.motor || resultadoEntendimiento.resumen?.motorTranscripcionPrincipal || null,
+      transcripcionesGeneradas: entendimientoGlobal.transcripcionesPorMotor?.length || resultadoEntendimiento.resumen?.transcripcionesGeneradas || 0,
+      fotogramasExtraidos: entendimientoGlobal.fotogramasGlobales?.cantidadExtraida || resultadoEntendimiento.resumen?.fotogramasExtraidos || 0,
+      segmentosTranscripcion: entendimientoGlobal.transcripcionGlobal?.resumen?.segmentos || resultadoEntendimiento.resumen?.segmentosTranscripcion || 0,
+      palabrasTranscripcion: entendimientoGlobal.transcripcionGlobal?.resumen?.palabras || 0,
+      momentosClave: entendimientoGlobal.analisisVideoGlobal?.momentosClave?.length || resultadoEntendimiento.resumen?.momentosClave || 0,
+      videosProcesados: entendimientoGlobal.resumen?.videosProcesados || resultadoEntendimiento.resumen?.videosProcesados || 0,
+      listoParaEditar: Boolean(entendimientoGlobal.transcripcionGlobal?.textoCompleto || resultadoEntendimiento.resumen?.listoParaEditar)
+    },
+    multivideo: {
+      ...(resultadoEntendimiento.multivideo || {}),
+      fase: 'bloque-4-union-global',
+      transcripcionGlobal: Boolean(entendimientoGlobal.transcripcionGlobal?.textoCompleto),
+      fotogramasGlobales: Boolean(entendimientoGlobal.fotogramasGlobales?.cantidadExtraida),
+      momentosGlobales: entendimientoGlobal.analisisVideoGlobal?.momentosClave?.length || 0,
+      nota: 'Transcripción, fotogramas y momentos ya fueron consolidados en una vista global del proyecto.'
+    }
   };
 }
 
@@ -82,7 +124,7 @@ export async function procesarEntendimientoProyectoEtapa({ proyectoId, opciones 
       proyectoId,
       etapaDestino: ETAPAS_AUTOVIDEO.ENTENDIMIENTO,
       estadoDestino: ESTADOS_PROYECTO_ETAPAS.ENTENDIENDO,
-      mensaje: 'Iniciando entendimiento por video.'
+      mensaje: 'Iniciando entendimiento global multivideo.'
     });
 
     const videosGuardados = await cargarVideosOriginalesProyecto(proyectoId);
@@ -102,7 +144,7 @@ export async function procesarEntendimientoProyectoEtapa({ proyectoId, opciones 
       carpetaProyecto
     });
 
-    const resultadoEntendimiento = await procesarEntendimientoMultivideo({
+    const resultadoPorVideo = await procesarEntendimientoMultivideo({
       proyectoId,
       estado: estadoProcesando,
       carpetaProyecto,
@@ -112,7 +154,16 @@ export async function procesarEntendimientoProyectoEtapa({ proyectoId, opciones 
       solicitud,
       etapa: ETAPAS_AUTOVIDEO.ENTENDIMIENTO
     });
-    const resumen = crearResumenEntendimiento(resultadoEntendimiento, videosNormalizados, lineaTiempoGlobal);
+
+    const entendimientoGlobal = await unirEntendimientoMultivideo({
+      proyectoId,
+      carpetaProyecto,
+      lineaTiempoGlobal,
+      resultadosPorVideo: resultadoPorVideo.resultadosPorVideo || []
+    });
+
+    const resultadoEntendimiento = aplicarUnionGlobal(resultadoPorVideo, entendimientoGlobal);
+    const resumen = crearResumenEntendimiento(resultadoEntendimiento, videosNormalizados, lineaTiempoGlobal, entendimientoGlobal);
 
     const guardado = await guardarResultadoEtapa({
       proyectoId,
@@ -130,23 +181,27 @@ export async function procesarEntendimientoProyectoEtapa({ proyectoId, opciones 
           videos: videosNormalizados.videos
         },
         lineaTiempoGlobal,
+        entendimientoGlobal,
         multivideo: {
           ...(resultadoEntendimiento.multivideo || {}),
           activo: videosNormalizados.esMultivideo,
-          fase: 'bloque-3-entendimiento-por-video',
+          fase: 'bloque-4-union-global',
           lineaTiempoGlobal: Boolean(lineaTiempoGlobal?.ok),
           duracionTotalSegundos: lineaTiempoGlobal?.resumen?.duracionTotalSegundos || null,
           videosAnalizados: lineaTiempoGlobal?.resumen?.videosAnalizados || 0,
           videosProcesados: resultadoEntendimiento?.resumen?.videosProcesados || 0,
           videosFallidos: resultadoEntendimiento?.resumen?.videosFallidos || 0,
+          transcripcionGlobal: Boolean(entendimientoGlobal?.transcripcionGlobal?.textoCompleto),
+          fotogramasGlobales: Boolean(entendimientoGlobal?.fotogramasGlobales?.cantidadExtraida),
+          momentosGlobales: entendimientoGlobal?.analisisVideoGlobal?.momentosClave?.length || 0,
           nota: videosNormalizados.esMultivideo
-            ? 'Cada video fue procesado individualmente. En el siguiente bloque se consolidarán transcripciones, fotogramas y momentos globales.'
-            : 'Proyecto de un solo video procesado con la misma estructura por video.'
+            ? 'Transcripción, fotogramas y momentos globales consolidados para todo el proyecto.'
+            : 'Proyecto de un solo video procesado y consolidado con estructura global.'
         }
       },
       metadata: {
         bloque: 7,
-        tipo: videosNormalizados.esMultivideo ? 'entendimiento-backend-por-video-multivideo' : 'entendimiento-backend-por-video-unico',
+        tipo: videosNormalizados.esMultivideo ? 'entendimiento-backend-global-multivideo' : 'entendimiento-backend-global-video-unico',
         origen: 'POST /api/proyectos/:proyectoId/entendimiento/procesar',
         videos: {
           total: videosNormalizados.total,
@@ -155,7 +210,9 @@ export async function procesarEntendimientoProyectoEtapa({ proyectoId, opciones 
           videoPrincipalId: videosNormalizados.videoPrincipal?.videoId || null,
           duracionTotalSegundos: lineaTiempoGlobal?.resumen?.duracionTotalSegundos || null,
           videosProcesados: resultadoEntendimiento?.resumen?.videosProcesados || 0,
-          videosFallidos: resultadoEntendimiento?.resumen?.videosFallidos || 0
+          videosFallidos: resultadoEntendimiento?.resumen?.videosFallidos || 0,
+          segmentosGlobales: entendimientoGlobal?.transcripcionGlobal?.resumen?.segmentos || 0,
+          fotogramasGlobales: entendimientoGlobal?.fotogramasGlobales?.cantidadExtraida || 0
         }
       }
     });
@@ -166,7 +223,7 @@ export async function procesarEntendimientoProyectoEtapa({ proyectoId, opciones 
       estadoDestino: ESTADOS_PROYECTO_ETAPAS.ENTENDIDO,
       archivoGenerado: guardado.ruta,
       mensaje: videosNormalizados.esMultivideo
-        ? 'Entendimiento por video completado para proyecto multivideo.'
+        ? 'Entendimiento global multivideo completado.'
         : 'Entendimiento independiente completado.'
     });
 
@@ -180,12 +237,13 @@ export async function procesarEntendimientoProyectoEtapa({ proyectoId, opciones 
       resumen,
       videosEntendimiento: videosNormalizados,
       lineaTiempoGlobal,
+      entendimientoGlobal,
       resultadosPorVideo: resultadoEntendimiento.resultadosPorVideo || [],
       archivo: guardado,
       mensaje: resultadoEntendimiento.mensaje || 'Entendimiento completado.'
     };
   } catch (error) {
-    await marcarErrorEstadoProyectoEtapas({ proyectoId, etapa: ETAPAS_AUTOVIDEO.ENTENDIMIENTO, error, mensaje: 'Error en entendimiento por video.' }).catch(() => null);
+    await marcarErrorEstadoProyectoEtapas({ proyectoId, etapa: ETAPAS_AUTOVIDEO.ENTENDIMIENTO, error, mensaje: 'Error en entendimiento global multivideo.' }).catch(() => null);
     throw error;
   }
 }
