@@ -41,6 +41,7 @@ export function crearPlanProduccionModelo(datos = {}) {
   const elementos = Array.isArray(datos.elementos) ? datos.elementos.map(crearElementoProduccion) : [];
   const duracionSegundos = Number(datos.duracionSegundos || datos.duracion || 0) || 0;
   const lineaTiempo = datos.lineaTiempo || crearLineaTiempoProduccion({ elementos, duracionSegundos });
+  const planEjecutable = datos.planEjecutable || null;
   return {
     id: datos.id || crearIdProduccion('plan'),
     proyectoId: datos.proyectoId || datos.proyecto?.id || null,
@@ -51,6 +52,8 @@ export function crearPlanProduccionModelo(datos = {}) {
     duracionSegundos,
     elementos,
     lineaTiempo,
+    planEjecutable,
+    usaPlanEjecutable: Boolean(planEjecutable?.tipo === 'plan-ejecutable-produccion'),
     aprobados: elementos.filter((item) => item.aprobado).length,
     pendientes: elementos.filter((item) => !item.aprobado && !item.rechazado).length,
     rechazados: elementos.filter((item) => item.rechazado).length,
@@ -66,5 +69,6 @@ export function validarPlanProduccion(plan = {}) {
   if (!plan.proyectoId) errores.push('El plan de produccion no tiene proyecto asociado.');
   if (!Array.isArray(plan.elementos)) errores.push('El plan de produccion debe tener lista de elementos.');
   if (!plan.lineaTiempo) errores.push('El plan de produccion debe tener linea de tiempo.');
+  if (plan.planEjecutable && plan.planEjecutable.tipo !== 'plan-ejecutable-produccion') errores.push('El plan ejecutable de produccion tiene tipo incorrecto.');
   return { ok: errores.length === 0, errores, plan };
 }
