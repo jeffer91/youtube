@@ -4,6 +4,7 @@ import { spawn } from 'child_process';
 import { fileURLToPath } from 'url';
 import { escribirJson } from '../../../comun/archivos.js';
 import { prepararAudioMotoresTranscripcion, crearFuenteAudioParaMotor } from '../../servicios/preparar-audio-motores.service.js';
+import { obtenerPythonPreferido, resolverPythonParaModulo } from '../python-local.service.js';
 import {
   ESTADOS_TRANSCRIPCION,
   MOTORES_TRANSCRIPCION,
@@ -34,13 +35,7 @@ function existeArchivo(rutaArchivo) {
 }
 
 function obtenerPython(opciones = {}) {
-  return String(
-    opciones.pythonPath ||
-    opciones.pythonFasterWhisper ||
-    process.env.AUTOVIDEOJEFF_PYTHON ||
-    process.env.PYTHON ||
-    (process.platform === 'win32' ? 'python' : 'python3')
-  ).trim();
+  return obtenerPythonPreferido(opciones, ['pythonFasterWhisper']);
 }
 
 function obtenerConfigFasterWhisper(opciones = {}) {
@@ -118,25 +113,40 @@ export async function verificarFasterWhisper({ opciones = {} } = {}) {
     return { ok: false, motor: MOTORES_TRANSCRIPCION.FASTER_WHISPER, mensaje: 'No existe el runner faster_whisper_runner.py.' };
   }
 
-  const python = obtenerPython(opciones);
-  const resultado = await ejecutarProceso({
-    comando: python,
-    args: ['-c', 'import faster_whisper; print("ok")'],
+  const resolucion = await resolverPythonParaModulo({
+    modulo: 'faster_whisper',
+    opciones,
+    clavesOpciones: ['pythonFasterWhisper'],
     timeoutMs: 15000
   });
 
   return {
-    ok: resultado.ok && resultado.stdout.includes('ok'),
+    ok: resolucion.ok,
     motor: MOTORES_TRANSCRIPCION.FASTER_WHISPER,
-    python,
-    mensaje: resultado.ok ? 'faster-whisper disponible.' : 'faster-whisper no está instalado o Python no está disponible.',
-    detalle: resultado.ok ? null : resultado.error
+    python: resolucion.python,
+    mensaje: resolucion.ok ? 'faster-whisper disponible.' : 'faster-whisper no está instalado en ningún Python local detectado.',
+    detalle: resolucion.ok ? null : resolucion.mensaje,
+    intentos: resolucion.ok ? undefined : resolucion.intentos
   };
 }
 
 export async function transcribirConFasterWhisper({ entrada, audio = null, opciones = {} } = {}) {
   const config = obtenerConfigFasterWhisper(opciones);
-  const python = obtenerPython(opciones);
+  const resolucionPython = await resolverPythonParaModulo({
+    modulo: 'faster_whisper',
+    opciones,
+    clavesOpciones: ['pythonFasterWhisper'],
+    timeoutMs: 15000
+  });
+  const python = resolucionPython.ok ? resolucionPython.python : obtenerPython(opciones);
+
+  if (!resolucionPython.ok) {
+    return crearResultadoError({
+      mensaje: 'faster-whisper no está instalado en el Python local detectado.',
+      metadata: { resolucionPython, python, config }
+    });
+  }
+
   const metadataAudio = audio?.ok && audio?.audio?.ruta ? audio : await prepararAudioMotoresTranscripcion({ entrada, audio: null, opciones });
   const fuenteAudio = crearFuenteAudioParaMotor({ entrada, metadata: metadataAudio });
 
