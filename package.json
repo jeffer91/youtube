@@ -53,6 +53,9 @@
     "check:biblioteca-subida-final": "node scripts/verificar-biblioteca-subida-final.js",
     "check:biblioteca-comunicacion-variables": "node scripts/verificar-biblioteca-comunicacion-variables.js",
     "check:biblioteca-proyecto-orden-inteligente": "node scripts/verificar-biblioteca-proyecto-orden-inteligente.js",
+    "check:biblioteca-unificada": "node scripts/verificar-biblioteca-unificada.js",
+    "check:contexto-plan-edicion": "node scripts/verificar-contexto-plan-edicion.js",
+    "check:ias-plan": "node scripts/verificar-ias-plan.js",
     "check:biblioteca-ui": "node scripts/verificar-biblioteca-ui.js",
     "check:biblioteca-proyecto": "node scripts/verificar-biblioteca-proyecto.js",
     "check:recursos-externos": "node scripts/verificar-recursos-externos.js",
@@ -132,7 +135,7 @@
     "productName": "AutoVideoJeff",
     "asar": false,
     "directories": { "output": "release" },
-    "files": ["app/**/*", "aprendizaje/**/*", "audio/**/*", "biblioteca/**/*", "biblioteca-proyecto/**/*", "comun/**/*", "diagnostico/**/*", "docs/**/*", "editar/**/*", "entrada/**/*", "entender/**/*", "entrega/**/*", "etapas/**/*", "exportacion/**/*", "gemini/**/*", "motor/**/*", "perfiles/**/*", "produccion/**/*", "progreso/**/*", "proyectos/**/*", "recursos-externos/**/*", "salida/**/*", "scripts/**/*", "server/**/*", "subtitulos/**/*", "textos/**/*", "transcripcion/**/*", "visual/**/*", "main.js", "preload.js", "server.js", "package.json"],
+    "files": ["app/**/*", "aprendizaje/**/*", "audio/**/*", "biblioteca/**/*", "biblioteca-proyecto/**/*", "comun/**/*", "diagnostico/**/*", "docs/**/*", "editar/**/*", "entrada/**/*", "entender/**/*", "entrega/**/*", "etapas/**/*", "exportacion/**/*", "gemini/**/*", "ia/**/*", "motor/**/*", "perfiles/**/*", "produccion/**/*", "progreso/**/*", "proyectos/**/*", "recursos-externos/**/*", "salida/**/*", "scripts/**/*", "server/**/*", "subtitulos/**/*", "textos/**/*", "transcripcion/**/*", "visual/**/*", "main.js", "preload.js", "server.js", "package.json"],
     "extraResources": [{ "from": "docs", "to": "docs" }],
     "win": { "target": ["nsis"] },
     "nsis": { "oneClick": false, "perMachine": false, "allowToChangeInstallationDirectory": true, "createDesktopShortcut": true, "createStartMenuShortcut": true }
