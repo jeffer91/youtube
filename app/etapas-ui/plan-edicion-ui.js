@@ -1,6 +1,6 @@
 /*
-  Bloque 9 + Biblioteca Bloque 5: Pantalla Plan de edición
-  Función: cargar, crear y mostrar el plan de edición con biblioteca general + biblioteca proyecto.
+  Bloque 9 + Biblioteca Bloque 5 + Plan IA Bloque 2: Pantalla Plan de edición
+  Función: cargar, crear y mostrar el plan de edición con biblioteca general + biblioteca proyecto + contexto IA.
 */
 
 const STORAGE_PROYECTO_ETAPAS = 'autovideojeff.proyectoEtapasId';
@@ -94,17 +94,25 @@ function obtenerBiblioteca(plan = {}) {
   return plan.biblioteca || plan.fuente?.biblioteca || {};
 }
 
+function obtenerContexto(plan = {}) {
+  return plan.contextoPlan || plan.fuente?.contextoPlan || {};
+}
+
 function renderKpis(plan = {}) {
   const resumen = plan.resumen || {};
   const elementos = obtenerElementos(plan);
   const biblioteca = obtenerBiblioteca(plan);
+  const contexto = obtenerContexto(plan);
   const resumenBiblioteca = biblioteca.resumen || {};
+  const resumenContexto = contexto.resumen || contexto || {};
   $('planTotalElementos').textContent = String(resumen.totalElementos ?? elementos.length ?? 0);
   $('planSubtitulos').textContent = String(resumen.subtitulos ?? elementos.filter((e) => e.tipo === 'subtitulo').length);
   $('planTextos').textContent = String(resumen.textos ?? elementos.filter((e) => e.tipo === 'texto').length);
   $('planRecursos').textContent = String(resumen.recursos ?? elementos.filter((e) => e.tipo === 'recurso').length);
   const bibliotecaEl = $('planBiblioteca');
   if (bibliotecaEl) bibliotecaEl.textContent = `${resumenBiblioteca.seleccionadosProyecto ?? resumen.recursosBibliotecaProyecto ?? 0}P / ${resumenBiblioteca.seleccionadosGeneral ?? resumen.recursosBibliotecaGeneral ?? 0}G`;
+  const contextoEl = $('planContexto');
+  if (contextoEl) contextoEl.textContent = resumen.contextoListoParaIA || resumenContexto.listoParaIA ? `${resumenContexto.totalPartes ?? resumen.contextoPartes ?? 0} partes` : 'Revisar';
   $('planEfectos').textContent = String((resumen.efectos ?? 0) + (resumen.zooms ?? 0) + (resumen.animaciones ?? 0));
   $('planListo').textContent = resumen.listoParaProduccion ? 'Sí' : 'Revisar';
 }
@@ -119,7 +127,9 @@ function renderFuente(plan = {}) {
   const fuente = plan.fuente || {};
   const necesidades = Array.isArray(fuente.necesidades) ? fuente.necesidades : [];
   const biblioteca = obtenerBiblioteca(plan);
+  const contexto = obtenerContexto(plan);
   const resumenBiblioteca = biblioteca.resumen || {};
+  const resumenContexto = contexto.resumen || contexto || {};
   $('planFuenteEstado').textContent = fuente.etapaOrigen ? 'Conectada' : 'Sin datos';
   $('planFuente').innerHTML = `
     <article><strong>Etapa origen</strong><span>${escapar(fuente.etapaOrigen || '—')}</span></article>
@@ -127,8 +137,34 @@ function renderFuente(plan = {}) {
     <article><strong>Momentos clave</strong><span>${escapar(fuente.momentosClave ?? 0)}</span></article>
     <article><strong>Biblioteca general</strong><span>${escapar(resumenBiblioteca.seleccionadosGeneral ?? 0)} seleccionados de ${escapar(resumenBiblioteca.totalGeneral ?? 0)} disponibles</span></article>
     <article><strong>Biblioteca proyecto</strong><span>${escapar(resumenBiblioteca.seleccionadosProyecto ?? 0)} seleccionados de ${escapar(resumenBiblioteca.totalProyecto ?? 0)} temporales</span></article>
+    <article><strong>Contexto IA</strong><span>${resumenContexto.listoParaIA ? 'Listo' : 'Pendiente'} · ${escapar(resumenContexto.totalPartes ?? 0)} partes</span></article>
     <article><strong>Regla biblioteca</strong><span>${escapar(biblioteca.regla || fuente.biblioteca?.regla || 'Referenciar recursos sin copiarlos.')}</span></article>
     <article><strong>Necesidades</strong><span>${necesidades.map(escapar).join(' · ') || 'Sin necesidades críticas'}</span></article>
+  `;
+}
+
+function renderContexto(plan = {}) {
+  const contexto = obtenerContexto(plan);
+  const resumen = contexto.resumen || contexto || {};
+  const contextoIA = plan.contextoIA || contexto.contextoIA || {};
+  const transcripcion = contexto.transcripcion || {};
+  const recursos = Array.isArray(contexto.recursosPlan) ? contexto.recursosPlan : [];
+  const partes = Array.isArray(contexto.partesIncluidas) ? contexto.partesIncluidas : [];
+  const estado = $('planContextoEstado');
+  const detalle = $('planContextoDetalle');
+  if (estado) estado.textContent = resumen.listoParaIA || contextoIA.listoParaIA ? 'Listo IA' : 'Sin datos';
+  if (!detalle) return;
+  if (!contexto || (!contexto.tipo && !resumen.totalPartes)) {
+    detalle.innerHTML = '<div class="plan-empty">Sin contexto construido.</div>';
+    return;
+  }
+  detalle.innerHTML = `
+    <article><strong>Partes absorbidas</strong><span>${escapar(partes.join(' · ') || `${resumen.totalPartes || 0} partes`)}</span></article>
+    <article><strong>Transcripción</strong><span>${transcripcion.textoDisponible || resumen.tieneTranscripcion ? 'Disponible' : 'Pendiente'} · ${escapar(resumen.segmentosTranscripcion || 0)} segmento(s)</span></article>
+    <article><strong>Frames / Momentos</strong><span>${escapar(resumen.framesClave || 0)} frame(s) · ${escapar(resumen.momentosClave || 0)} momento(s)</span></article>
+    <article><strong>Biblioteca para IA</strong><span>${escapar(resumen.recursosBibliotecaProyecto || 0)} temporales · ${escapar(resumen.recursosBibliotecaGeneral || 0)} generales · ${escapar(recursos.length)} recurso(s) en plan</span></article>
+    <article><strong>Salida esperada</strong><span>Resumen humano + JSON técnico ejecutable</span></article>
+    <article><strong>Prompt base</strong><span>${contextoIA.promptBase ? 'Preparado para proveedor IA' : 'Pendiente'}</span></article>
   `;
 }
 
@@ -150,7 +186,8 @@ function renderTimeline(plan = {}) {
 function renderTimelineItem(item = {}) {
   const inicio = numero(item.inicio);
   const fin = numero(item.fin);
-  const biblioteca = item.biblioteca ? ` · ${item.biblioteca.origen || item.biblioteca.alcance}` : '';
+  const bibliotecaDato = item.biblioteca || item.datos?.biblioteca || null;
+  const biblioteca = bibliotecaDato ? ` · ${bibliotecaDato.origen || bibliotecaDato.alcance}` : '';
   return `<div class="plan-timeline-item"><span>${escapar(item.tipo || item.pista || 'item')}${escapar(biblioteca)}</span><strong>${escapar(item.nombre || item.titulo || item.id || 'Elemento')}</strong><small>${inicio !== null ? inicio + 's' : '—'} - ${fin !== null ? fin + 's' : '—'}</small></div>`;
 }
 
@@ -184,6 +221,7 @@ function renderResultado(datos = {}) {
   renderKpis(plan);
   renderLectura(plan);
   renderFuente(plan);
+  renderContexto(plan);
   renderTimeline(plan);
   renderElementos(plan);
   const listo = Boolean(plan.resumen?.listoParaProduccion || plan.validacion?.ok);
@@ -217,7 +255,8 @@ async function procesarPlan() {
   const datos = await api(`/api/proyectos/${encodeURIComponent(proyectoId)}/plan/procesar`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ origen: 'pantalla-plan-edicion' }) });
   renderResultado(datos);
   const resumen = datos.biblioteca?.resumen || datos.resultado?.biblioteca?.resumen || {};
-  setMensaje(datos.mensaje || `Plan creado con biblioteca: ${resumen.seleccionadosProyecto || 0} temporales y ${resumen.seleccionadosGeneral || 0} generales.`, 'ok');
+  const contexto = datos.contextoPlan?.resumen || datos.resultado?.contextoPlan?.resumen || {};
+  setMensaje(datos.mensaje || `Plan creado con biblioteca: ${resumen.seleccionadosProyecto || 0} temporales y ${resumen.seleccionadosGeneral || 0} generales. Contexto IA: ${contexto.totalPartes || 0} partes.`, 'ok');
 }
 
 async function producirPlaceholder() {
