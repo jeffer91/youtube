@@ -1,6 +1,6 @@
 /*
   Modulo: biblioteca
-  Funcion: guardar o actualizar recursos permanentes en la biblioteca general.
+  Funcion: guardar, analizar o actualizar recursos permanentes en la biblioteca general.
 */
 
 import fs from 'fs/promises';
@@ -8,6 +8,7 @@ import crypto from 'crypto';
 import path from 'path';
 import { BIBLIOTECA_CONFIG, ALCANCES_BIBLIOTECA } from './biblioteca.config.js';
 import { crearRecursoModelo, validarRecursoModelo, limpiarNombreRecurso } from './recurso.modelo.js';
+import { analizarArchivoBiblioteca, fusionarAnalisisConRecurso } from './analizar-recurso.service.js';
 import { listarRecursosBiblioteca, escribirIndiceBibliotecaGeneral } from './listar-recursos.service.js';
 import {
   obtenerCarpetaDestinoRecursoGeneral,
@@ -75,6 +76,10 @@ function buscarDuplicado(recursos = [], recurso = {}) {
   const nombre = String(recurso.nombre || '').trim().toLowerCase();
   const categoria = recurso.categoria;
   const estiloPrincipal = recurso.estilos?.[0] || recurso.perfil || 'general';
+  return resourcesFind(recursos, recurso, nombre, categoria, estiloPrincipal);
+}
+
+function resourcesFind(recursos = [], recurso = {}, nombre = '', categoria = '', estiloPrincipal = 'general') {
   return recursos.find((item) =>
     item.id !== recurso.id &&
     String(item.nombre || '').trim().toLowerCase() === nombre &&
@@ -97,16 +102,24 @@ function fusionarRecursoGuardado(recurso, archivoGuardado = {}) {
       rutaAbsoluta: archivoGuardado.rutaAbsoluta || recurso.archivo?.rutaAbsoluta || recurso.ruta || '',
       rutaRelativa: archivoGuardado.rutaRelativa || recurso.archivo?.rutaRelativa || recurso.rutaRelativa || ''
     },
-    estadoTecnico: archivoGuardado.rutaAbsoluta || recurso.ruta || recurso.url ? 'listo' : recurso.estadoTecnico,
+    estadoTecnico: archivoGuardado.rutaAbsoluta || recurso.ruta || recurso.url ? 'pendiente' : recurso.estadoTecnico,
     actualizadoEn: new Date().toISOString()
   });
+}
+
+async function analizarRecursoGuardado(recurso) {
+  const rutaArchivo = recurso.archivo?.rutaAbsoluta || recurso.ruta;
+  if (!rutaArchivo) return recurso;
+  const analisis = await analizarArchivoBiblioteca({ rutaArchivo, recurso, tipo: recurso.tipo, generarMiniatura: true });
+  return crearRecursoModelo(fusionarAnalisisConRecurso(recurso, analisis));
 }
 
 export async function guardarRecursoBiblioteca(datos = {}, opciones = {}) {
   const accionDuplicado = normalizarAccionDuplicado(opciones.accionDuplicado || datos.accionDuplicado);
   const recursoInicial = crearRecursoModelo({ ...datos, alcance: ALCANCES_BIBLIOTECA.GENERAL });
   const archivoGuardado = await copiarArchivoBiblioteca({ datos, recurso: recursoInicial });
-  const recurso = fusionarRecursoGuardado(recursoInicial, archivoGuardado);
+  const recursoGuardado = fusionarRecursoGuardado(recursoInicial, archivoGuardado);
+  const recurso = await analizarRecursoGuardado(recursoGuardado);
   const validacion = validarRecursoModelo(recurso);
   if (!validacion.ok) {
     const error = new Error(validacion.errores.join(' | '));
@@ -143,11 +156,12 @@ export async function guardarRecursoBiblioteca(datos = {}, opciones = {}) {
   return {
     ok: true,
     recurso: recursoFinal,
+    analisis: recursoFinal.analisisArchivo || null,
     indice: {
       total: indice.total,
       ruta: indice.rutas?.indice || null
     },
-    mensaje: 'Recurso guardado en biblioteca general permanente.'
+    mensaje: 'Recurso guardado y analizado en biblioteca general permanente.'
   };
 }
 
