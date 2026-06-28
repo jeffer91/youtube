@@ -46,6 +46,7 @@
     "check:efectos": "node scripts/verificar-efectos-autovideo.js",
     "check:biblioteca": "node scripts/verificar-biblioteca.js",
     "check:biblioteca-bloque1": "node scripts/verificar-biblioteca-bloque-1.js",
+    "check:biblioteca-bloque3": "node scripts/verificar-biblioteca-bloque-3.js",
     "check:biblioteca-ui": "node scripts/verificar-biblioteca-ui.js",
     "check:biblioteca-proyecto": "node scripts/verificar-biblioteca-proyecto.js",
     "check:recursos-externos": "node scripts/verificar-recursos-externos.js",
