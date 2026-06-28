@@ -35,7 +35,7 @@ const ARCHIVOS_CRITICOS = [
   },
   {
     ruta: 'app/pantallas/biblioteca.view.js',
-    claves: ['libraryTabs', 'libraryNewStyles', 'libraryNewCategory', 'libraryResourcesList']
+    claves: ['library-tabs', 'libraryNewStyles', 'libraryNewCategory', 'libraryResourcesList']
   },
   {
     ruta: 'app/pantallas/biblioteca-proyecto.view.js',
