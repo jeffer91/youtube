@@ -17,6 +17,7 @@ import {
   guardarResultadoEtapa,
   cargarResultadoEtapa
 } from '../../flujo-etapas/flujo-etapas.conexion.js';
+import { unirVideosMaestroMultivideo } from './unir-videos-maestro.service.js';
 
 function texto(valor, respaldo = '') {
   const limpio = String(valor ?? '').replace(/\s+/g, ' ').trim();
@@ -34,14 +35,37 @@ function obtenerCarpetaProyecto(proyectoId) {
 
 async function cargarVideosOriginalesProyecto(proyectoId) {
   const ruta = path.join(obtenerCarpetaProyecto(proyectoId), 'videos-originales.json');
-  return await leerJsonSiExiste(ruta, { ok: true, proyectoId, total: 0, videos: [] });
+  return await leerJsonSiExiste(ruta, { ok: true, proyectoId, total: 0, totalValidos: 0, modo: 'sin-videos', esMultivideo: false, videos: [] });
+}
+
+function existeArchivo(rutaArchivo) {
+  try {
+    return Boolean(rutaArchivo && fs.existsSync(rutaArchivo) && fs.statSync(rutaArchivo).isFile());
+  } catch (_error) {
+    return false;
+  }
 }
 
 function seleccionarVideoPrincipal(videos = []) {
   const lista = Array.isArray(videos) ? videos : [];
-  const seleccionado = lista.find((item) => item?.rutaProyecto && fs.existsSync(item.rutaProyecto)) || null;
+  const seleccionado = lista.find((item) => item?.rutaProyecto && existeArchivo(item.rutaProyecto)) || lista.find((item) => item?.rutaOriginal && existeArchivo(item.rutaOriginal)) || null;
   if (!seleccionado) throw new Error('No existe video original guardado para producir. Primero sube el video al proyecto.');
   return seleccionado;
+}
+
+function obtenerVideosValidos(videosGuardados = {}) {
+  const lista = Array.isArray(videosGuardados?.videos) ? videosGuardados.videos : Array.isArray(videosGuardados) ? videosGuardados : [];
+  return lista
+    .map((video, index) => ({
+      ...video,
+      id: video.id || video.videoId || `video-${String(index + 1).padStart(2, '0')}`,
+      videoId: video.videoId || video.id || `video-${String(index + 1).padStart(2, '0')}`,
+      indice: video.indice ?? index,
+      orden: video.orden ?? index + 1,
+      rutaProyecto: video.rutaProyecto || video.rutaOriginal || video.ruta || '',
+      rutaOriginal: video.rutaOriginal || video.rutaProyecto || video.ruta || ''
+    }))
+    .filter((video) => existeArchivo(video.rutaProyecto || video.rutaOriginal));
 }
 
 function extraerResultadoEtapa(wrapper = {}) {
@@ -64,8 +88,49 @@ function extraerPlan(wrapper = {}) {
   return plan;
 }
 
-function crearEntradaProduccion({ proyectoId, estado, video, carpetaProyecto, plan }) {
+function obtenerLineaTiempoGlobal(entendimiento = {}, plan = {}) {
+  return plan.planProduccion?.lineaTiempoGlobal || plan.fuente?.lineaTiempoGlobal || entendimiento.lineaTiempoGlobal || entendimiento.entendimientoGlobal?.lineaTiempoGlobal || null;
+}
+
+function esMultivideoProduccion({ videosValidos = [], entendimiento = {}, plan = {} } = {}) {
+  return videosValidos.length > 1 || Boolean(plan.multivideo?.activo || plan.planProduccion?.multivideo?.activo || entendimiento.multivideo?.activo);
+}
+
+async function prepararVideoBaseProduccion({ proyectoId, carpetaProyecto, videosValidos, entendimiento, plan } = {}) {
+  const lineaTiempoGlobal = obtenerLineaTiempoGlobal(entendimiento, plan);
+  const multivideoActivo = esMultivideoProduccion({ videosValidos, entendimiento, plan });
+  if (!multivideoActivo) {
+    const video = seleccionarVideoPrincipal(videosValidos);
+    return {
+      ok: true,
+      multivideoActivo: false,
+      video,
+      unionVideos: null,
+      videosFuente: [video],
+      lineaTiempoGlobal
+    };
+  }
+
+  const unionVideos = await unirVideosMaestroMultivideo({
+    proyectoId,
+    carpetaProyecto,
+    videos: videosValidos,
+    lineaTiempoGlobal
+  });
+
+  return {
+    ok: true,
+    multivideoActivo: true,
+    video: unionVideos.videoMaestro,
+    unionVideos,
+    videosFuente: videosValidos,
+    lineaTiempoGlobal
+  };
+}
+
+function crearEntradaProduccion({ proyectoId, estado, video, carpetaProyecto, plan, videoBase }) {
   const proyectoPlan = plan.proyecto || {};
+  const multivideoActivo = Boolean(videoBase?.multivideoActivo);
   return {
     ok: true,
     etapa: ETAPAS_AUTOVIDEO.PRODUCCION,
@@ -74,23 +139,39 @@ function crearEntradaProduccion({ proyectoId, estado, video, carpetaProyecto, pl
       nombre: texto(estado?.nombre || proyectoPlan.nombre, 'Proyecto AutoVideoJeff'),
       perfil: texto(proyectoPlan.perfil || estado?.datos?.perfil, 'general'),
       plataforma: texto(proyectoPlan.plataforma || estado?.datos?.plataforma, 'tiktok'),
-      modoEdicion: texto(proyectoPlan.modoEdicion || estado?.datos?.modoEdicion, 'revision_completa')
+      modoEdicion: texto(proyectoPlan.modoEdicion || estado?.datos?.modoEdicion, 'revision_completa'),
+      esMultivideo: multivideoActivo,
+      totalVideos: videoBase?.videosFuente?.length || 1
     },
     video: {
-      nombreOriginal: video.nombreOriginal || video.nombreTemporal || path.basename(video.rutaProyecto),
-      nombreSeguro: path.basename(video.rutaProyecto),
-      rutaOriginal: video.rutaProyecto,
-      extension: path.extname(video.rutaProyecto).toLowerCase(),
-      origen: 'api-etapas-produccion'
+      id: video.videoId || video.id || null,
+      videoId: video.videoId || video.id || null,
+      nombreOriginal: video.nombreOriginal || video.nombreTemporal || path.basename(video.rutaProyecto || video.rutaOriginal),
+      nombreSeguro: video.nombreSeguro || path.basename(video.rutaProyecto || video.rutaOriginal),
+      rutaOriginal: video.rutaProyecto || video.rutaOriginal,
+      rutaProyecto: video.rutaProyecto || video.rutaOriginal,
+      extension: path.extname(video.rutaProyecto || video.rutaOriginal).toLowerCase(),
+      origen: multivideoActivo ? 'api-etapas-produccion-maestro-multivideo' : 'api-etapas-produccion'
+    },
+    videos: videoBase?.videosFuente || [video],
+    lineaTiempoGlobal: videoBase?.lineaTiempoGlobal || null,
+    multivideo: {
+      activo: multivideoActivo,
+      fase: 'bloque-7-produccion-multivideo',
+      totalVideos: videoBase?.videosFuente?.length || 1,
+      usaVideoMaestroUnido: Boolean(videoBase?.unionVideos?.videoMaestro),
+      videoMaestroTemporal: videoBase?.unionVideos?.videoMaestro || null,
+      unionVideos: videoBase?.unionVideos || null
     },
     rutas: {
       carpetaProyecto,
-      rutaVideoOriginal: video.rutaProyecto
+      rutaVideoOriginal: video.rutaProyecto || video.rutaOriginal,
+      carpetaProduccion: path.join(carpetaProyecto, 'produccion')
     }
   };
 }
 
-function crearOpcionesProduccion({ plan = {}, solicitud = {} } = {}) {
+function crearOpcionesProduccion({ plan = {}, solicitud = {}, videoBase = null } = {}) {
   const proyecto = plan.proyecto || {};
   return {
     plataforma: texto(solicitud.plataforma || proyecto.plataforma, 'tiktok'),
@@ -106,48 +187,65 @@ function crearOpcionesProduccion({ plan = {}, solicitud = {} } = {}) {
     usarMotorEfectos: true,
     intensidadEfectos: texto(solicitud.intensidadEfectos, 'normal'),
     maxEfectosVisuales: numero(solicitud.maxEfectosVisuales, 12),
-    origen: 'produccion-maestro-etapas',
+    origen: videoBase?.multivideoActivo ? 'produccion-maestro-etapas-multivideo' : 'produccion-maestro-etapas',
+    multivideo: videoBase?.multivideoActivo || false,
     planEdicionId: plan.planProduccion?.id || null
   };
 }
 
 function crearTranscripcionDesdeEntendimiento(entendimiento = {}) {
-  const transcripcion = entendimiento.transcripcion || null;
+  const transcripcion = entendimiento.transcripcionGlobal || entendimiento.transcripcionPrincipal || entendimiento.transcripcion || null;
   if (!transcripcion) return null;
   return {
     ...transcripcion,
-    origenProduccion: 'entendimiento-guardado'
+    origenProduccion: transcripcion.tipo === 'transcripcion-global-multivideo' ? 'entendimiento-global-multivideo' : 'entendimiento-guardado'
   };
 }
 
 function crearEdicionDinamicaDesdePlan(plan = {}) {
   const elementos = Array.isArray(plan.planProduccion?.elementos) ? plan.planProduccion.elementos : [];
-  const cortes = elementos.filter((item) => ['corte', 'segmento', 'subtitulo', 'texto', 'efecto', 'recurso'].includes(item.tipo)).slice(0, 40);
+  const cortes = elementos.filter((item) => ['corte', 'segmento', 'subtitulo', 'texto', 'efecto', 'recurso', 'zoom', 'animacion'].includes(item.tipo)).slice(0, 80);
   return {
     activo: cortes.length > 0,
     omitido: cortes.length === 0,
-    origen: 'plan-edicion',
+    origen: plan.multivideo?.activo ? 'plan-edicion-multivideo' : 'plan-edicion',
     planProduccionId: plan.planProduccion?.id || null,
     elementosUsados: cortes.length,
+    multivideo: plan.multivideo || plan.planProduccion?.multivideo || null,
+    lineaTiempoGlobal: plan.planProduccion?.lineaTiempoGlobal || plan.fuente?.lineaTiempoGlobal || null,
     mapaTiempo: cortes.map((item, index) => ({
       id: item.id || `item-${index + 1}`,
       tipo: item.tipo || 'elemento',
-      inicio: numero(item.inicio, 0),
-      fin: numero(item.fin, numero(item.inicio, 0) + 2),
+      videoId: item.videoId || item.datos?.videoId || null,
+      indiceVideo: item.indiceVideo ?? item.datos?.indiceVideo ?? null,
+      ordenVideo: item.ordenVideo ?? item.datos?.ordenVideo ?? null,
+      inicioLocal: item.inicioLocal ?? item.datos?.inicioLocal ?? null,
+      finLocal: item.finLocal ?? item.datos?.finLocal ?? null,
+      inicioGlobal: item.inicioGlobal ?? item.datos?.inicioGlobal ?? item.inicio ?? null,
+      finGlobal: item.finGlobal ?? item.datos?.finGlobal ?? item.fin ?? null,
+      offsetGlobal: item.offsetGlobal ?? item.datos?.offsetGlobal ?? null,
+      inicio: numero(item.inicioGlobal ?? item.inicio, 0),
+      fin: numero(item.finGlobal ?? item.fin, numero(item.inicioGlobal ?? item.inicio, 0) + 2),
       motivo: texto(item.motivo || item.descripcion, 'Elemento tomado del plan de edición.')
     })),
     diagnostico: {
-      mensaje: cortes.length ? 'Producción basada en elementos del plan de edición.' : 'Plan sin elementos suficientes para edición dinámica.'
+      mensaje: cortes.length
+        ? 'Producción basada en elementos del plan de edición con tiempos globales.'
+        : 'Plan sin elementos suficientes para edición dinámica.'
     }
   };
 }
 
-function crearResumenProduccion({ plan, edicion, salida }) {
+function crearResumenProduccion({ plan, edicion, salida, videoBase }) {
   const elementos = Array.isArray(plan.planProduccion?.elementos) ? plan.planProduccion.elementos : [];
   return {
     totalElementosPlan: elementos.length,
     elementosAprobados: elementos.filter((item) => item.aprobado).length,
     elementosEnRevision: elementos.filter((item) => !item.aprobado && !item.rechazado).length,
+    esMultivideo: Boolean(videoBase?.multivideoActivo),
+    videosFuente: videoBase?.videosFuente?.length || 1,
+    videoMaestroUnido: videoBase?.unionVideos?.videoMaestro?.nombreSeguro || null,
+    duracionTotalSegundos: plan.resumen?.duracionTotalSegundos || plan.planProduccion?.duracionSegundos || null,
     videoMaestro: salida?.nombreExportado || null,
     urlPublica: salida?.urlPublica || null,
     pesoBytes: salida?.pesoBytes || null,
@@ -160,20 +258,28 @@ function crearResumenProduccion({ plan, edicion, salida }) {
   };
 }
 
-function crearAuditoriaProduccion({ entrada, plan, edicion, salida }) {
+function crearAuditoriaProduccion({ entrada, plan, edicion, salida, videoBase }) {
   return {
-    tipo: 'produccion-maestro',
+    tipo: videoBase?.multivideoActivo ? 'produccion-maestro-multivideo' : 'produccion-maestro',
     entrada: {
       proyectoId: entrada.proyecto.id,
       nombreOriginal: entrada.video.nombreOriginal,
-      rutaOriginal: entrada.video.rutaOriginal
+      rutaOriginal: entrada.video.rutaOriginal,
+      multivideo: entrada.multivideo || null
     },
     plan: {
       id: plan.planProduccion?.id || null,
       totalElementos: plan.planProduccion?.elementos?.length || 0,
       validacion: plan.validacion || null,
-      resumen: plan.resumen || null
+      resumen: plan.resumen || null,
+      multivideo: plan.multivideo || plan.planProduccion?.multivideo || null
     },
+    unionVideos: videoBase?.unionVideos ? {
+      ok: videoBase.unionVideos.ok,
+      metodo: videoBase.unionVideos.metodo,
+      totalVideosFuente: videoBase.unionVideos.totalVideosFuente,
+      rutaSalida: videoBase.unionVideos.rutaSalida
+    } : null,
     edicion: {
       ok: Boolean(edicion?.ok),
       tipo: edicion?.tipo || null,
@@ -213,19 +319,20 @@ export async function procesarProduccionMaestroProyectoEtapa({ proyectoId, opcio
     if (!planGuardado) throw new Error('No se puede producir porque no existe plan de edición guardado.');
 
     const videosGuardados = await cargarVideosOriginalesProyecto(proyectoId);
-    const video = seleccionarVideoPrincipal(videosGuardados.videos || []);
+    const videosValidos = obtenerVideosValidos(videosGuardados);
     const estadoProcesando = await cargarEstadoProyectoEtapas({ proyectoId, crearSiFalta: false });
     const entendimiento = extraerEntendimiento(entendimientoGuardado);
     const plan = extraerPlan(planGuardado);
-    const entrada = crearEntradaProduccion({ proyectoId, estado: estadoProcesando, video, carpetaProyecto, plan });
-    const opcionesProduccion = crearOpcionesProduccion({ plan, solicitud: { ...opciones, ...solicitud } });
+    const videoBase = await prepararVideoBaseProduccion({ proyectoId, carpetaProyecto, videosValidos, entendimiento, plan });
+    const entrada = crearEntradaProduccion({ proyectoId, estado: estadoProcesando, video: videoBase.video, carpetaProyecto, plan, videoBase });
+    const opcionesProduccion = crearOpcionesProduccion({ plan, solicitud: { ...opciones, ...solicitud }, videoBase });
     const transcripcion = crearTranscripcionDesdeEntendimiento(entendimiento);
     const edicionDinamica = crearEdicionDinamicaDesdePlan(plan);
 
     const edicion = await editarVideo({ entrada, entendimiento, audio: null, transcripcion, edicionDinamica, opciones: opcionesProduccion, progreso: null });
     const salida = await prepararSalida({ entrada, entendimiento, audio: null, transcripcion, edicionDinamica, edicion, opciones: opcionesProduccion, progreso: null });
-    const resumen = crearResumenProduccion({ plan, edicion, salida });
-    const auditoria = crearAuditoriaProduccion({ entrada, plan, edicion, salida });
+    const resumen = crearResumenProduccion({ plan, edicion, salida, videoBase });
+    const auditoria = crearAuditoriaProduccion({ entrada, plan, edicion, salida, videoBase });
 
     const produccion = {
       ok: true,
@@ -233,12 +340,24 @@ export async function procesarProduccionMaestroProyectoEtapa({ proyectoId, opcio
       proyectoId,
       entrada,
       resumen,
+      multivideo: {
+        activo: Boolean(videoBase.multivideoActivo),
+        fase: 'bloque-7-produccion-multivideo',
+        totalVideos: videoBase.videosFuente?.length || 1,
+        usaVideoMaestroUnido: Boolean(videoBase.unionVideos?.videoMaestro),
+        unionVideos: videoBase.unionVideos || null,
+        usaTiemposGlobales: Boolean(edicionDinamica?.lineaTiempoGlobal),
+        nota: videoBase.multivideoActivo
+          ? 'Producción realizada sobre un video maestro temporal unido desde todos los videos originales.'
+          : 'Producción realizada con video único compatible con flujo multivideo.'
+      },
       videoMaestro: {
         nombre: salida.nombreExportado,
         ruta: salida.rutaExportada,
         rutaRelativa: salida.rutaRelativa,
         urlPublica: salida.urlPublica,
-        pesoBytes: salida.pesoBytes
+        pesoBytes: salida.pesoBytes,
+        fuenteTemporal: videoBase.unionVideos?.videoMaestro || null
       },
       planProduccion: plan.planProduccion,
       edicion,
@@ -254,8 +373,9 @@ export async function procesarProduccionMaestroProyectoEtapa({ proyectoId, opcio
       resultado: produccion,
       metadata: {
         bloque: 10,
-        tipo: 'produccion-maestro-backend',
-        origen: 'POST /api/proyectos/:proyectoId/produccion/procesar'
+        tipo: videoBase.multivideoActivo ? 'produccion-maestro-backend-multivideo' : 'produccion-maestro-backend',
+        origen: 'POST /api/proyectos/:proyectoId/produccion/procesar',
+        multivideo: produccion.multivideo
       }
     });
 
@@ -264,7 +384,7 @@ export async function procesarProduccionMaestroProyectoEtapa({ proyectoId, opcio
       etapaDestino: ETAPAS_AUTOVIDEO.PRODUCCION,
       estadoDestino: ESTADOS_PROYECTO_ETAPAS.PRODUCIDO,
       archivoGenerado: guardado.ruta,
-      mensaje: 'Producción maestro completada.'
+      mensaje: videoBase.multivideoActivo ? 'Producción maestro multivideo completada.' : 'Producción maestro completada.'
     });
 
     return {
@@ -275,7 +395,7 @@ export async function procesarProduccionMaestroProyectoEtapa({ proyectoId, opcio
       resultado: produccion,
       resumen,
       archivo: guardado,
-      mensaje: 'Video maestro producido correctamente.'
+      mensaje: videoBase.multivideoActivo ? 'Video maestro multivideo producido correctamente.' : 'Video maestro producido correctamente.'
     };
   } catch (error) {
     await marcarErrorEstadoProyectoEtapas({ proyectoId, etapa: ETAPAS_AUTOVIDEO.PRODUCCION, error, mensaje: 'Error en producción maestro.' }).catch(() => null);
