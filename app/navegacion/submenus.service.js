@@ -4,12 +4,6 @@
 */
 
 export const SUBMENUS = Object.freeze({
-  biblioteca: [
-    { id: 'general', titulo: 'General' },
-    { id: 'proyecto', titulo: 'Proyecto actual' },
-    { id: 'externos', titulo: 'Recursos externos' },
-    { id: 'categorias', titulo: 'Categorias' }
-  ],
   produccion: [
     { id: 'pendientes', titulo: 'Pendientes' },
     { id: 'aprobados', titulo: 'Aprobados' },
