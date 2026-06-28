@@ -1,12 +1,13 @@
 /*
-  Bloque 4 - Generador de Plan por partes
-  Función: pedir/crear cada sección del Plan, validarla y guardarla antes de seguir.
+  Bloque 4-5 - Generador de Plan por partes con dos opciones
+  Funcion: crear secciones, validarlas, generar opcion Gemini/local y elegir la mejor.
 */
 
 import { PARTES_PLAN_EDICION } from './partes-plan.config.js';
 import { validarPartePlan } from './validar-parte-plan.service.js';
 import { crearEstadoPlanPorPartes, guardarPartePlan, cerrarPlanPorPartes } from './guardar-parte-plan.service.js';
 import { ejecutarPlanConIA } from '../../ia/ia.conexion.js';
+import { generarOpcionesPlan } from './generar-opciones-plan.service.js';
 
 function texto(valor = '', respaldo = '') {
   const limpio = String(valor ?? '').replace(/\s+/g, ' ').trim();
@@ -42,8 +43,8 @@ function construirContextoParte({ contextoPlan = {}, parte = {}, partesPrevias =
         `Debe devolver solo esta parte: ${parte.id}.`,
         `Requiere: ${(parte.requiere || []).join(', ')}.`,
         `Salida esperada: ${(parte.salidaEsperada || []).join(', ')}.`,
-        'Devuelve JSON válido con: resumenHumano y jsonTecnico.',
-        'jsonTecnico debe ser compatible con producción y, cuando aplique, incluir timeline.'
+        'Devuelve JSON valido con: resumenHumano y jsonTecnico.',
+        'jsonTecnico debe ser compatible con produccion y, cuando aplique, incluir timeline.'
       ].filter(Boolean).join('\n')
     }
   };
@@ -103,9 +104,13 @@ export async function generarPlanPorPartes({ proyectoId = '', contextoPlan = {},
   }
 
   const cerrado = cerrarPlanPorPartes(estado);
+  const opcionesPlan = await generarOpcionesPlan({ proyectoId, contextoPlan, planPorPartes: cerrado, opciones });
+  const listoParaProduccion = cerrado.progreso.conErrores === 0 && cerrado.progreso.completadas === cerrado.totalPartes && Boolean(opcionesPlan.seleccionAutomatica?.ok);
   return {
     ...cerrado,
-    listoParaProduccion: cerrado.progreso.conErrores === 0 && cerrado.progreso.completadas === cerrado.totalPartes,
+    opcionesPlan,
+    mejorOpcionPlan: opcionesPlan.mejorOpcion,
+    listoParaProduccion,
     resumen: {
       totalPartes: cerrado.totalPartes,
       completadas: cerrado.progreso.completadas,
@@ -113,7 +118,11 @@ export async function generarPlanPorPartes({ proyectoId = '', contextoPlan = {},
       conErrores: cerrado.progreso.conErrores,
       porcentaje: cerrado.progreso.porcentaje,
       proveedorPrincipal: cerrado.partes[0]?.proveedor || 'fallback',
-      modo: usarIAReal ? 'ia-real-o-local' : 'fallback-estructurado'
+      modo: usarIAReal ? 'ia-real-o-local' : 'fallback-estructurado',
+      opcionesTotal: opcionesPlan.resumen.totalOpciones,
+      mejorOpcionId: opcionesPlan.resumen.mejorId,
+      mejorProveedor: opcionesPlan.resumen.proveedor,
+      mejorPuntaje: opcionesPlan.resumen.puntaje
     }
   };
 }
