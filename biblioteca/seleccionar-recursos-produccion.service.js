@@ -1,20 +1,21 @@
 /*
-  Bloque 12: Biblioteca mejorada / recursos para producción
-  Función: recomendar recursos de biblioteca para un proyecto por etapas usando entendimiento y plan de edición.
+  Bloque 12 + Biblioteca Bloque 5: Biblioteca mejorada / recursos para producción
+  Función: recomendar recursos de biblioteca general permanente y biblioteca temporal del proyecto.
 */
 
 import path from 'path';
 import { buscarRecursosBiblioteca } from './buscar-recurso.service.js';
-import { escribirJson, obtenerRutaRaiz } from '../comun/archivos.js';
+import { buscarRecursosProyecto } from '../biblioteca-proyecto/biblioteca-proyecto.conexion.js';
+import { escribirJson, obtenerRutaRaiz, obtenerRutaDatos } from '../comun/archivos.js';
 import {
   ETAPAS_AUTOVIDEO,
   cargarResultadoEtapa
 } from '../flujo-etapas/flujo-etapas.conexion.js';
 
 const TIPOS_POR_ELEMENTO = Object.freeze({
-  subtitulo: ['plantilla', 'overlay'],
+  subtitulo: ['plantilla', 'overlay', 'imagen'],
   texto: ['overlay', 'plantilla', 'imagen'],
-  recurso: ['imagen', 'video', 'fondo', 'overlay'],
+  recurso: ['imagen', 'video', 'fondo', 'overlay', 'audio'],
   imagen: ['imagen', 'fondo', 'overlay'],
   video: ['video', 'fondo'],
   fondo: ['fondo', 'video', 'imagen'],
@@ -63,6 +64,7 @@ function obtenerElementosPlan(plan = {}) {
 function obtenerNecesidades(entendimiento = {}, plan = {}) {
   const lista = [
     ...(Array.isArray(entendimiento.analisisVideo?.necesidades) ? entendimiento.analisisVideo.necesidades : []),
+    ...(Array.isArray(entendimiento.analisisVideoGlobal?.necesidades) ? entendimiento.analisisVideoGlobal.necesidades : []),
     ...(Array.isArray(entendimiento.resumenEtapa?.necesidades) ? entendimiento.resumenEtapa.necesidades : []),
     ...(Array.isArray(plan.fuente?.necesidades) ? plan.fuente.necesidades : [])
   ];
@@ -73,14 +75,14 @@ function crearNecesidadesDesdePlan(plan = {}, entendimiento = {}) {
   const elementos = obtenerElementosPlan(plan);
   const necesidades = elementos.slice(0, 30).map((elemento, index) => ({
     id: elemento.id || `plan-${index + 1}`,
-    tipo: elemento.tipo || 'recurso',
+    tipo: elemento.tipo || elemento.datos?.tipo || 'recurso',
     nombre: elemento.nombre || elemento.titulo || elemento.tipo || `Elemento ${index + 1}`,
-    descripcion: texto([elemento.descripcion, elemento.motivo, elemento.datos?.texto, elemento.fraseRelacionada].filter(Boolean).join(' '), elemento.nombre || 'Elemento del plan'),
+    descripcion: texto([elemento.descripcion, elemento.motivo, elemento.datos?.texto, elemento.fraseRelacionada, elemento.biblioteca?.categoria].filter(Boolean).join(' '), elemento.nombre || 'Elemento del plan'),
     inicio: elemento.inicio ?? elemento.datos?.inicio ?? null,
     fin: elemento.fin ?? elemento.datos?.fin ?? null,
-    tipoEdicion: elemento.tipoEdicion || elemento.tipo || 'apoyo_visual',
+    tipoEdicion: elemento.tipoEdicion || elemento.biblioteca?.categoria || elemento.tipo || 'apoyo_visual',
     momentoSugerido: elemento.momentoSugerido || elemento.momento || '',
-    fuente: 'plan-edicion'
+    fuente: elemento.biblioteca ? 'plan-biblioteca' : 'plan-edicion'
   }));
 
   obtenerNecesidades(entendimiento, plan).forEach((necesidad, index) => {
@@ -107,17 +109,26 @@ function textoRecurso(recurso = {}) {
     recurso.tema,
     recurso.fraseRelacionada,
     recurso.categoria,
+    recurso.categoriaNombre,
     recurso.perfil,
     recurso.tipo,
     recurso.tipoEdicion,
+    recurso.usoSugerido,
     recurso.tono,
     recurso.momentoSugerido,
+    recurso.alcanceBiblioteca,
     ...(recurso.etiquetas || [])
   ].filter(Boolean).join(' '));
 }
 
 function tiposEsperados(necesidad = {}) {
-  return TIPOS_POR_ELEMENTO[necesidad.tipo] || ['imagen', 'video', 'overlay', 'fondo', 'plantilla'];
+  return TIPOS_POR_ELEMENTO[necesidad.tipo] || ['imagen', 'video', 'overlay', 'fondo', 'plantilla', 'audio'];
+}
+
+function recursoDisponible(recurso = {}) {
+  const estado = recurso.estadoTecnico || recurso.estado || '';
+  if (['rechazado', 'error', 'faltante'].includes(estado)) return false;
+  return Boolean(recurso.ruta || recurso.url || recurso.archivo?.rutaAbsoluta || recurso.archivo?.rutaRelativa);
 }
 
 function puntuarRecurso({ recurso, necesidad, proyecto, tokensProyecto = [] } = {}) {
@@ -128,16 +139,22 @@ function puntuarRecurso({ recurso, necesidad, proyecto, tokensProyecto = [] } = 
   const tipos = tiposEsperados(necesidad);
   const perfil = proyecto.perfil || 'general';
   const categoriaEsperada = CATEGORIA_POR_PERFIL[perfil] || 'general';
+  const alcance = recurso.alcanceBiblioteca || recurso.alcance || 'general';
+
+  if (alcance === 'proyecto') { puntaje += 45; razones.push('recurso temporal del proyecto'); }
+  if (alcance === 'general') { puntaje += 10; razones.push('recurso permanente general'); }
 
   if (tipos.includes(recurso.tipo)) { puntaje += 28; razones.push(`tipo compatible: ${recurso.tipo}`); }
   else { puntaje -= 8; riesgos.push(`tipo menos directo para ${necesidad.tipo}`); }
 
-  if (recurso.perfil && recurso.perfil === perfil) { puntaje += 20; razones.push(`perfil exacto: ${perfil}`); }
-  if (!recurso.perfil || recurso.perfil === 'general' || recurso.perfil === 'todos') { puntaje += 8; razones.push('perfil flexible'); }
+  const estilos = recurso.estilos || recurso.perfiles || (recurso.perfil ? [recurso.perfil] : []);
+  if (recurso.perfil === perfil || estilos.includes(perfil)) { puntaje += 20; razones.push(`perfil exacto: ${perfil}`); }
+  if (!recurso.perfil || recurso.perfil === 'general' || recurso.perfil === 'todos' || estilos.includes('general')) { puntaje += 8; razones.push('perfil flexible'); }
   if (recurso.categoria === categoriaEsperada) { puntaje += 14; razones.push(`categoría alineada: ${categoriaEsperada}`); }
-  if (recurso.categoria === 'general') puntaje += 5;
+  if (recurso.categoria === 'general' || recurso.categoria === 'otro') puntaje += 5;
 
   if (recurso.tipoEdicion && normalizar(recurso.tipoEdicion) === normalizar(necesidad.tipoEdicion)) { puntaje += 14; razones.push(`uso de edición alineado: ${recurso.tipoEdicion}`); }
+  if (recurso.usoSugerido && normalizar(recurso.usoSugerido).includes(normalizar(necesidad.tipoEdicion))) { puntaje += 10; razones.push('uso sugerido compatible'); }
   if (recurso.momentoSugerido && necesidad.momentoSugerido && normalizar(recurso.momentoSugerido).includes(normalizar(necesidad.momentoSugerido))) { puntaje += 10; razones.push('momento sugerido compatible'); }
 
   const tokensNecesidad = [...tokensDe(necesidad.nombre), ...tokensDe(necesidad.descripcion), ...tokensProyecto];
@@ -146,10 +163,10 @@ function puntuarRecurso({ recurso, necesidad, proyecto, tokensProyecto = [] } = 
   if (coincidencias.length) razones.push(`coincide con: ${coincidencias.join(', ')}`);
 
   if (recurso.aprobado) { puntaje += 8; razones.push('aprobado'); }
-  if (recurso.estado === 'aprobado' || recurso.estado === 'disponible') puntaje += 5;
+  if (recurso.estado === 'aprobado' || recurso.estado === 'disponible' || recurso.estadoTecnico === 'listo') puntaje += 5;
   if (recurso.licencia === 'pendiente_revision') { puntaje -= 10; riesgos.push('licencia pendiente de revisión'); }
   if (recurso.rechazado || recurso.estado === 'rechazado') { puntaje -= 35; riesgos.push('recurso rechazado'); }
-  if (!recurso.ruta && !recurso.url) { puntaje -= 30; riesgos.push('sin ruta ni url'); }
+  if (!recursoDisponible(recurso)) { puntaje -= 30; riesgos.push('sin ruta ni url'); }
 
   return {
     recurso,
@@ -170,9 +187,13 @@ function resumir(recomendaciones = [], recursos = [], necesidades = []) {
   const usadas = recomendaciones.reduce((total, item) => total + item.recursos.length, 0);
   const sinRecurso = recomendaciones.filter((item) => item.recursos.length === 0).length;
   const riesgos = recomendaciones.flatMap((item) => item.recursos.flatMap((recurso) => recurso.riesgos || [])).length;
+  const generales = recursos.filter((item) => (item.alcanceBiblioteca || item.alcance || 'general') === 'general').length;
+  const temporales = recursos.filter((item) => (item.alcanceBiblioteca || item.alcance) === 'proyecto').length;
   return {
     necesidadesAnalizadas: necesidades.length,
     recursosDisponibles: recursos.length,
+    recursosGenerales: generales,
+    recursosProyecto: temporales,
     sugerenciasGeneradas: usadas,
     necesidadesSinRecurso: sinRecurso,
     riesgosDetectados: riesgos,
@@ -190,6 +211,51 @@ function crearProyectoDesdePlan(plan = {}) {
   };
 }
 
+function crearProyectoBiblioteca(proyectoId, proyecto = {}) {
+  const carpetaProyecto = path.join(obtenerRutaDatos(), 'proyectos', proyectoId);
+  return { ...proyecto, id: proyectoId, proyectoId, carpetaProyecto, rutas: { raiz: carpetaProyecto, carpetaProyecto } };
+}
+
+function normalizarRecursoOrigen(recurso = {}, alcance = 'general') {
+  const ruta = recurso.ruta || recurso.archivo?.rutaAbsoluta || recurso.url || '';
+  return {
+    ...recurso,
+    alcanceBiblioteca: alcance,
+    bibliotecaOrigen: alcance,
+    ruta,
+    rutaRelativa: recurso.rutaRelativa || recurso.archivo?.rutaRelativa || '',
+    usoSugerido: recurso.usoSugerido || recurso.tipoEdicion || recurso.estadoUso || 'recurso_apoyo'
+  };
+}
+
+function claveRecurso(recurso = {}) {
+  const hash = recurso.archivo?.hashSha256 || '';
+  if (hash) return `hash:${hash}`;
+  return `${recurso.alcanceBiblioteca || recurso.alcance || 'general'}:${recurso.id || recurso.nombre}:${recurso.ruta || recurso.url || ''}`;
+}
+
+function deduplicar(recursos = []) {
+  const mapa = new Map();
+  recursos.forEach((recurso) => {
+    const clave = claveRecurso(recurso);
+    if (!mapa.has(clave)) mapa.set(clave, recurso);
+    else if (mapa.get(clave).alcanceBiblioteca !== 'proyecto' && recurso.alcanceBiblioteca === 'proyecto') mapa.set(clave, recurso);
+  });
+  return [...mapa.values()];
+}
+
+async function obtenerRecursosCombinados({ proyectoId, proyecto, filtros = {} } = {}) {
+  const proyectoBiblioteca = crearProyectoBiblioteca(proyectoId, proyecto);
+  const [generales, temporales] = await Promise.all([
+    buscarRecursosBiblioteca({ consulta: filtros.consulta || filtros.q || '', tipo: filtros.tipo || '', categoria: filtros.categoria || '', perfil: filtros.perfil || '' }),
+    buscarRecursosProyecto(proyectoBiblioteca, { consulta: filtros.consulta || filtros.q || '', tipo: filtros.tipo || '', categoria: filtros.categoria || '', perfil: filtros.perfil || '' })
+  ]);
+  return deduplicar([
+    ...temporales.map((recurso) => normalizarRecursoOrigen(recurso, 'proyecto')),
+    ...generales.map((recurso) => normalizarRecursoOrigen(recurso, 'general'))
+  ]).filter(recursoDisponible);
+}
+
 async function guardarRecomendaciones({ proyectoId, resultado } = {}) {
   const ruta = path.join(obtenerRutaRaiz(), 'datos', 'proyectos', proyectoId, '02-plan', 'biblioteca-sugerencias.json');
   await escribirJson(ruta, resultado);
@@ -205,12 +271,7 @@ export async function recomendarRecursosProduccion({ proyectoId, filtros = {}, l
   const plan = extraerResultadoEtapa(planGuardado);
   const entendimiento = extraerResultadoEtapa(entendimientoGuardado);
   const proyecto = crearProyectoDesdePlan(plan);
-  const recursos = await buscarRecursosBiblioteca({
-    consulta: filtros.consulta || filtros.q || '',
-    tipo: filtros.tipo || '',
-    categoria: filtros.categoria || '',
-    perfil: filtros.perfil || ''
-  });
+  const recursos = await obtenerRecursosCombinados({ proyectoId, proyecto, filtros });
   const necesidades = crearNecesidadesDesdePlan(plan, entendimiento);
   const tokensProyecto = tokensDe([proyecto.nombre, proyecto.perfil, proyecto.plataforma, proyecto.modoEdicion].join(' '));
 
@@ -231,7 +292,9 @@ export async function recomendarRecursosProduccion({ proyectoId, filtros = {}, l
   const resultado = {
     ok: true,
     bloque: 12,
-    tipo: 'biblioteca-recursos-produccion',
+    bloqueBiblioteca: 5,
+    tipo: 'biblioteca-recursos-produccion-combinada',
+    regla: 'Usa recursos permanentes de biblioteca general y temporales de biblioteca proyecto sin copiarlos.',
     proyectoId,
     proyecto,
     resumen: resumir(recomendaciones, recursos, necesidades),
