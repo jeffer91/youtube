@@ -1,7 +1,8 @@
-/* Verificacion agrupada Bloque 10 AutoVideoJeff. */
+/*
+  Bloque 10 AutoVideoJeff
+  Función: auditar que el flujo multivideo completo esté conectado de punta a punta.
+*/
 
-import './verificar-diagnostico-modular.js';
-import './verificar-estructura-modular.js';
-import './verificar-integracion-modular-final.js';
+import { verificarBloque10Multivideo } from './verificar-multivideo-flujo-completo.js';
 
-console.log('OK Bloque 10 AutoVideoJeff: diagnostico, estructura e integracion final cargados.');
+await verificarBloque10Multivideo();
