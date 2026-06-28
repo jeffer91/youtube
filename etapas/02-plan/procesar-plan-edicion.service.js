@@ -1,6 +1,6 @@
 /*
-  Bloque 8: Plan de edición backend
-  Función: convertir el entendimiento del video en un plan revisable antes de producir.
+  Bloque 8 + Biblioteca Bloque 5: Plan de edición backend
+  Función: convertir el entendimiento en plan revisable y conectar biblioteca general + biblioteca proyecto sin copiar recursos.
 */
 
 import {
@@ -13,6 +13,7 @@ import {
   cargarResultadoEtapa
 } from '../../flujo-etapas/flujo-etapas.conexion.js';
 import { crearPlanProduccion, validarPlanProduccion } from '../../produccion/produccion.conexion.js';
+import { resolverBibliotecaParaPlan } from '../../biblioteca/biblioteca.conexion.js';
 
 function texto(valor, respaldo = '') {
   const limpio = String(valor ?? '').replace(/\s+/g, ' ').trim();
@@ -117,9 +118,7 @@ function crearSubtitulosDesdeTranscripcion(entendimiento = {}) {
       texto: texto(segmento.texto || segmento.nota, `Segmento ${index + 1}`),
       inicio: inicioGlobal(segmento, index * 3),
       fin: finGlobal(segmento, (index + 1) * 3),
-      motivo: segmento.videoId
-        ? `Subtítulo global derivado de ${segmento.videoId}.`
-        : 'Subtítulo derivado de la transcripción de entendimiento.',
+      motivo: segmento.videoId ? `Subtítulo global derivado de ${segmento.videoId}.` : 'Subtítulo derivado de la transcripción de entendimiento.',
       tipoPlan: 'subtitulo-global',
       ...metadatosTiempo(segmento)
     }));
@@ -230,9 +229,7 @@ function crearAudioDesdeEntendimiento(entendimiento = {}) {
   return {
     id: 'audio-plan-base',
     nombre: esMultivideo(entendimiento) ? 'Plan de audio multivideo' : 'Plan de audio seguro',
-    motivo: linea.totalVideos
-      ? `Proyecto con ${linea.videosConAudio || 0}/${linea.totalVideos} video(s) con audio detectado.`
-      : analisis.tieneAudio ? 'Mantener audio y preparar limpieza en producción.' : 'Video sin audio detectado o audio pendiente.',
+    motivo: linea.totalVideos ? `Proyecto con ${linea.videosConAudio || 0}/${linea.totalVideos} video(s) con audio detectado.` : analisis.tieneAudio ? 'Mantener audio y preparar limpieza en producción.' : 'Video sin audio detectado o audio pendiente.',
     tieneAudio: Boolean(linea.tieneAudio || analisis.tieneAudio),
     todosTienenAudio: Boolean(linea.todosTienenAudio),
     requiereRevision: linea.totalVideos ? !linea.todosTienenAudio : !analisis.tieneAudio,
@@ -272,16 +269,14 @@ function enriquecerPlanConMultivideo({ planProduccion, entendimiento, proyectoId
       duracionTotalSegundos: duracionSegundos,
       usaTranscripcionGlobal: Boolean(entendimiento.transcripcionGlobal?.textoCompleto || obtenerTranscripcion(entendimiento)?.tipo === 'transcripcion-global-multivideo'),
       usaTiemposGlobales: true,
-      nota: activo
-        ? 'Plan creado sobre la línea de tiempo global del proyecto multivideo.'
-        : 'Plan creado con estructura compatible con multivideo.'
+      nota: activo ? 'Plan creado sobre la línea de tiempo global del proyecto multivideo.' : 'Plan creado con estructura compatible con multivideo.'
     },
     lineaTiempoGlobal,
     actualizadoEn: new Date().toISOString()
   };
 }
 
-function crearPlanEditorial({ proyectoId, estado = {}, entendimiento = {}, solicitud = {} } = {}) {
+async function crearPlanEditorial({ proyectoId, estado = {}, entendimiento = {}, solicitud = {} } = {}) {
   const datosEstado = estado.datos || {};
   const totalVideos = obtenerTotalVideos(entendimiento);
   const proyecto = {
@@ -296,9 +291,11 @@ function crearPlanEditorial({ proyectoId, estado = {}, entendimiento = {}, solic
   const duracionSegundos = obtenerDuracion(entendimiento);
   const subtitulos = crearSubtitulosDesdeTranscripcion(entendimiento);
   const textos = crearTextosDesdeMomentos(entendimiento);
+  const biblioteca = await resolverBibliotecaParaPlan({ proyectoId, proyecto, entendimiento, limiteSeleccionados: 24 });
   const recursos = [
     ...crearRecursosDesdeVideos(entendimiento),
-    ...crearRecursosDesdeNecesidades(entendimiento)
+    ...crearRecursosDesdeNecesidades(entendimiento),
+    ...biblioteca.recursosPlan
   ];
   const visual = crearVisualDesdeEntendimiento(entendimiento);
   const audio = crearAudioDesdeEntendimiento(entendimiento);
@@ -320,6 +317,10 @@ function crearPlanEditorial({ proyectoId, estado = {}, entendimiento = {}, solic
       subtitulos: subtitulos.length,
       textos: textos.length,
       recursos: recursos.length,
+      recursosBiblioteca: biblioteca.resumen.seleccionados,
+      recursosBibliotecaGeneral: biblioteca.resumen.seleccionadosGeneral,
+      recursosBibliotecaProyecto: biblioteca.resumen.seleccionadosProyecto,
+      recursosBibliotecaDisponibles: biblioteca.resumen.totalDisponibles,
       zooms: visual.zooms.length,
       efectos: visual.efectos.length,
       animaciones: visual.animaciones.length,
@@ -327,8 +328,9 @@ function crearPlanEditorial({ proyectoId, estado = {}, entendimiento = {}, solic
       momentosClave: obtenerMomentos(entendimiento).length,
       listoParaProduccion: validacion.ok && planProduccion.elementos.length > 0
     },
-    lectura: crearLecturaPlan({ entendimiento, planProduccion, validacion }),
+    lectura: crearLecturaPlan({ entendimiento, planProduccion, validacion, biblioteca }),
     planProduccion,
+    biblioteca,
     validacion,
     fuente: {
       etapaOrigen: ETAPAS_AUTOVIDEO.ENTENDIMIENTO,
@@ -337,7 +339,11 @@ function crearPlanEditorial({ proyectoId, estado = {}, entendimiento = {}, solic
       tieneTranscripcionGlobal: Boolean(entendimiento.transcripcionGlobal?.textoCompleto),
       momentosClave: obtenerMomentos(entendimiento).length,
       necesidades: obtenerNecesidades(entendimiento),
-      lineaTiempoGlobal: obtenerLineaTiempo(entendimiento)
+      lineaTiempoGlobal: obtenerLineaTiempo(entendimiento),
+      biblioteca: {
+        regla: biblioteca.regla,
+        resumen: biblioteca.resumen
+      }
     },
     multivideo: {
       activo: proyecto.esMultivideo,
@@ -346,13 +352,13 @@ function crearPlanEditorial({ proyectoId, estado = {}, entendimiento = {}, solic
       duracionTotalSegundos: duracionSegundos,
       usaTiemposGlobales: true,
       usaTranscripcionGlobal: Boolean(entendimiento.transcripcionGlobal?.textoCompleto || obtenerTranscripcion(entendimiento)?.textoCompleto),
-      siguiente: 'Bloque 7: producción multivideo usando videoId y tiempos globales.'
+      siguiente: 'Producción multivideo usando videoId, tiempos globales y recursos de biblioteca referenciados.'
     },
     creadoEn: new Date().toISOString()
   };
 }
 
-function crearLecturaPlan({ entendimiento = {}, planProduccion = {}, validacion = {} } = {}) {
+function crearLecturaPlan({ entendimiento = {}, planProduccion = {}, validacion = {}, biblioteca = {} } = {}) {
   const momentos = obtenerMomentos(entendimiento);
   const necesidades = obtenerNecesidades(entendimiento);
   const segmentos = obtenerSegmentos(entendimiento);
@@ -363,6 +369,7 @@ function crearLecturaPlan({ entendimiento = {}, planProduccion = {}, validacion 
   if (segmentos.length) lectura.push(`Se generaron subtítulos desde ${segmentos.length} segmento(s) global(es).`);
   if (momentos.length) lectura.push(`Se usaron ${momentos.length} momento(s) clave del entendimiento.`);
   if (necesidades.length) lectura.push(`Hay ${necesidades.length} necesidad(es) a revisar antes de producir.`);
+  if (biblioteca.resumen) lectura.push(`Biblioteca conectada: ${biblioteca.resumen.seleccionadosProyecto || 0} recurso(s) temporales del proyecto y ${biblioteca.resumen.seleccionadosGeneral || 0} recurso(s) permanentes generales seleccionados sin copiarlos.`);
   if (!obtenerTranscripcion(entendimiento)?.textoCompleto) lectura.push('La transcripción real sigue pendiente; los textos se generaron de forma conservadora.');
   if (!validacion.ok) lectura.push(`Validación con errores: ${(validacion.errores || []).join(' | ')}`);
   return lectura;
@@ -378,14 +385,14 @@ export async function procesarPlanEdicionProyectoEtapa({ proyectoId, opciones = 
       proyectoId,
       etapaDestino: ETAPAS_AUTOVIDEO.PLAN_EDICION,
       estadoDestino: ESTADOS_PROYECTO_ETAPAS.PLANIFICANDO,
-      mensaje: 'Iniciando plan de edición desde entendimiento global.'
+      mensaje: 'Iniciando plan de edición desde entendimiento global y biblioteca.'
     });
 
     const entendimientoGuardado = await cargarResultadoEtapa({ proyectoId, etapa: ETAPAS_AUTOVIDEO.ENTENDIMIENTO, valorPorDefecto: null });
     if (!entendimientoGuardado) throw new Error('No se puede crear el plan porque no existe entendimiento guardado. Ejecuta primero la etapa Entendimiento.');
     const estadoProcesando = await cargarEstadoProyectoEtapas({ proyectoId, crearSiFalta: false });
     const entendimiento = extraerEntendimiento(entendimientoGuardado);
-    const plan = crearPlanEditorial({ proyectoId, estado: estadoProcesando, entendimiento, solicitud: { ...opciones, ...solicitud } });
+    const plan = await crearPlanEditorial({ proyectoId, estado: estadoProcesando, entendimiento, solicitud: { ...opciones, ...solicitud } });
 
     if (!plan.validacion.ok) {
       throw new Error(`El plan de edición no pasó validación: ${(plan.validacion.errores || []).join(', ')}`);
@@ -397,9 +404,11 @@ export async function procesarPlanEdicionProyectoEtapa({ proyectoId, opciones = 
       resultado: plan,
       metadata: {
         bloque: 8,
-        tipo: plan.multivideo?.activo ? 'plan-edicion-backend-multivideo' : 'plan-edicion-backend',
+        bloqueBiblioteca: 5,
+        tipo: plan.multivideo?.activo ? 'plan-edicion-backend-multivideo-biblioteca' : 'plan-edicion-backend-biblioteca',
         origen: 'POST /api/proyectos/:proyectoId/plan/procesar',
-        multivideo: plan.multivideo || null
+        multivideo: plan.multivideo || null,
+        biblioteca: plan.biblioteca?.resumen || null
       }
     });
 
@@ -408,7 +417,7 @@ export async function procesarPlanEdicionProyectoEtapa({ proyectoId, opciones = 
       etapaDestino: ETAPAS_AUTOVIDEO.PLAN_EDICION,
       estadoDestino: ESTADOS_PROYECTO_ETAPAS.PLANIFICADO,
       archivoGenerado: guardado.ruta,
-      mensaje: plan.multivideo?.activo ? 'Plan de edición multivideo creado desde entendimiento global.' : 'Plan de edición creado desde entendimiento.'
+      mensaje: plan.multivideo?.activo ? 'Plan de edición multivideo creado con biblioteca conectada.' : 'Plan de edición creado con biblioteca conectada.'
     });
 
     return {
@@ -418,8 +427,9 @@ export async function procesarPlanEdicionProyectoEtapa({ proyectoId, opciones = 
       estado: estadoFinal,
       resultado: plan,
       resumen: plan.resumen,
+      biblioteca: plan.biblioteca,
       archivo: guardado,
-      mensaje: plan.multivideo?.activo ? 'Plan de edición multivideo creado correctamente.' : 'Plan de edición creado correctamente.'
+      mensaje: plan.multivideo?.activo ? 'Plan de edición multivideo creado correctamente con biblioteca.' : 'Plan de edición creado correctamente con biblioteca.'
     };
   } catch (error) {
     await marcarErrorEstadoProyectoEtapas({ proyectoId, etapa: ETAPAS_AUTOVIDEO.PLAN_EDICION, error, mensaje: 'Error creando plan de edición.' }).catch(() => null);
