@@ -9,6 +9,7 @@
     - Cerrar el servidor cuando se cierre la app.
 */
 
+import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { app as electronApp, BrowserWindow, dialog, ipcMain, shell } from 'electron';
@@ -68,6 +69,40 @@ function mostrarErrorCarga(error) {
   console.error('[Electron] Error al cargar la ventana:', mensaje);
   if (ventanaPrincipal && !ventanaPrincipal.isDestroyed()) mostrarVentanaSiExiste();
   dialog.showErrorBox('AutoVideoJeff no pudo abrir la ventana', mensaje);
+}
+
+function obtenerMetadataArchivo(rutaArchivo) {
+  const stat = fs.statSync(rutaArchivo);
+  const nombre = path.basename(rutaArchivo);
+  return {
+    path: rutaArchivo,
+    ruta: rutaArchivo,
+    name: nombre,
+    nombreOriginal: nombre,
+    size: stat.size,
+    extension: path.extname(nombre).toLowerCase(),
+    actualizadoEn: stat.mtime?.toISOString?.() || null
+  };
+}
+
+async function seleccionarArchivoBiblioteca() {
+  const resultado = await dialog.showOpenDialog(ventanaPrincipal || undefined, {
+    title: 'Seleccionar recurso para biblioteca',
+    properties: ['openFile'],
+    filters: [
+      { name: 'Recursos de video, imagen o audio', extensions: ['mp4', 'mov', 'm4v', 'avi', 'mkv', 'webm', 'jpg', 'jpeg', 'png', 'webp', 'gif', 'mp3', 'wav', 'm4a', 'aac', 'ogg', 'flac'] },
+      { name: 'Videos', extensions: ['mp4', 'mov', 'm4v', 'avi', 'mkv', 'webm'] },
+      { name: 'Imágenes', extensions: ['jpg', 'jpeg', 'png', 'webp', 'gif'] },
+      { name: 'Audio', extensions: ['mp3', 'wav', 'm4a', 'aac', 'ogg', 'flac'] }
+    ]
+  });
+
+  if (resultado.canceled || !resultado.filePaths?.[0]) return { ok: false, cancelado: true };
+  try {
+    return { ok: true, archivo: obtenerMetadataArchivo(resultado.filePaths[0]) };
+  } catch (error) {
+    return { ok: false, mensaje: error.message || 'No se pudo leer el archivo seleccionado.' };
+  }
 }
 
 function crearVentana(urlServidor) {
@@ -164,6 +199,8 @@ ipcMain.handle('app:estado', () => {
     datos: process.env.AUTOVIDEOJEFF_ROOT_DIR || null
   };
 });
+
+ipcMain.handle('biblioteca:seleccionarArchivo', seleccionarArchivoBiblioteca);
 
 electronApp.whenReady().then(async () => {
   try {
