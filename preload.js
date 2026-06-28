@@ -19,6 +19,12 @@ const api = Object.freeze({
     obtenerEstado: async () => {
       return await ipcRenderer.invoke('app:estado');
     }
+  }),
+
+  biblioteca: Object.freeze({
+    seleccionarArchivo: async () => {
+      return await ipcRenderer.invoke('biblioteca:seleccionarArchivo');
+    }
   })
 });
 
