@@ -24,6 +24,11 @@ export function renderPlanEdicionView() {
         <article><span>Biblioteca</span><strong id="planBiblioteca">-</strong></article>
         <article><span>Contexto IA</span><strong id="planContexto">-</strong></article>
         <article><span>Partes IA</span><strong id="planPartes">-</strong></article>
+        <article><span>Efectos visuales</span><strong id="planEfectosVisuales">-</strong></article>
+        <article><span>Animaciones</span><strong id="planAnimaciones">-</strong></article>
+        <article><span>Tipo subtitulos</span><strong id="planTipoSubtitulos">-</strong></article>
+        <article><span>Efectos audio</span><strong id="planEfectosAudio">-</strong></article>
+        <article><span>Musica fondo</span><strong id="planMusicaFondo">-</strong></article>
         <article><span>Editor</span><strong id="planEditor">-</strong></article>
         <article><span>Listo</span><strong id="planListo">-</strong></article>
       </section>
