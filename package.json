@@ -56,6 +56,7 @@
     "check:biblioteca-unificada": "node scripts/verificar-biblioteca-unificada.js",
     "check:contexto-plan-edicion": "node scripts/verificar-contexto-plan-edicion.js",
     "check:ias-plan": "node scripts/verificar-ias-plan.js",
+    "check:plan-por-partes": "node scripts/verificar-plan-por-partes.js",
     "check:biblioteca-ui": "node scripts/verificar-biblioteca-ui.js",
     "check:biblioteca-proyecto": "node scripts/verificar-biblioteca-proyecto.js",
     "check:recursos-externos": "node scripts/verificar-recursos-externos.js",
