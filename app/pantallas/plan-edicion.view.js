@@ -5,7 +5,7 @@ export function renderPlanEdicionView() {
         <div>
           <p class="eyebrow">Etapa 2</p>
           <h2>Plan de edición</h2>
-          <p>Revisa el plan antes de producir el video maestro. Aquí puedes ver subtítulos, textos, recursos de biblioteca, zooms, efectos, animaciones y línea de tiempo propuesta.</p>
+          <p>Revisa el plan antes de producir el video maestro. El plan absorbe Entendimiento, transcripciones, frames, momentos clave y recursos de Biblioteca general/proyecto.</p>
         </div>
         <span class="aj-status-chip" id="planEstadoChip">Esperando proyecto</span>
       </div>
@@ -27,6 +27,7 @@ export function renderPlanEdicionView() {
         <article><span>Textos</span><strong id="planTextos">—</strong></article>
         <article><span>Recursos</span><strong id="planRecursos">—</strong></article>
         <article><span>Biblioteca</span><strong id="planBiblioteca">—</strong></article>
+        <article><span>Contexto IA</span><strong id="planContexto">—</strong></article>
         <article><span>Efectos</span><strong id="planEfectos">—</strong></article>
         <article><span>Listo producción</span><strong id="planListo">—</strong></article>
       </section>
@@ -40,6 +41,11 @@ export function renderPlanEdicionView() {
         <article class="plan-panel plan-panel--fuente">
           <header><div><p class="eyebrow">Fuente</p><h3>Desde entendimiento y biblioteca</h3></div><span id="planFuenteEstado">Sin datos</span></header>
           <div id="planFuente" class="plan-source"><div class="plan-empty">Sin fuente cargada.</div></div>
+        </article>
+
+        <article class="plan-panel plan-panel--contexto">
+          <header><div><p class="eyebrow">Contexto IA</p><h3>Información absorbida para crear el plan</h3></div><span id="planContextoEstado">Sin datos</span></header>
+          <div id="planContextoDetalle" class="plan-source"><div class="plan-empty">Sin contexto construido.</div></div>
         </article>
 
         <article class="plan-panel plan-panel--timeline">
