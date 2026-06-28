@@ -39,7 +39,9 @@ const ARCHIVOS_ESPERADOS = [
   'scripts/verificar-biblioteca-bloque-4.js',
   'scripts/verificar-biblioteca-bloque-5.js',
   'scripts/verificar-biblioteca-integral.js',
-  'scripts/verificar-biblioteca-subida-final.js'
+  'scripts/verificar-biblioteca-subida-final.js',
+  'scripts/verificar-biblioteca-comunicacion-variables.js',
+  'scripts/verificar-biblioteca-proyecto-orden-inteligente.js'
 ];
 
 const SCRIPTS_ESPERADOS = [
@@ -49,7 +51,9 @@ const SCRIPTS_ESPERADOS = [
   'check:biblioteca-bloque4',
   'check:biblioteca-bloque5',
   'check:biblioteca-integral',
-  'check:biblioteca-subida-final'
+  'check:biblioteca-subida-final',
+  'check:biblioteca-comunicacion-variables',
+  'check:biblioteca-proyecto-orden-inteligente'
 ];
 
 const ARCHIVOS_SINTAXIS = [
@@ -62,7 +66,9 @@ const ARCHIVOS_SINTAXIS = [
   'app/etapas-ui/plan-edicion-ui.js',
   'server/rutas-etapas.service.js',
   'etapas/02-plan/procesar-plan-edicion.service.js',
-  'scripts/verificar-biblioteca-integral.js'
+  'scripts/verificar-biblioteca-integral.js',
+  'scripts/verificar-biblioteca-comunicacion-variables.js',
+  'scripts/verificar-biblioteca-proyecto-orden-inteligente.js'
 ];
 
 function exigir(condicion, mensaje) {
