@@ -60,6 +60,7 @@
     "check:dos-opciones-plan": "node scripts/verificar-dos-opciones-plan.js",
     "check:plan-ejecutable": "node scripts/verificar-plan-ejecutable.js",
     "check:editor-plan": "node scripts/verificar-editor-plan.js",
+    "check:cierre-plan-inteligente": "node scripts/verificar-cierre-plan-inteligente.js",
     "check:biblioteca-ui": "node scripts/verificar-biblioteca-ui.js",
     "check:biblioteca-proyecto": "node scripts/verificar-biblioteca-proyecto.js",
     "check:recursos-externos": "node scripts/verificar-recursos-externos.js",
