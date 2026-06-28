@@ -1,6 +1,6 @@
 /*
   Bloque 4 - Verificacion Plan por partes
-  Revisa que el Plan se divida en secciones, valide cada parte y use fallback sin depender de internet.
+  Revisa que el Plan se divida en secciones, valide cada parte, se conecte al backend y se vea en UI.
 */
 
 import fs from 'fs';
@@ -9,6 +9,7 @@ import { validarPartePlan } from '../etapas/02-plan/validar-parte-plan.service.j
 import { crearEstadoPlanPorPartes, guardarPartePlan, cerrarPlanPorPartes } from '../etapas/02-plan/guardar-parte-plan.service.js';
 import { generarPlanPorPartes } from '../etapas/02-plan/generar-plan-por-partes.service.js';
 import { construirContextoPlan } from '../etapas/02-plan/construir-contexto-plan.service.js';
+import { renderPlanEdicionView } from '../app/pantallas/plan-edicion.view.js';
 
 function exigir(condicion, mensaje) {
   if (!condicion) throw new Error(mensaje);
@@ -92,7 +93,7 @@ async function main() {
   exigir(planPorPartes.ok, 'El plan por partes no se genero.');
   exigir(planPorPartes.partes.length === 8, 'No genero las 8 partes.');
   exigir(planPorPartes.progreso.validadas === 8, 'No valido todas las partes.');
-  exigir(planPorPartes.listoParaProduccion, 'El plan por partes debe quedar listo para produccion.');
+  exigir(planPorPartes.listoParaProduccion, 'El plan por partes debe quedar listo.');
   exigir(planPorPartes.partes.every((parte) => parte.resumenHumano && parte.jsonTecnico), 'Cada parte debe tener resumen y JSON tecnico.');
 
   const planBackend = leer('etapas/02-plan/procesar-plan-edicion.service.js');
@@ -100,10 +101,17 @@ async function main() {
   exigir(planBackend.includes('planPorPartes'), 'El backend no guarda planPorPartes.');
   exigir(planBackend.includes('bloquePlanPorPartes'), 'Metadata no registra bloquePlanPorPartes.');
 
+  const vista = renderPlanEdicionView();
+  exigir(vista.includes('planPartes'), 'La vista no tiene KPI de partes.');
+  exigir(vista.includes('planPartesDetalle'), 'La vista no tiene detalle de plan por partes.');
+  const ui = leer('app/etapas-ui/plan-edicion-ui.js');
+  exigir(ui.includes('renderPartes'), 'La UI no renderiza partes.');
+  exigir(ui.includes('obtenerPlanPorPartes'), 'La UI no lee planPorPartes.');
+
   const pkg = JSON.parse(leer('package.json'));
   exigir(pkg.scripts?.['check:plan-por-partes'], 'package.json no tiene script check:plan-por-partes.');
 
-  console.log('OK plan por partes: 8 secciones, validacion, guardado progresivo, fallback y backend verificados');
+  console.log('OK plan por partes: 8 secciones, validacion, guardado progresivo, backend y UI verificados');
 }
 
 main().catch((error) => {
