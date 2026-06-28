@@ -9,6 +9,46 @@ function escapar(valor) { return texto(valor, '').replace(/&/g, '&amp;').replace
 function numero(valor) { const n = Number(valor); return Number.isFinite(n) ? n : null; }
 function tieneTexto(valor) { return Boolean(String(valor ?? '').trim()); }
 
+function normalizarTexto(valor = '') {
+  return String(valor || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function textoEsPendiente(valor = '') {
+  const limpio = normalizarTexto(valor).replace(/[.。]+/g, ' ').replace(/\s+/g, ' ').trim();
+  if (!limpio) return true;
+  const restante = limpio
+    .replace(/transcripcion pendiente/g, '')
+    .replace(/texto pendiente/g, '')
+    .replace(/sin texto transcrito todavia/g, '')
+    .replace(/sin texto transcrito/g, '')
+    .replace(/transcripcion no disponible/g, '')
+    .replace(/sin transcripcion/g, '')
+    .replace(/[\s.:-]/g, '')
+    .trim();
+  return restante.length === 0;
+}
+
+function textoEsUtil(valor = '') {
+  const limpio = texto(valor, '');
+  return Boolean(limpio && !textoEsPendiente(limpio));
+}
+
+function transcripcionTieneTextoUtil(transcripcion = {}) {
+  if (textoEsUtil(transcripcion?.textoCompleto || transcripcion?.texto)) return true;
+  const segmentos = Array.isArray(transcripcion?.segmentos) ? transcripcion.segmentos : [];
+  return segmentos.some((segmento) => textoEsUtil(segmento.texto || segmento.text || segmento.nota));
+}
+
+function contarPalabrasUtiles(valor = '') {
+  if (!textoEsUtil(valor)) return 0;
+  return String(valor || '').split(/\s+/).map((item) => item.trim()).filter(Boolean).length;
+}
+
 async function obtenerBaseApi() {
   const apiElectron = window.AutoVideoJeff?.servidor?.obtenerEstado;
   if (typeof apiElectron === 'function') {
@@ -139,26 +179,41 @@ function estadoBonito(estado = '') {
 function claseEstadoTranscripcion(opcion = {}) {
   if (opcion.ok || opcion.estado === 'ok') return 'ok';
   if (opcion.estado === 'error') return 'error';
-  if (opcion.estado === 'omitida' || opcion.estado === 'vacia') return 'warn';
+  if (opcion.estado === 'omitida' || opcion.estado === 'vacia' || opcion.estado === 'pendiente') return 'warn';
   return 'normal';
 }
 
 function normalizarItemMotor(item = {}, indice = 0) {
   const transcripcion = item.transcripcion || item;
-  const motor = item.motor || transcripcion.motor || `motor-${indice + 1}`;
-  const estado = item.estado || transcripcion.estado || (transcripcion.textoCompleto ? 'ok' : 'pendiente');
+  const motor = item.motor || transcripcion.motor || transcripcion.motorPrincipal || `motor-${indice + 1}`;
+  const util = transcripcionTieneTextoUtil(transcripcion);
+  const estado = item.estado || transcripcion.estado || (util ? 'ok' : 'pendiente');
   return {
     id: `motor:${motor}`,
     tipo: 'motor',
     motor,
     etiqueta: motorBonito(motor),
-    ok: Boolean(item.ok || transcripcion.ok || transcripcion.textoCompleto),
-    estado,
+    ok: Boolean(item.ok || transcripcion.ok || util),
+    estado: util ? 'ok' : estado,
     mensaje: item.mensaje || transcripcion.mensaje || transcripcion.observacion || '',
-    resumen: item.resumen || transcripcion.resumen || null,
+    resumen: item.resumen || transcripcion.resumen || transcripcion.resumenTranscripcion || null,
     transcripcion,
     error: item.error || transcripcion.error || null
   };
+}
+
+function extraerMotoresDesdeResultadosPorVideo(resultado = {}) {
+  const lista = [];
+  const resultados = Array.isArray(resultado.resultadosPorVideo) ? resultado.resultadosPorVideo : [];
+  resultados.forEach((item) => {
+    const res = item.resultado || {};
+    const motores = [
+      ...(Array.isArray(res.transcripcionesPorMotor) ? res.transcripcionesPorMotor : []),
+      ...(Array.isArray(res.transcripcion?.transcripcionesPorMotor) ? res.transcripcion.transcripcionesPorMotor : [])
+    ];
+    motores.forEach((motor) => lista.push({ ...motor, videoId: item.videoId || res.videoId }));
+  });
+  return lista;
 }
 
 function crearOpcionesTranscripcion(resultado = {}) {
@@ -169,25 +224,27 @@ function crearOpcionesTranscripcion(resultado = {}) {
 
   if (principal) {
     const principalEsGlobal = principal.tipo === 'transcripcion-global-multivideo' || resultado.multivideo?.transcripcionGlobal;
+    const util = transcripcionTieneTextoUtil(principal);
     opciones.push({
       id: 'principal',
       tipo: 'principal',
       motor: principal.motor || transcripcionBase.motorPrincipal || transcripcionBase.motor || 'principal',
       etiqueta: principalEsGlobal ? 'Global' : 'Principal',
-      ok: Boolean(principal.ok || principal.textoCompleto),
-      estado: principal.estado || (principal.textoCompleto ? 'ok' : 'pendiente'),
+      ok: Boolean(principal.ok || util),
+      estado: util ? 'ok' : (principal.estado || 'pendiente'),
       mensaje: principal.mensaje || transcripcionBase.observacion || 'Transcripción principal seleccionada.',
       resumen: principal.resumen || null,
       transcripcion: principal,
       error: principal.error || null
     });
     vistos.add('principal');
-    vistos.add(`motor:${principal.motor || transcripcionBase.motor || ''}`);
   }
 
   const listaMotores = [
     ...(Array.isArray(resultado.transcripcionesPorMotor) ? resultado.transcripcionesPorMotor : []),
-    ...(Array.isArray(transcripcionBase.transcripcionesPorMotor) ? transcripcionBase.transcripcionesPorMotor : [])
+    ...(Array.isArray(resultado.entendimientoGlobal?.transcripcionesPorMotor) ? resultado.entendimientoGlobal.transcripcionesPorMotor : []),
+    ...(Array.isArray(transcripcionBase.transcripcionesPorMotor) ? transcripcionBase.transcripcionesPorMotor : []),
+    ...extraerMotoresDesdeResultadosPorVideo(resultado)
   ];
 
   listaMotores.forEach((item, indice) => {
@@ -198,13 +255,14 @@ function crearOpcionesTranscripcion(resultado = {}) {
   });
 
   if (!opciones.length) {
+    const util = transcripcionTieneTextoUtil(transcripcionBase);
     opciones.push({
       id: 'base',
       tipo: 'base',
       motor: transcripcionBase.motor || 'transcripcion-simple',
       etiqueta: motorBonito(transcripcionBase.motor || 'transcripcion-simple'),
-      ok: Boolean(transcripcionBase.textoCompleto),
-      estado: transcripcionBase.textoCompleto ? 'ok' : 'pendiente',
+      ok: util,
+      estado: util ? 'ok' : 'pendiente',
       mensaje: transcripcionBase.mensaje || transcripcionBase.observacion || 'Transcripción pendiente.',
       resumen: transcripcionBase.resumen || null,
       transcripcion: transcripcionBase,
@@ -271,7 +329,7 @@ function renderMetaTranscripcion(opcion = {}) {
   const transcripcion = opcion.transcripcion || {};
   const resumen = opcion.resumen || transcripcion.resumen || {};
   const segmentos = Array.isArray(transcripcion.segmentos) ? transcripcion.segmentos.length : 0;
-  const palabras = resumen.palabras ?? (transcripcion.textoCompleto ? String(transcripcion.textoCompleto).split(/\s+/).filter(Boolean).length : 0);
+  const palabras = resumen.palabras ?? contarPalabrasUtiles(transcripcion.textoCompleto || transcripcion.texto || '');
   const videos = resumen.videosTotales || resumen.videosConTexto || transcripcion.textosPorVideo?.length || null;
   const partes = [`Motor: ${motorBonito(opcion.motor)}`, `Estado: ${estadoBonito(opcion.estado)}`, `Segmentos: ${segmentos}`, `Palabras: ${palabras}`];
   if (videos) partes.push(`Videos: ${videos}`);
@@ -285,7 +343,7 @@ function renderAccionesTranscripcion(opcion = {}) {
   if (!contenedor) return;
   const esPrincipal = opcion.id === 'principal';
   const esGlobal = opcion.transcripcion?.tipo === 'transcripcion-global-multivideo';
-  const puedeUsar = !esPrincipal && opcion.ok && tieneTexto(opcion.transcripcion?.textoCompleto) && opcion.motor;
+  const puedeUsar = !esPrincipal && opcion.ok && transcripcionTieneTextoUtil(opcion.transcripcion) && opcion.motor;
   contenedor.innerHTML = `
     <button type="button" class="secondary-button entendimiento-usar-principal-btn" data-usar-transcripcion-principal ${puedeUsar ? '' : 'disabled'}>
       ${esPrincipal ? (esGlobal ? 'Esta ya es la global principal' : 'Esta ya es la principal') : 'Usar esta como principal'}
@@ -301,15 +359,28 @@ function etiquetaSegmento(segmento = {}) {
   return `${video}${inicio}s - ${fin}s`;
 }
 
+function renderTextosPorVideo(transcripcion = {}) {
+  const textosPorVideo = Array.isArray(transcripcion.textosPorVideo) ? transcripcion.textosPorVideo : [];
+  if (!textosPorVideo.length) return '';
+  return `<div class="entendimiento-transcripcion-videos">${textosPorVideo.map((item) => {
+    const contenido = textoEsUtil(item.textoCompleto) ? item.textoCompleto : 'Sin texto útil en este video para este motor.';
+    return `<article><strong>${escapar(item.videoId || 'video')}</strong><p>${escapar(contenido)}</p></article>`;
+  }).join('')}</div>`;
+}
+
 function renderDetalleTranscripcion(opcion = {}) {
   const transcripcion = opcion.transcripcion || {};
-  const textoCompleto = texto(transcripcion.textoCompleto, opcion.mensaje || transcripcion.mensaje || transcripcion.observacion || 'Sin texto transcrito todavía. La estructura de segmentos está preparada para el plan de edición.');
+  const textoBase = transcripcion.textoCompleto || transcripcion.texto || '';
+  const util = transcripcionTieneTextoUtil(transcripcion);
+  const textoCompleto = util && textoEsUtil(textoBase)
+    ? textoBase
+    : (opcion.mensaje || transcripcion.mensaje || transcripcion.observacion || 'No hay texto útil todavía para este motor.');
   const segmentos = Array.isArray(transcripcion.segmentos) ? transcripcion.segmentos : [];
   const esGlobal = transcripcion.tipo === 'transcripcion-global-multivideo';
-  $('entendimientoTranscripcionEstado').textContent = transcripcion.textoCompleto
+  $('entendimientoTranscripcionEstado').textContent = util
     ? `${esGlobal ? 'Global multivideo' : motorBonito(opcion.motor)} · texto real`
-    : `${motorBonito(opcion.motor)} · ${segmentos.length} segmento(s)`;
-  $('entendimientoTranscripcion').innerHTML = `<p>${escapar(textoCompleto)}</p>` + (segmentos.length ? `<ol>${segmentos.slice(0, 20).map((s) => `<li><strong>${escapar(etiquetaSegmento(s))}</strong><span>${escapar(s.texto || s.nota || 'Segmento preparado')}</span></li>`).join('')}</ol>` : '');
+    : `${motorBonito(opcion.motor)} · pendiente`;
+  $('entendimientoTranscripcion').innerHTML = `<p>${escapar(textoCompleto)}</p>` + (segmentos.length ? `<ol>${segmentos.slice(0, 40).map((s) => `<li><strong>${escapar(etiquetaSegmento(s))}</strong><span>${escapar(textoEsUtil(s.texto || s.text || s.nota) ? (s.texto || s.text || s.nota) : 'Sin texto útil en este segmento')}</span></li>`).join('')}</ol>` : '') + renderTextosPorVideo(transcripcion);
   renderMetaTranscripcion(opcion);
   renderAccionesTranscripcion(opcion);
 }
@@ -518,7 +589,7 @@ async function usarTranscripcionActivaComoPrincipal() {
   const opcion = obtenerOpcionTranscripcionActiva();
   if (!proyectoId) { setMensaje('Falta proyectoId para seleccionar la transcripción principal.', 'warn'); return; }
   if (!opcion?.motor || opcion.id === 'principal') { setMensaje('Selecciona una transcripción de motor distinta a Principal.', 'warn'); return; }
-  if (!tieneTexto(opcion.transcripcion?.textoCompleto)) { setMensaje('Esa transcripción no tiene texto útil para usar como principal.', 'warn'); return; }
+  if (!transcripcionTieneTextoUtil(opcion.transcripcion)) { setMensaje('Esa transcripción no tiene texto útil para usar como principal.', 'warn'); return; }
 
   setMensaje(`Seleccionando ${motorBonito(opcion.motor)} como transcripción principal...`, 'normal');
   const datos = await api(`/api/proyectos/${encodeURIComponent(proyectoId)}/transcripciones/${encodeURIComponent(opcion.motor)}/usar`, {
