@@ -29,6 +29,7 @@ import { procesarPlanEdicionProyectoEtapa } from '../etapas/02-plan/procesar-pla
 import { procesarProduccionMaestroProyectoEtapa } from '../etapas/03-produccion/procesar-produccion-maestro.service.js';
 import { procesarAdaptacionPlataformasProyectoEtapa } from '../etapas/04-adaptacion/procesar-adaptacion-plataformas.service.js';
 import { procesarResultadoFinalProyectoEtapa } from '../etapas/05-resultado/procesar-resultado-final.service.js';
+import { listarRecursosProyecto, guardarRecursoProyecto } from '../biblioteca-proyecto/biblioteca-proyecto.conexion.js';
 
 const CONFIG_ETAPAS_API = Object.freeze({
   entendimiento: {
@@ -80,6 +81,37 @@ function normalizarListaProyecto(valor, defecto = []) {
 
 function obtenerCarpetaProyecto(proyectoId) {
   return path.join(obtenerRutaRaiz(), 'datos', 'proyectos', proyectoId);
+}
+
+function crearProyectoBibliotecaEtapas(proyectoId) {
+  const carpetaProyecto = obtenerCarpetaProyecto(proyectoId);
+  return {
+    id: proyectoId,
+    proyectoId,
+    carpetaProyecto,
+    rutas: {
+      raiz: carpetaProyecto,
+      carpetaProyecto
+    }
+  };
+}
+
+async function cargarEstadoBibliotecaProyecto(proyectoId) {
+  const estado = await cargarEstadoProyectoEtapas({ proyectoId, crearSiFalta: false });
+  const entendimiento = await cargarResultadoEtapa({ proyectoId, etapa: ETAPAS_AUTOVIDEO.ENTENDIMIENTO, valorPorDefecto: null });
+  const videos = await cargarVideosProyecto(proyectoId);
+  const recursos = await listarRecursosProyecto(crearProyectoBibliotecaEtapas(proyectoId));
+  const habilitada = Boolean(entendimiento?.resultado || entendimiento);
+  return {
+    proyectoId,
+    habilitada,
+    listoParaPlan: habilitada,
+    estado,
+    entendimiento: entendimiento ? { existe: true, etapa: ETAPAS_AUTOVIDEO.ENTENDIMIENTO } : { existe: false },
+    videos,
+    totalRecursos: recursos.length,
+    recursos
+  };
 }
 
 function crearProyectoIdDesdeNombre(nombre) {
@@ -265,6 +297,30 @@ async function subirVideos(req, res, aplicarCabeceras) {
   }
 }
 
+async function obtenerBibliotecaProyecto(req, res, aplicarCabeceras) {
+  try {
+    aplicarCabeceras(res);
+    const estadoBiblioteca = await cargarEstadoBibliotecaProyecto(req.params.proyectoId);
+    return responderOk(res, estadoBiblioteca);
+  } catch (error) {
+    return responderError(res, error, 400);
+  }
+}
+
+async function guardarBibliotecaProyecto(req, res, aplicarCabeceras) {
+  try {
+    aplicarCabeceras(res);
+    const proyectoId = req.params.proyectoId;
+    const estadoBiblioteca = await cargarEstadoBibliotecaProyecto(proyectoId);
+    if (!estadoBiblioteca.habilitada) throw new Error('Biblioteca proyecto bloqueada: primero procesa Entendimiento.');
+    const proyecto = crearProyectoBibliotecaEtapas(proyectoId);
+    const resultado = await guardarRecursoProyecto(proyecto, { ...(req.body || {}), proyectoId }, { accionDuplicado: req.body?.accionDuplicado || 'preguntar' });
+    return responderOk(res, resultado?.recurso ? resultado : { recurso: resultado });
+  } catch (error) {
+    return responderError(res, error, 400);
+  }
+}
+
 async function registrarSolicitudEtapa({ req, res, aplicarCabeceras, tipo }) {
   try {
     aplicarCabeceras(res);
@@ -353,6 +409,10 @@ export function registrarRutasEtapas(app, opciones = {}) {
 
   app.post('/api/proyectos/:proyectoId/entendimiento/procesar', (req, res) => registrarSolicitudEtapa({ req, res, aplicarCabeceras, tipo: 'entendimiento' }));
   app.get('/api/proyectos/:proyectoId/entendimiento', (req, res) => cargarEtapa(req, res, aplicarCabeceras, 'entendimiento'));
+
+  app.get('/api/proyectos/:proyectoId/biblioteca-proyecto', (req, res) => obtenerBibliotecaProyecto(req, res, aplicarCabeceras));
+  app.get('/api/proyectos/:proyectoId/biblioteca-proyecto/estado', (req, res) => obtenerBibliotecaProyecto(req, res, aplicarCabeceras));
+  app.post('/api/proyectos/:proyectoId/biblioteca-proyecto', (req, res) => guardarBibliotecaProyecto(req, res, aplicarCabeceras));
 
   app.post('/api/proyectos/:proyectoId/plan/procesar', (req, res) => registrarSolicitudEtapa({ req, res, aplicarCabeceras, tipo: 'plan' }));
   app.get('/api/proyectos/:proyectoId/plan', (req, res) => cargarEtapa(req, res, aplicarCabeceras, 'plan'));
