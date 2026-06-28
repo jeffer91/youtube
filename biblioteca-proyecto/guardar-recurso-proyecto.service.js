@@ -1,6 +1,6 @@
 /*
   Modulo: biblioteca-proyecto
-  Funcion: guardar recursos temporales dentro de un proyecto sin copiar recursos generales.
+  Funcion: guardar y analizar recursos temporales dentro de un proyecto sin copiar recursos generales.
 */
 
 import fs from 'fs/promises';
@@ -8,6 +8,7 @@ import crypto from 'crypto';
 import path from 'path';
 import { BIBLIOTECA_PROYECTO_CONFIG } from './biblioteca-proyecto.config.js';
 import { crearRecursoModelo, validarRecursoModelo } from '../biblioteca/biblioteca.conexion.js';
+import { analizarArchivoBiblioteca, fusionarAnalisisConRecurso } from '../biblioteca/analizar-recurso.service.js';
 import {
   obtenerRutasBibliotecaProyecto,
   asegurarEstructuraBibliotecaProyecto,
@@ -87,6 +88,13 @@ function buscarDuplicado(recursos = [], recurso = {}) {
   return null;
 }
 
+async function analizarRecursoTemporal(recurso) {
+  const rutaArchivo = recurso.archivo?.rutaAbsoluta || recurso.ruta;
+  if (!rutaArchivo) return recurso;
+  const analisis = await analizarArchivoBiblioteca({ rutaArchivo, recurso, tipo: recurso.tipo, generarMiniatura: true });
+  return crearRecursoModelo(fusionarAnalisisConRecurso(recurso, analisis));
+}
+
 export async function guardarRecursoProyecto(proyecto = {}, recursoDatos = {}, opciones = {}) {
   const proyectoId = proyecto.id || proyecto.proyectoId || recursoDatos.proyectoId || null;
   const recursoInicial = crearRecursoModelo({
@@ -98,7 +106,7 @@ export async function guardarRecursoProyecto(proyecto = {}, recursoDatos = {}, o
   });
 
   const archivoGuardado = await copiarArchivoProyecto({ proyecto, datos: recursoDatos, recurso: recursoInicial });
-  const recurso = crearRecursoModelo({
+  const recursoGuardado = crearRecursoModelo({
     ...recursoInicial,
     ruta: archivoGuardado.rutaAbsoluta || recursoInicial.ruta,
     rutaRelativa: archivoGuardado.rutaRelativa || recursoInicial.rutaRelativa,
@@ -110,10 +118,11 @@ export async function guardarRecursoProyecto(proyecto = {}, recursoDatos = {}, o
       rutaAbsoluta: archivoGuardado.rutaAbsoluta || recursoInicial.archivo?.rutaAbsoluta || recursoInicial.ruta || '',
       rutaRelativa: archivoGuardado.rutaRelativa || recursoInicial.archivo?.rutaRelativa || recursoInicial.rutaRelativa || ''
     },
-    estadoTecnico: archivoGuardado.rutaAbsoluta || recursoInicial.ruta || recursoInicial.url ? 'listo' : recursoInicial.estadoTecnico,
+    estadoTecnico: archivoGuardado.rutaAbsoluta || recursoInicial.ruta || recursoInicial.url ? 'pendiente' : recursoInicial.estadoTecnico,
     actualizadoEn: new Date().toISOString()
   });
 
+  const recurso = await analizarRecursoTemporal(recursoGuardado);
   const validacion = validarRecursoModelo(recurso);
   if (!validacion.ok) {
     const error = new Error(validacion.errores.join(' | '));
@@ -152,7 +161,8 @@ export async function guardarRecursoProyecto(proyecto = {}, recursoDatos = {}, o
   return {
     ok: true,
     recurso,
-    mensaje: 'Recurso guardado en biblioteca temporal del proyecto.'
+    analisis: recurso.analisisArchivo || null,
+    mensaje: 'Recurso guardado y analizado en biblioteca temporal del proyecto.'
   };
 }
 
