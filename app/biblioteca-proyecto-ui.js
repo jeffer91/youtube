@@ -3,6 +3,15 @@ const TIPOS = ['video', 'imagen', 'audio'];
 const FORMATOS = ['horizontal-16-9', 'vertical-9-16', 'cuadrado-1-1', 'audio', 'imagen', 'desconocido'];
 
 let puenteEntendimientoRegistrado = false;
+let estadoInteligente = {
+  proyectoId: '',
+  proyectoCargado: false,
+  habilitada: false,
+  archivoSeleccionado: false,
+  totalRecursos: 0,
+  totalVideos: 0,
+  guardando: false
+};
 
 function $(id) { return document.getElementById(id); }
 function texto(valor = '', respaldo = '') { const limpio = String(valor ?? '').trim(); return limpio || respaldo; }
@@ -116,15 +125,99 @@ function setChip(mensaje, tipo = 'normal') {
   chip.className = `aj-status-chip project-library-chip is-${tipo}`;
 }
 
-function aplicarHabilitada(habilitada) {
-  const guardar = document.querySelector('[data-project-library-action="save"]');
-  const elegir = document.querySelector('[data-project-library-action="choose-file"]');
-  const plan = $('projectLibraryCreatePlanBtn');
-  if (guardar) guardar.disabled = !habilitada;
-  if (elegir) elegir.disabled = !habilitada;
-  if (plan) plan.disabled = !habilitada;
-  $('projectLibraryEnabledKpi').textContent = habilitada ? 'Activa' : 'Bloqueada';
-  $('projectLibraryReadyKpi').textContent = habilitada ? 'Sí' : 'No';
+function toggleClase(elemento, clase, activo) {
+  if (elemento) elemento.classList.toggle(clase, Boolean(activo));
+}
+
+function deshabilitarControles(selector, deshabilitado) {
+  document.querySelectorAll(selector).forEach((control) => { control.disabled = Boolean(deshabilitado); });
+}
+
+function actualizarPaso(id, estado = 'locked') {
+  const paso = $(id);
+  if (!paso) return;
+  ['is-active', 'is-done', 'is-locked'].forEach((clase) => paso.classList.remove(clase));
+  paso.classList.add(`is-${estado}`);
+}
+
+function actualizarVistaInteligente() {
+  const root = document.querySelector('[data-project-library-root]');
+  const uploadCard = document.querySelector('[data-smart-section="upload"]');
+  const reviewCard = document.querySelector('[data-smart-section="review"]');
+  const footer = document.querySelector('[data-smart-section="plan"]');
+  const drop = $('projectLibraryDropZone');
+  const form = $('projectLibraryForm');
+  const fieldset = $('projectLibraryFormFieldset');
+  const chooseBtn = document.querySelector('[data-project-library-action="choose-file"]');
+  const saveBtn = $('projectLibrarySaveBtn') || document.querySelector('[data-project-library-action="save"]');
+  const planBtn = $('projectLibraryCreatePlanBtn');
+  const hint = $('projectLibraryActionHint');
+  const footerHint = $('projectLibraryFooterHint');
+  const projectStatus = $('projectLibraryProjectStatus');
+
+  const tieneProyecto = Boolean(estadoInteligente.proyectoId || obtenerProyectoId());
+  const activa = Boolean(estadoInteligente.habilitada);
+  const conArchivo = Boolean(estadoInteligente.archivoSeleccionado && $('projectLibraryNewPath')?.value?.trim());
+  const conRecursos = Number(estadoInteligente.totalRecursos || 0) > 0;
+  const puedeGuardar = activa && conArchivo && !estadoInteligente.guardando;
+  const puedeIrPlan = activa && conRecursos && !estadoInteligente.guardando;
+
+  if (root) {
+    root.dataset.smartState = !tieneProyecto ? 'sin-proyecto' : !activa ? 'bloqueada' : conRecursos ? 'lista-plan' : conArchivo ? 'clasificando' : 'activa';
+  }
+
+  actualizarPaso('projectLibraryStepProject', activa ? 'done' : 'active');
+  actualizarPaso('projectLibraryStepUpload', !activa ? 'locked' : conArchivo || conRecursos ? 'done' : 'active');
+  actualizarPaso('projectLibraryStepReview', !activa ? 'locked' : conRecursos ? 'done' : conArchivo ? 'active' : 'locked');
+  actualizarPaso('projectLibraryStepPlan', puedeIrPlan ? 'active' : 'locked');
+
+  toggleClase(uploadCard, 'is-disabled', !activa);
+  toggleClase(reviewCard, 'is-disabled', !activa);
+  toggleClase(footer, 'is-disabled', !puedeIrPlan);
+  toggleClase(drop, 'is-disabled', !activa);
+  toggleClase(form, 'is-disabled', !conArchivo);
+
+  if (chooseBtn) chooseBtn.disabled = !activa || estadoInteligente.guardando;
+  if (saveBtn) saveBtn.disabled = !puedeGuardar;
+  if (fieldset) fieldset.disabled = !conArchivo || estadoInteligente.guardando;
+  if (planBtn) planBtn.disabled = !puedeIrPlan;
+  deshabilitarControles('#projectLibraryViewMode', !activa);
+
+  if (projectStatus) projectStatus.textContent = !tieneProyecto ? 'Pendiente' : activa ? 'Entendimiento listo' : 'Requiere Entendimiento';
+  if ($('projectLibraryEnabledKpi')) $('projectLibraryEnabledKpi').textContent = activa ? 'Activa' : 'Bloqueada';
+  if ($('projectLibraryReadyKpi')) $('projectLibraryReadyKpi').textContent = puedeIrPlan ? 'Sí' : 'No';
+  if ($('projectLibraryUploadState')) $('projectLibraryUploadState').textContent = !activa ? 'Bloqueado' : conArchivo ? 'Clasificando' : 'Activo';
+
+  if (hint) {
+    hint.textContent = !tieneProyecto
+      ? 'Carga el proyecto para activar esta acción.'
+      : !activa
+        ? 'Procesa Entendimiento para habilitar la carga temporal.'
+        : conArchivo
+          ? 'Revisa la clasificación sugerida y guarda el recurso.'
+          : 'Elige un archivo; la app sugerirá nombre, categoría, uso y etiquetas.';
+  }
+
+  if (footerHint) {
+    footerHint.textContent = puedeIrPlan
+      ? 'Ya existe al menos un recurso temporal. Puedes continuar al Plan de edición.'
+      : activa
+        ? 'Guarda al menos un recurso temporal para activar el paso hacia el Plan.'
+        : 'La biblioteca del proyecto se activará cuando exista Entendimiento.';
+  }
+}
+
+function aplicarHabilitada(habilitada, datos = {}) {
+  const recursos = datos.recursos || [];
+  estadoInteligente = {
+    ...estadoInteligente,
+    proyectoId: datos.proyectoId || estadoInteligente.proyectoId || obtenerProyectoId(),
+    proyectoCargado: Boolean(datos.proyectoId || obtenerProyectoId()),
+    habilitada: Boolean(habilitada),
+    totalRecursos: Number(datos.totalRecursos ?? recursos.length ?? estadoInteligente.totalRecursos ?? 0),
+    totalVideos: Number(datos.videos?.totalValidos ?? datos.videos?.total ?? estadoInteligente.totalVideos ?? 0)
+  };
+  actualizarVistaInteligente();
 }
 
 async function cargarCategorias() {
@@ -156,7 +249,7 @@ function normalizarRecurso(recurso = {}) {
 }
 
 function renderTarjetas(recursos = []) {
-  if (!recursos.length) return '<div class="project-library-empty">No hay recursos temporales en este proyecto.</div>';
+  if (!recursos.length) return '<div class="project-library-empty">No hay recursos temporales en este proyecto. Sube un archivo temporal para activar el paso al Plan.</div>';
   return recursos.map((item) => {
     const recurso = normalizarRecurso(item);
     return `<article class="project-library-resource-card">
@@ -176,7 +269,7 @@ function renderTarjetas(recursos = []) {
 }
 
 function renderTabla(recursos = []) {
-  if (!recursos.length) return '<div class="project-library-empty">No hay recursos temporales en este proyecto.</div>';
+  if (!recursos.length) return '<div class="project-library-empty">No hay recursos temporales en este proyecto. Sube un archivo temporal para activar el paso al Plan.</div>';
   return `<div class="project-library-table-wrap"><table class="project-library-table"><thead><tr><th>Nombre</th><th>Tipo</th><th>Categoría</th><th>Formato</th><th>Resolución</th><th>Uso</th><th>Estado</th></tr></thead><tbody>${recursos.map((item) => {
     const recurso = normalizarRecurso(item);
     return `<tr><td>${escapar(recurso.nombre)}</td><td>${escapar(recurso.tipo)}</td><td>${escapar(recurso.categoria)}</td><td>${escapar(recurso.formato)}</td><td>${escapar(recurso.resolucion || '—')}</td><td>${escapar(recurso.usoSugerido)}</td><td>${escapar(recurso.estadoTecnico)}</td></tr>`;
@@ -197,21 +290,40 @@ function renderRecursos(recursos = []) {
 
 async function cargarBibliotecaProyecto() {
   const proyectoId = obtenerProyectoId();
-  if (!proyectoId) { setMensaje('Falta proyectoId. Crea o carga un proyecto primero.', 'warn'); return null; }
+  if (!proyectoId) {
+    estadoInteligente = { ...estadoInteligente, proyectoId: '', proyectoCargado: false, habilitada: false, totalRecursos: 0, totalVideos: 0 };
+    actualizarVistaInteligente();
+    setMensaje('Falta proyectoId. Crea o carga un proyecto primero.', 'warn');
+    return null;
+  }
   guardarProyectoId(proyectoId);
+  estadoInteligente = { ...estadoInteligente, proyectoId, proyectoCargado: true };
+  actualizarVistaInteligente();
   setChip('Cargando...', 'normal');
   const datos = await api(`/api/proyectos/${encodeURIComponent(proyectoId)}/biblioteca-proyecto`);
-  aplicarHabilitada(Boolean(datos.habilitada));
+  aplicarHabilitada(Boolean(datos.habilitada), datos);
   $('projectLibraryTotalKpi').textContent = String(datos.totalRecursos || datos.recursos?.length || 0);
   $('projectLibraryVideosKpi').textContent = String(datos.videos?.totalValidos ?? datos.videos?.total ?? '—');
-  $('projectLibraryUploadState').textContent = datos.habilitada ? 'Activa' : 'Bloqueada';
   renderRecursos(datos.recursos || []);
   setChip(datos.habilitada ? 'Activa' : 'Bloqueada', datos.habilitada ? 'ok' : 'warn');
-  setMensaje(datos.habilitada ? 'Biblioteca proyecto activa. Puedes subir recursos temporales.' : 'Primero procesa Entendimiento para activar esta biblioteca.', datos.habilitada ? 'ok' : 'warn');
+  const total = Number(datos.totalRecursos || datos.recursos?.length || 0);
+  setMensaje(
+    datos.habilitada
+      ? total > 0
+        ? `Biblioteca proyecto activa. Hay ${total} recurso(s); puedes subir otro o continuar al Plan.`
+        : 'Biblioteca proyecto activa. Paso 2: sube un recurso temporal.'
+      : 'Primero procesa Entendimiento para activar esta biblioteca.',
+    datos.habilitada ? 'ok' : 'warn'
+  );
   return datos;
 }
 
 function aplicarArchivoSeleccionado(archivo = {}) {
+  if (!estadoInteligente.habilitada) {
+    setMensaje('La carga está bloqueada. Primero carga un proyecto con Entendimiento procesado.', 'warn');
+    actualizarVistaInteligente();
+    return;
+  }
   const ruta = archivo.path || archivo.ruta || '';
   const nombre = archivo.name || archivo.nombreOriginal || ruta.split(/[\\/]/).pop() || '';
   const tipo = inferirTipo(nombre);
@@ -228,9 +340,16 @@ function aplicarArchivoSeleccionado(archivo = {}) {
   $('projectLibraryNewOriginalName').value = nombre;
   $('projectLibraryNewMime').value = archivo.type || archivo.mime || '';
   $('projectLibraryNewSize').value = archivo.size || 0;
+  estadoInteligente = { ...estadoInteligente, archivoSeleccionado: Boolean(ruta) };
+  actualizarVistaInteligente();
 }
 
 async function elegirArchivo() {
+  if (!estadoInteligente.habilitada) {
+    setMensaje('Primero carga un proyecto activo. La carga temporal se habilita después del Entendimiento.', 'warn');
+    actualizarVistaInteligente();
+    return;
+  }
   const selector = window.AutoVideoJeff?.biblioteca?.seleccionarArchivo;
   if (typeof selector === 'function') {
     const resultado = await selector();
@@ -268,9 +387,11 @@ function limpiarFormulario() {
     if (input) input.value = '';
   });
   $('projectLibrarySelectedFileName').textContent = 'Ningún archivo seleccionado.';
-  $('projectLibrarySelectedFileMeta').textContent = 'Selecciona un archivo temporal para el proyecto.';
+  $('projectLibrarySelectedFileMeta').textContent = estadoInteligente.habilitada ? 'El formulario se activa después de elegir un archivo.' : 'Primero carga el entendimiento del proyecto.';
   const duplicado = $('projectLibraryDuplicateBox');
   if (duplicado) duplicado.hidden = true;
+  estadoInteligente = { ...estadoInteligente, archivoSeleccionado: false, guardando: false };
+  actualizarVistaInteligente();
 }
 
 function mostrarDuplicado(resultado = {}) {
@@ -291,13 +412,17 @@ async function guardarRecurso(accionDuplicado = 'preguntar') {
   if (!TIPOS.includes(datos.tipo)) throw new Error('Tipo de archivo no válido.');
   if (!FORMATOS.includes(datos.formato)) datos.formato = 'desconocido';
 
+  estadoInteligente = { ...estadoInteligente, guardando: true };
+  actualizarVistaInteligente();
   const resultado = await api(`/api/proyectos/${encodeURIComponent(proyectoId)}/biblioteca-proyecto`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(datos)
   });
+  estadoInteligente = { ...estadoInteligente, guardando: false };
   if (resultado?.requiereDecisionDuplicado || resultado?.recurso?.requiereDecisionDuplicado) {
     mostrarDuplicado(resultado.recurso || resultado);
+    actualizarVistaInteligente();
     throw new Error('Recurso temporal repetido. Elige reemplazar o duplicar.');
   }
   limpiarFormulario();
@@ -307,6 +432,11 @@ async function guardarRecurso(accionDuplicado = 'preguntar') {
 
 function irAPlan() {
   const proyectoId = obtenerProyectoId();
+  if (!estadoInteligente.habilitada || Number(estadoInteligente.totalRecursos || 0) <= 0) {
+    setMensaje('Primero guarda al menos un recurso temporal para continuar al Plan.', 'warn');
+    actualizarVistaInteligente();
+    return;
+  }
   if (proyectoId) localStorage.setItem(STORAGE_PROYECTO_ETAPAS, proyectoId);
   document.querySelector('[data-pantalla="plan-edicion"]')?.click();
   setTimeout(() => {
@@ -343,7 +473,7 @@ function inicializarDropZone() {
   const input = $('projectLibraryFileInput');
   if (!zona || !input || zona.dataset.inicializado === 'true') return;
   zona.dataset.inicializado = 'true';
-  zona.addEventListener('dragover', (evento) => { evento.preventDefault(); zona.classList.add('is-dragover'); });
+  zona.addEventListener('dragover', (evento) => { evento.preventDefault(); if (!estadoInteligente.habilitada) return; zona.classList.add('is-dragover'); });
   zona.addEventListener('dragleave', () => zona.classList.remove('is-dragover'));
   zona.addEventListener('drop', (evento) => { evento.preventDefault(); zona.classList.remove('is-dragover'); aplicarArchivoSeleccionado(evento.dataTransfer?.files?.[0]); });
   input.addEventListener('change', () => aplicarArchivoSeleccionado(input.files?.[0]));
@@ -355,12 +485,15 @@ function enlazarEventos() {
   root.dataset.inicializado = '1';
   const input = $('projectLibraryProjectId');
   if (input && !input.value) input.value = localStorage.getItem(STORAGE_PROYECTO_ETAPAS) || '';
+  estadoInteligente = { ...estadoInteligente, proyectoId: input?.value?.trim() || '', proyectoCargado: Boolean(input?.value?.trim()) };
   inicializarDropZone();
+  actualizarVistaInteligente();
   cargarCategorias().catch((error) => setMensaje(error.message, 'error'));
-  $('projectLibraryLoadBtn')?.addEventListener('click', () => cargarBibliotecaProyecto().catch((error) => setMensaje(error.message, 'error')));
+  $('projectLibraryLoadBtn')?.addEventListener('click', () => cargarBibliotecaProyecto().catch((error) => { estadoInteligente = { ...estadoInteligente, habilitada: false }; actualizarVistaInteligente(); setMensaje(error.message, 'error'); }));
   $('projectLibraryRefreshBtn')?.addEventListener('click', () => cargarBibliotecaProyecto().catch((error) => setMensaje(error.message, 'error')));
   $('projectLibraryViewMode')?.addEventListener('change', () => cargarBibliotecaProyecto().catch((error) => setMensaje(error.message, 'error')));
   $('projectLibraryCreatePlanBtn')?.addEventListener('click', irAPlan);
+  root.addEventListener('input', () => actualizarVistaInteligente());
   root.addEventListener('click', async (evento) => {
     const accion = evento.target.closest('[data-project-library-action]')?.dataset.projectLibraryAction;
     if (!accion) return;
@@ -371,6 +504,8 @@ function enlazarEventos() {
       if (accion === 'duplicate-replace') { setMensaje('Reemplazando recurso temporal...', 'normal'); await guardarRecurso('reemplazar'); setMensaje('Recurso temporal reemplazado.', 'ok'); return; }
       if (accion === 'duplicate-copy') { setMensaje('Guardando copia temporal...', 'normal'); await guardarRecurso('duplicar'); setMensaje('Copia temporal guardada.', 'ok'); }
     } catch (error) {
+      estadoInteligente = { ...estadoInteligente, guardando: false };
+      actualizarVistaInteligente();
       setMensaje(error.message, 'error');
     }
   });
