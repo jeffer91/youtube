@@ -32,6 +32,7 @@ export {
   detectarTipoArchivoBiblioteca,
   detectarFormatoInicialRecurso
 } from './recurso.modelo.js';
+export { analizarArchivoBiblioteca, fusionarAnalisisConRecurso } from './analizar-recurso.service.js';
 export { listarRecursosBiblioteca, obtenerRutaIndiceBiblioteca, leerIndiceBibliotecaGeneral, escribirIndiceBibliotecaGeneral } from './listar-recursos.service.js';
 export { guardarRecursoBiblioteca } from './guardar-recurso.service.js';
 export { buscarRecursosBiblioteca, buscarPrimerRecurso } from './buscar-recurso.service.js';
