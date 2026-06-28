@@ -1,17 +1,18 @@
 /*
   Modulo: biblioteca-proyecto
-  Funcion: configuracion para recursos guardados dentro de cada proyecto.
+  Funcion: configuracion para recursos temporales guardados dentro de cada proyecto.
 */
 
 export const BIBLIOTECA_PROYECTO_CONFIG = Object.freeze({
-  version: '1.0.0',
+  version: '2.0.0-biblioteca-proyecto-simple',
   archivoIndice: 'biblioteca-proyecto.json',
-  carpeta: 'biblioteca',
+  carpeta: 'biblioteca-proyecto',
+  carpetaArchivos: 'biblioteca-proyecto/archivos',
+  alcance: 'proyecto',
+  temporal: true,
   estadosUso: Object.freeze({
     sugerido: 'sugerido',
     usado: 'usado',
-    reemplazado: 'reemplazado',
-    aprobado: 'aprobado',
-    rechazado: 'rechazado'
+    reemplazado: 'reemplazado'
   })
 });
