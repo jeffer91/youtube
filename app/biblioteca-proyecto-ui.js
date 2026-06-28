@@ -2,6 +2,8 @@ const STORAGE_PROYECTO_ETAPAS = 'autovideojeff.proyectoEtapasId';
 const TIPOS = ['video', 'imagen', 'audio'];
 const FORMATOS = ['horizontal-16-9', 'vertical-9-16', 'cuadrado-1-1', 'audio', 'imagen', 'desconocido'];
 
+let puenteEntendimientoRegistrado = false;
+
 function $(id) { return document.getElementById(id); }
 function texto(valor = '', respaldo = '') { const limpio = String(valor ?? '').trim(); return limpio || respaldo; }
 function escapar(valor = '') { return texto(valor, '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c])); }
@@ -314,6 +316,28 @@ function irAPlan() {
   }, 160);
 }
 
+function irABibliotecaProyectoDesdeEntendimiento(evento) {
+  const boton = evento.target.closest?.('#entendimientoCrearPlanBtn');
+  if (!boton) return;
+  evento.preventDefault();
+  evento.stopPropagation();
+  evento.stopImmediatePropagation();
+  const proyectoId = $('entendimientoProyectoId')?.value?.trim() || localStorage.getItem(STORAGE_PROYECTO_ETAPAS) || '';
+  if (proyectoId) localStorage.setItem(STORAGE_PROYECTO_ETAPAS, proyectoId);
+  document.querySelector('[data-pantalla="biblioteca-proyecto"]')?.click();
+  setTimeout(() => {
+    const input = $('projectLibraryProjectId');
+    if (input && proyectoId) input.value = proyectoId;
+    $('projectLibraryLoadBtn')?.click();
+  }, 160);
+}
+
+function inicializarPuenteEntendimiento() {
+  if (puenteEntendimientoRegistrado) return;
+  puenteEntendimientoRegistrado = true;
+  document.addEventListener('click', irABibliotecaProyectoDesdeEntendimiento, true);
+}
+
 function inicializarDropZone() {
   const zona = $('projectLibraryDropZone');
   const input = $('projectLibraryFileInput');
@@ -355,6 +379,7 @@ function enlazarEventos() {
 
 export function inicializarBibliotecaProyectoUI() {
   if (typeof document === 'undefined') return;
+  inicializarPuenteEntendimiento();
   document.addEventListener('autovideo:navegacion', (evento) => {
     if (evento.detail?.pantallaId === 'biblioteca-proyecto') setTimeout(enlazarEventos, 0);
   });
