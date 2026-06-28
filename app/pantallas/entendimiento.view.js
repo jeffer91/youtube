@@ -85,9 +85,9 @@ export function renderEntendimientoView() {
       <footer class="entendimiento-footer">
         <div>
           <strong>Siguiente paso</strong>
-          <span>Cuando el entendimiento esté completo, carga recursos temporales en Biblioteca proyecto antes de crear el plan.</span>
+          <span>Cuando el entendimiento esté completo, entra a Biblioteca y usa la pestaña Proyecto para cargar recursos temporales.</span>
         </div>
-        <button id="entendimientoCrearPlanBtn" class="primary-button" type="button" disabled>Abrir biblioteca proyecto</button>
+        <button id="entendimientoCrearPlanBtn" class="primary-button" type="button" disabled>Abrir Biblioteca > Proyecto</button>
       </footer>
     </section>
   `;
