@@ -50,12 +50,75 @@ function obtenerCarpetaResultado(proyectoId) {
   return path.join(obtenerCarpetaProyecto(proyectoId), '05-resultado');
 }
 
-function normalizarVideoMaestro(produccion = {}) {
+function obtenerLineaTiempoGlobal({ entendimiento = {}, plan = {}, produccion = {}, adaptacion = {} } = {}) {
+  return adaptacion.resultadoPlataformas?.lineaTiempoGlobal ||
+    adaptacion.proyecto?.lineaTiempoGlobal ||
+    produccion.entrada?.lineaTiempoGlobal ||
+    produccion.planProduccion?.lineaTiempoGlobal ||
+    plan.fuente?.lineaTiempoGlobal ||
+    plan.planProduccion?.lineaTiempoGlobal ||
+    entendimiento.lineaTiempoGlobal ||
+    entendimiento.entendimientoGlobal?.lineaTiempoGlobal ||
+    null;
+}
+
+function detectarMultivideo({ entendimiento = {}, plan = {}, produccion = {}, adaptacion = {} } = {}) {
+  const lineaTiempoGlobal = obtenerLineaTiempoGlobal({ entendimiento, plan, produccion, adaptacion });
+  const totalLinea = numero(lineaTiempoGlobal?.resumen?.totalVideos || lineaTiempoGlobal?.lineaTiempo?.length, 0);
+  const totalVideos = numero(
+    adaptacion.multivideo?.totalVideos ||
+    adaptacion.resumen?.videosFuente ||
+    produccion.multivideo?.totalVideos ||
+    produccion.resumen?.videosFuente ||
+    plan.multivideo?.totalVideos ||
+    plan.resumen?.totalVideos ||
+    entendimiento.multivideo?.totalVideos ||
+    entendimiento.resumenEtapa?.videosOriginales ||
+    totalLinea ||
+    1,
+    1
+  );
+  const activo = Boolean(
+    totalVideos > 1 ||
+    adaptacion.multivideo?.activo || adaptacion.resumen?.esMultivideo ||
+    produccion.multivideo?.activo || produccion.resumen?.esMultivideo ||
+    plan.multivideo?.activo || plan.resumen?.esMultivideo ||
+    entendimiento.multivideo?.activo || entendimiento.resumenEtapa?.esMultivideo ||
+    totalLinea > 1
+  );
+  const videoMaestroUnido = adaptacion.multivideo?.videoMaestroUnido ||
+    adaptacion.resumen?.videoMaestroUnido ||
+    produccion.resumen?.videoMaestroUnido ||
+    produccion.multivideo?.unionVideos?.videoMaestro?.nombreSeguro ||
+    produccion.videoMaestro?.fuenteTemporal?.nombreSeguro ||
+    '';
+
+  return {
+    activo,
+    fase: 'bloque-9-resultado-final-multivideo',
+    totalVideos,
+    videoMaestroUnido,
+    usaVideoMaestroMultivideo: Boolean(activo && videoMaestroUnido),
+    usaTiemposGlobales: Boolean(lineaTiempoGlobal),
+    lineaTiempoGlobal,
+    duracionTotalSegundos: numero(
+      adaptacion.resultadoPlataformas?.lineaTiempoGlobal?.resumen?.duracionTotalSegundos ||
+      produccion.resumen?.duracionTotalSegundos ||
+      plan.resumen?.duracionTotalSegundos ||
+      entendimiento.resumenEtapa?.duracionTotalSegundos ||
+      lineaTiempoGlobal?.resumen?.duracionTotalSegundos,
+      0
+    )
+  };
+}
+
+function normalizarVideoMaestro(produccion = {}, multivideo = {}) {
   const salida = produccion.salida || {};
   const video = produccion.videoMaestro || {};
   const ruta = video.ruta || salida.rutaExportada || '';
+  const fuenteTemporal = video.fuenteTemporal || produccion.multivideo?.unionVideos?.videoMaestro || null;
   return {
-    tipo: 'maestro',
+    tipo: multivideo.activo ? 'maestro-multivideo' : 'maestro',
     nombre: video.nombre || salida.nombreExportado || (ruta ? path.basename(ruta) : 'video-maestro.mp4'),
     ruta,
     rutaRelativa: ruta ? crearRutaRelativaParaWeb(ruta) : '',
@@ -63,7 +126,14 @@ function normalizarVideoMaestro(produccion = {}) {
     pesoBytes: video.pesoBytes || salida.pesoBytes || null,
     plataforma: produccion.resumen?.plataformaBase || salida.plataforma || 'maestro',
     formato: salida.formato || 'base',
-    estado: ruta && fs.existsSync(ruta) ? 'disponible' : 'referenciado'
+    estado: ruta && fs.existsSync(ruta) ? 'disponible' : 'referenciado',
+    multivideo: {
+      activo: Boolean(multivideo.activo),
+      totalVideos: multivideo.totalVideos || 1,
+      videoMaestroUnido: multivideo.videoMaestroUnido || fuenteTemporal?.nombreSeguro || null,
+      fuenteTemporal,
+      unionVideos: produccion.multivideo?.unionVideos || null
+    }
   };
 }
 
@@ -78,23 +148,49 @@ function normalizarVideosPlataforma(adaptacion = {}) {
     height: item.height || null,
     estado: item.estado || 'pendiente',
     nombreExportado: item.nombreExportado || '',
-    rutaExportada: item.rutaExportada || item.videoDestino || '',
+    rutaExportada: item.rutaExportada || item.videoDestino || item.destinoPlaneado || '',
     urlPublica: item.urlPublica || '',
     pesoBytes: item.pesoBytes || null,
-    mensaje: item.mensaje || ''
+    mensaje: item.mensaje || '',
+    multivideo: item.multivideo || adaptacion.multivideo || adaptacion.resumen?.multivideo || null
   }));
 }
 
-function crearResumenFinal({ estado = {}, entendimiento = {}, plan = {}, produccion = {}, adaptacion = {}, videoMaestro, videosPlataforma }) {
+function obtenerTranscripcionGlobal(entendimiento = {}) {
+  return entendimiento.transcripcionGlobal || entendimiento.transcripcionPrincipal || entendimiento.transcripcion || null;
+}
+
+function crearResumenFinal({ estado = {}, entendimiento = {}, plan = {}, produccion = {}, adaptacion = {}, videoMaestro, videosPlataforma, multivideo }) {
   const plataformasExportadas = videosPlataforma.filter((item) => item.estado === 'exportado');
   const errores = videosPlataforma.filter((item) => item.estado === 'error_render');
   const reporteSalida = produccion.salida?.reporteFinal?.reporte || {};
+  const transcripcion = obtenerTranscripcionGlobal(entendimiento) || {};
+  const segmentos = lista(transcripcion.segmentos).length || entendimiento.resumenEtapa?.segmentosTranscripcion || plan.resumen?.segmentosTranscripcion || 0;
+  const palabras = transcripcion.resumen?.palabras || entendimiento.resumenEtapa?.palabrasTranscripcion || 0;
+  const duracion = numero(
+    multivideo.duracionTotalSegundos ||
+    entendimiento.analisis?.duracionTotalSegundos ||
+    entendimiento.analisis?.duracionSegundos ||
+    entendimiento.resumen?.duracionTotalSegundos ||
+    entendimiento.resumen?.duracionSegundos ||
+    plan.resumen?.duracionTotalSegundos ||
+    plan.resumen?.duracionSegundos,
+    0
+  );
   return {
     proyectoId: estado.proyectoId,
     nombre: estado.nombre || plan.proyecto?.nombre || produccion.entrada?.proyecto?.nombre || 'Proyecto AutoVideoJeff',
     perfil: plan.proyecto?.perfil || produccion.entrada?.proyecto?.perfil || estado.datos?.perfil || 'general',
     plataformaBase: videoMaestro.plataforma || 'maestro',
-    duracionSegundos: numero(entendimiento.analisis?.duracionSegundos || entendimiento.resumen?.duracionSegundos || plan.resumen?.duracionSegundos, 0),
+    duracionSegundos: duracion,
+    duracionTotalSegundos: duracion,
+    esMultivideo: Boolean(multivideo.activo),
+    videosFuente: multivideo.totalVideos || 1,
+    videoMaestroUnido: multivideo.videoMaestroUnido || null,
+    usaVideoMaestroMultivideo: Boolean(multivideo.usaVideoMaestroMultivideo),
+    usaTiemposGlobales: Boolean(multivideo.usaTiemposGlobales),
+    segmentosGlobales: segmentos,
+    palabrasGlobales: palabras,
     videoMaestro: videoMaestro.nombre,
     urlVideoMaestro: videoMaestro.urlPublica,
     plataformasTotales: videosPlataforma.length,
@@ -112,11 +208,12 @@ function crearResumenFinal({ estado = {}, entendimiento = {}, plan = {}, producc
   };
 }
 
-function crearChecklist({ entendimiento = {}, plan = {}, produccion = {}, adaptacion = {}, resumen = {} }) {
+function crearChecklist({ entendimiento = {}, plan = {}, produccion = {}, adaptacion = {}, resumen = {}, multivideo = {} }) {
   return [
-    { id: 'entendimiento', nombre: 'Entendimiento generado', ok: Boolean(entendimiento.ok || entendimiento.analisis || entendimiento.resumen), detalle: 'Análisis base, transcripción, fotogramas y momentos clave.' },
+    { id: 'entendimiento', nombre: 'Entendimiento generado', ok: Boolean(entendimiento.ok || entendimiento.analisis || entendimiento.resumen), detalle: resumen.esMultivideo ? `Análisis global de ${resumen.videosFuente} video(s), transcripción y momentos.` : 'Análisis base, transcripción, fotogramas y momentos clave.' },
     { id: 'plan', nombre: 'Plan de edición generado', ok: Boolean(plan.planProduccion || plan.resumen), detalle: `${resumen.elementosPlan} elemento(s) de plan.` },
     { id: 'produccion', nombre: 'Video maestro producido', ok: Boolean(produccion.videoMaestro?.urlPublica || produccion.salida?.urlPublica), detalle: resumen.videoMaestro || 'Video maestro.' },
+    { id: 'multivideo', nombre: 'Flujo multivideo consolidado', ok: !resumen.esMultivideo || Boolean(multivideo.usaVideoMaestroMultivideo || resumen.videoMaestroUnido), detalle: resumen.esMultivideo ? `${resumen.videosFuente} video(s) unidos y trazados con tiempos globales.` : 'Proyecto de video único compatible.' },
     { id: 'adaptacion', nombre: 'Adaptación a plataformas', ok: Boolean(adaptacion.resultadoPlataformas || resumen.plataformasExportadas > 0), detalle: `${resumen.plataformasExportadas}/${resumen.plataformasTotales} plataforma(s) exportada(s).` },
     { id: 'premium', nombre: 'Capas premium aplicadas', ok: Boolean(resumen.efectosPremium || resumen.sfxPremium), detalle: `Visual: ${resumen.efectosPremium ? 'sí' : 'no'} · SFX: ${resumen.sfxPremium ? 'sí' : 'no'}.` }
   ];
@@ -126,6 +223,7 @@ function crearRecomendacionesFinales({ resumen = {}, videosPlataforma = [] }) {
   const recomendaciones = [];
   if (resumen.listoParaPublicar) recomendaciones.push('El paquete final está listo para revisión humana y publicación.');
   else recomendaciones.push('Revisar pendientes antes de publicar el paquete final.');
+  if (resumen.esMultivideo) recomendaciones.push('Revisar que el orden de los videos unidos coincida con la intención editorial antes de publicar.');
   if (resumen.plataformasConError) recomendaciones.push('Revisar las plataformas con error de render y volver a ejecutar Adaptación.');
   if (!resumen.urlVideoMaestro) recomendaciones.push('El video maestro no tiene URL pública; revisar exportación de Producción.');
   if (videosPlataforma.length) recomendaciones.push('Validar manualmente el encuadre y audio en cada plataforma antes de subir.');
@@ -139,10 +237,11 @@ function crearPublicacionSugerida({ resumen = {}, videosPlataforma = [] }) {
     estado: item.estado,
     archivo: item.nombreExportado || item.nombre,
     urlPublica: item.urlPublica || '',
+    multivideo: item.multivideo || null,
     sugerencia: item.estado === 'exportado'
       ? `Publicar o programar en ${item.nombre || item.plataforma} después de revisión visual.`
       : `Revisar ${item.nombre || item.plataforma} antes de publicar.`
-  })).concat([{ plataforma: 'maestro', estado: resumen.urlVideoMaestro ? 'disponible' : 'pendiente', archivo: resumen.videoMaestro, urlPublica: resumen.urlVideoMaestro, sugerencia: 'Conservar como archivo maestro de respaldo.' }]);
+  })).concat([{ plataforma: 'maestro', estado: resumen.urlVideoMaestro ? 'disponible' : 'pendiente', archivo: resumen.videoMaestro, urlPublica: resumen.urlVideoMaestro, multivideo: { activo: resumen.esMultivideo, totalVideos: resumen.videosFuente, videoMaestroUnido: resumen.videoMaestroUnido }, sugerencia: resumen.esMultivideo ? 'Conservar como archivo maestro multivideo de respaldo.' : 'Conservar como archivo maestro de respaldo.' }]);
 }
 
 function escaparHtml(valor = '') {
@@ -153,6 +252,7 @@ function crearHtmlResultado(resultado = {}) {
   const resumen = resultado.resumen || {};
   const videos = resultado.videos?.plataformas || [];
   const checklist = resultado.checklist || [];
+  const multivideo = resultado.multivideo || {};
   return `<!doctype html>
 <html lang="es">
 <head>
@@ -160,7 +260,7 @@ function crearHtmlResultado(resultado = {}) {
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Resultado final - ${escaparHtml(resumen.nombre)}</title>
   <style>
-    body{font-family:Arial,sans-serif;margin:0;background:#f8fafc;color:#0f172a}main{max-width:1100px;margin:0 auto;padding:28px}section{background:white;border:1px solid #e2e8f0;border-radius:18px;padding:18px;margin:14px 0;box-shadow:0 10px 24px rgba(15,23,42,.06)}h1,h2{margin:0 0 10px}.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px}.kpis div,.card{border:1px solid #e2e8f0;border-radius:14px;padding:12px;background:#f8fafc}.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:10px}.ok{color:#166534}.warn{color:#9a3412}a{color:#2563eb;font-weight:700}small{color:#64748b;font-weight:700}
+    body{font-family:Arial,sans-serif;margin:0;background:#f8fafc;color:#0f172a}main{max-width:1100px;margin:0 auto;padding:28px}section{background:white;border:1px solid #e2e8f0;border-radius:18px;padding:18px;margin:14px 0;box-shadow:0 10px 24px rgba(15,23,42,.06)}h1,h2{margin:0 0 10px}.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px}.kpis div,.card{border:1px solid #e2e8f0;border-radius:14px;padding:12px;background:#f8fafc}.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:10px}.ok{color:#166534}.warn{color:#9a3412}a{color:#2563eb;font-weight:700}small{color:#64748b;font-weight:700}.badge{display:inline-block;padding:6px 10px;border-radius:999px;background:#e0f2fe;color:#075985;font-weight:700;margin:4px 0}
   </style>
 </head>
 <body>
@@ -169,15 +269,18 @@ function crearHtmlResultado(resultado = {}) {
       <small>AutoVideoJeff · Resultado final</small>
       <h1>${escaparHtml(resumen.nombre)}</h1>
       <p>${resumen.listoParaPublicar ? 'Paquete listo para revisión y publicación.' : 'Paquete con elementos pendientes de revisión.'}</p>
+      ${resumen.esMultivideo ? `<span class="badge">Multivideo · ${escaparHtml(resumen.videosFuente)} video(s) · ${escaparHtml(resumen.videoMaestroUnido || 'maestro unido')}</span>` : ''}
     </section>
     <section><h2>Resumen</h2><div class="kpis">
       <div><small>Plataformas</small><h2>${resumen.plataformasExportadas}/${resumen.plataformasTotales}</h2></div>
+      <div><small>Videos fuente</small><h2>${resumen.videosFuente || 1}</h2></div>
+      <div><small>Segmentos globales</small><h2>${resumen.segmentosGlobales || 0}</h2></div>
       <div><small>Elementos plan</small><h2>${resumen.elementosPlan}</h2></div>
       <div><small>Efectos</small><h2>${resumen.efectosUsados}</h2></div>
       <div><small>Textos</small><h2>${resumen.textosUsados}</h2></div>
     </div></section>
-    <section><h2>Video maestro</h2><p><strong>${escaparHtml(resumen.videoMaestro || 'Sin maestro')}</strong></p>${resumen.urlVideoMaestro ? `<p><a href="${escaparHtml(resumen.urlVideoMaestro)}">Abrir video maestro</a></p>` : ''}</section>
-    <section><h2>Plataformas</h2><div class="cards">${videos.map((item) => `<div class="card"><strong>${escaparHtml(item.nombre || item.plataforma)}</strong><p>${escaparHtml(item.estado)} · ${escaparHtml(item.formato || '')}</p>${item.urlPublica ? `<a href="${escaparHtml(item.urlPublica)}">Abrir exportación</a>` : '<span class="warn">Sin exportación</span>'}</div>`).join('')}</div></section>
+    <section><h2>Video maestro</h2><p><strong>${escaparHtml(resumen.videoMaestro || 'Sin maestro')}</strong></p>${resumen.urlVideoMaestro ? `<p><a href="${escaparHtml(resumen.urlVideoMaestro)}">Abrir video maestro</a></p>` : ''}${multivideo.activo ? `<p><small>Fuente multivideo: ${escaparHtml(multivideo.videoMaestroUnido || '')}</small></p>` : ''}</section>
+    <section><h2>Plataformas</h2><div class="cards">${videos.map((item) => `<div class="card"><strong>${escaparHtml(item.nombre || item.plataforma)}</strong><p>${escaparHtml(item.estado)} · ${escaparHtml(item.formato || '')}</p>${item.multivideo?.activo ? `<small>Multivideo · ${escaparHtml(item.multivideo.totalVideos || '')} videos</small><br>` : ''}${item.urlPublica ? `<a href="${escaparHtml(item.urlPublica)}">Abrir exportación</a>` : '<span class="warn">Sin exportación</span>'}</div>`).join('')}</div></section>
     <section><h2>Checklist</h2>${checklist.map((item) => `<p class="${item.ok ? 'ok' : 'warn'}"><strong>${item.ok ? 'OK' : 'Revisar'} · ${escaparHtml(item.nombre)}</strong><br><small>${escaparHtml(item.detalle)}</small></p>`).join('')}</section>
   </main>
 </body>
@@ -205,6 +308,7 @@ async function escribirManifiestoFinal({ proyectoId, resultado }) {
     proyectoId,
     creadoEn: new Date().toISOString(),
     resumen: resultado.resumen,
+    multivideo: resultado.multivideo,
     videos: resultado.videos,
     publicacionSugerida: resultado.publicacionSugerida,
     entregables: resultado.entregables
@@ -242,16 +346,32 @@ export async function procesarResultadoFinalProyectoEtapa({ proyectoId, opciones
     const plan = extraerResultadoEtapa(planGuardado);
     const produccion = extraerResultadoEtapa(produccionGuardada);
     const adaptacion = extraerResultadoEtapa(adaptacionGuardada);
-    const videoMaestro = normalizarVideoMaestro(produccion);
+    const multivideo = detectarMultivideo({ entendimiento, plan, produccion, adaptacion });
+    const videoMaestro = normalizarVideoMaestro(produccion, multivideo);
     const videosPlataforma = normalizarVideosPlataforma(adaptacion);
-    const resumen = crearResumenFinal({ estado: estadoProcesando, entendimiento, plan, produccion, adaptacion, videoMaestro, videosPlataforma });
-    const checklist = crearChecklist({ entendimiento, plan, produccion, adaptacion, resumen });
+    const resumen = crearResumenFinal({ estado: estadoProcesando, entendimiento, plan, produccion, adaptacion, videoMaestro, videosPlataforma, multivideo });
+    const checklist = crearChecklist({ entendimiento, plan, produccion, adaptacion, resumen, multivideo });
 
     const resultadoFinal = {
       ok: true,
       etapa: ETAPAS_AUTOVIDEO.RESULTADO,
       proyectoId,
       resumen,
+      multivideo: {
+        activo: resumen.esMultivideo,
+        fase: 'bloque-9-resultado-final-multivideo',
+        totalVideos: resumen.videosFuente,
+        videoMaestroUnido: resumen.videoMaestroUnido,
+        usaVideoMaestroMultivideo: resumen.usaVideoMaestroMultivideo,
+        usaTiemposGlobales: resumen.usaTiemposGlobales,
+        duracionTotalSegundos: resumen.duracionTotalSegundos,
+        segmentosGlobales: resumen.segmentosGlobales,
+        palabrasGlobales: resumen.palabrasGlobales,
+        lineaTiempoGlobal: multivideo.lineaTiempoGlobal,
+        nota: resumen.esMultivideo
+          ? 'Resultado final consolidado desde flujo multivideo completo.'
+          : 'Resultado final consolidado con estructura compatible multivideo.'
+      },
       videos: {
         maestro: videoMaestro,
         plataformas: videosPlataforma
@@ -264,7 +384,8 @@ export async function procesarResultadoFinalProyectoEtapa({ proyectoId, opciones
         entendimiento: Boolean(entendimientoGuardado),
         plan: Boolean(planGuardado),
         produccion: Boolean(produccionGuardada),
-        adaptacion: Boolean(adaptacionGuardada)
+        adaptacion: Boolean(adaptacionGuardada),
+        multivideo: resumen.esMultivideo
       },
       solicitud: { ...opciones, ...solicitud },
       entregables: {},
@@ -282,8 +403,9 @@ export async function procesarResultadoFinalProyectoEtapa({ proyectoId, opciones
       resultado: resultadoFinal,
       metadata: {
         bloque: 17,
-        tipo: 'resultado-final',
-        origen: 'POST /api/proyectos/:proyectoId/resultado/exportar'
+        tipo: resumen.esMultivideo ? 'resultado-final-multivideo' : 'resultado-final',
+        origen: 'POST /api/proyectos/:proyectoId/resultado/exportar',
+        multivideo: resultadoFinal.multivideo
       }
     });
     resultadoFinal.entregables.json = {
@@ -291,14 +413,14 @@ export async function procesarResultadoFinalProyectoEtapa({ proyectoId, opciones
       rutaRelativa: crearRutaRelativaParaWeb(guardado.ruta),
       nombreArchivo: path.basename(guardado.ruta)
     };
-    await escribirJson(guardado.ruta, { ok: true, resultado: resultadoFinal, metadata: { bloque: 17, tipo: 'resultado-final' }, actualizadoEn: new Date().toISOString() });
+    await escribirJson(guardado.ruta, { ok: true, resultado: resultadoFinal, metadata: { bloque: 17, tipo: resumen.esMultivideo ? 'resultado-final-multivideo' : 'resultado-final', multivideo: resultadoFinal.multivideo }, actualizadoEn: new Date().toISOString() });
 
     const estadoFinal = await avanzarEstadoProyectoEtapas({
       proyectoId,
       etapaDestino: ETAPAS_AUTOVIDEO.RESULTADO,
       estadoDestino: ESTADOS_PROYECTO_ETAPAS.FINALIZADO,
       archivoGenerado: guardado.ruta,
-      mensaje: 'Resultado final preparado y proyecto finalizado.'
+      mensaje: resumen.esMultivideo ? 'Resultado final multivideo preparado y proyecto finalizado.' : 'Resultado final preparado y proyecto finalizado.'
     });
 
     return {
@@ -309,7 +431,7 @@ export async function procesarResultadoFinalProyectoEtapa({ proyectoId, opciones
       resultado: resultadoFinal,
       resumen,
       archivo: guardado,
-      mensaje: 'Resultado final preparado correctamente.'
+      mensaje: resumen.esMultivideo ? 'Resultado final multivideo preparado correctamente.' : 'Resultado final preparado correctamente.'
     };
   } catch (error) {
     await marcarErrorEstadoProyectoEtapas({ proyectoId, etapa: ETAPAS_AUTOVIDEO.RESULTADO, error, mensaje: 'Error preparando resultado final.' }).catch(() => null);
