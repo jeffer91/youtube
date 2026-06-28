@@ -29,6 +29,14 @@ function asegurarCarpeta(rutaCarpeta) {
   return rutaCarpeta;
 }
 
+function limpiarArchivo(rutaArchivo) {
+  try {
+    if (rutaArchivo && fs.existsSync(rutaArchivo)) fs.unlinkSync(rutaArchivo);
+  } catch (error) {
+    throw new Error(`No se pudo reemplazar el archivo: ${rutaArchivo}. Cierra el video si está abierto. Detalle: ${error.message}`);
+  }
+}
+
 function normalizarRutaFfconcat(rutaArchivo) {
   return String(rutaArchivo || '').replace(/\\/g, '/').replace(/'/g, "'\\''");
 }
@@ -42,9 +50,19 @@ function crearListaConcat(videos = []) {
   return videos.map((video) => `file '${normalizarRutaFfconcat(video.rutaProyecto || video.rutaOriginal)}'`).join('\n');
 }
 
-function ejecutarConcatDemuxer({ rutaLista, rutaSalida }) {
+function construirErrorFfmpeg(prefijo, error, stdout = '', stderr = '') {
+  const partes = [error?.message || 'Error desconocido de FFmpeg'];
+  const salida = String(stdout || '').slice(-800);
+  const detalle = String(stderr || '').slice(-1800);
+  if (salida) partes.push(`STDOUT: ${salida}`);
+  if (detalle) partes.push(`STDERR: ${detalle}`);
+  return new Error(`${prefijo}: ${partes.join(' | ')}`);
+}
+
+function ejecutarConcatDemuxer({ rutaLista, rutaSalida, metodo = 'concat-demuxer-reencode' }) {
   return new Promise((resolve, reject) => {
     const inicio = Date.now();
+    limpiarArchivo(rutaSalida);
     ffmpeg()
       .input(rutaLista)
       .inputOptions(['-f concat', '-safe 0'])
@@ -57,16 +75,19 @@ function ejecutarConcatDemuxer({ rutaLista, rutaSalida }) {
         '-pix_fmt yuv420p',
         '-c:a aac',
         '-b:a 128k',
+        '-ar 48000',
+        '-ac 2',
         '-movflags +faststart',
         '-y'
       ])
-      .on('end', () => resolve({ ok: true, metodo: 'concat-demuxer-reencode', duracionMs: Date.now() - inicio }))
-      .on('error', (error) => reject(error))
+      .on('end', () => resolve({ ok: true, metodo, duracionMs: Date.now() - inicio }))
+      .on('error', (error, stdout, stderr) => reject(construirErrorFfmpeg(`FFmpeg no pudo unir videos con ${metodo}`, error, stdout, stderr)))
       .save(rutaSalida);
   });
 }
 
 function copiarVideoUnico({ video, rutaSalida }) {
+  limpiarArchivo(rutaSalida);
   fs.copyFileSync(video.rutaProyecto || video.rutaOriginal, rutaSalida);
   return { ok: true, metodo: 'copia-video-unico', duracionMs: 0 };
 }
@@ -76,6 +97,112 @@ function obtenerPeso(rutaArchivo) {
     return fs.statSync(rutaArchivo).size;
   } catch (_error) {
     return 0;
+  }
+}
+
+function obtenerObjetivoVideo(lineaTiempoGlobal = null) {
+  const resumen = lineaTiempoGlobal?.resumen || {};
+  const orientacion = texto(resumen.orientacionPredominante, 'horizontal');
+  if (orientacion === 'vertical') return { width: 1080, height: 1920, fps: 30, orientacion };
+  if (orientacion === 'cuadrada') return { width: 1080, height: 1080, fps: 30, orientacion };
+  return { width: 1920, height: 1080, fps: 30, orientacion: orientacion || 'horizontal' };
+}
+
+function crearFiltroEstandarizacion({ width, height, fps }) {
+  return [
+    `scale=${width}:${height}:force_original_aspect_ratio=decrease`,
+    `pad=${width}:${height}:(ow-iw)/2:(oh-ih)/2`,
+    'setsar=1',
+    `fps=${fps || 30}`,
+    'format=yuv420p'
+  ].join(',');
+}
+
+function ejecutarEstandarizacionClip({ video, rutaSalida, objetivo }) {
+  return new Promise((resolve, reject) => {
+    const rutaEntrada = video.rutaProyecto || video.rutaOriginal;
+    const inicio = Date.now();
+    limpiarArchivo(rutaSalida);
+    ffmpeg(rutaEntrada)
+      .videoFilters(crearFiltroEstandarizacion(objetivo))
+      .outputOptions([
+        '-map 0:v:0',
+        '-map 0:a:0?',
+        '-c:v libx264',
+        '-preset veryfast',
+        '-crf 23',
+        '-pix_fmt yuv420p',
+        '-c:a aac',
+        '-b:a 128k',
+        '-ar 48000',
+        '-ac 2',
+        '-movflags +faststart',
+        '-shortest',
+        '-y'
+      ])
+      .on('end', () => resolve({
+        ok: true,
+        videoId: video.videoId || video.id || null,
+        rutaOriginal: rutaEntrada,
+        rutaEstandarizada: rutaSalida,
+        metodo: 'clip-estandarizado',
+        objetivo,
+        duracionMs: Date.now() - inicio
+      }))
+      .on('error', (error, stdout, stderr) => reject(construirErrorFfmpeg(`FFmpeg no pudo estandarizar ${video.videoId || video.id || path.basename(rutaEntrada)}`, error, stdout, stderr)))
+      .save(rutaSalida);
+  });
+}
+
+async function estandarizarVideosParaConcat({ videos = [], carpetaSalida, lineaTiempoGlobal = null } = {}) {
+  const objetivo = obtenerObjetivoVideo(lineaTiempoGlobal);
+  const carpetaClips = asegurarCarpeta(path.join(carpetaSalida, 'clips-estandarizados'));
+  const clips = [];
+
+  for (const video of videos) {
+    const videoId = video.videoId || video.id || `video-${clips.length + 1}`;
+    const rutaSalida = path.join(carpetaClips, `${String(clips.length + 1).padStart(2, '0')}-${videoId}.mp4`);
+    const resultado = await ejecutarEstandarizacionClip({ video, rutaSalida, objetivo });
+    clips.push({
+      ...video,
+      id: videoId,
+      videoId,
+      rutaOriginalFuente: video.rutaProyecto || video.rutaOriginal,
+      rutaProyecto: rutaSalida,
+      rutaOriginal: rutaSalida,
+      nombreOriginal: video.nombreOriginal || path.basename(video.rutaProyecto || video.rutaOriginal || rutaSalida),
+      nombreSeguro: path.basename(rutaSalida),
+      estandarizacion: resultado
+    });
+  }
+
+  return { clips, objetivo, carpetaClips };
+}
+
+async function ejecutarUnionConFallback({ videosValidos = [], rutaLista, rutaSalida, carpetaSalida, lineaTiempoGlobal = null } = {}) {
+  try {
+    return await ejecutarConcatDemuxer({ rutaLista, rutaSalida, metodo: 'concat-demuxer-reencode' });
+  } catch (errorPrimario) {
+    const estandarizado = await estandarizarVideosParaConcat({ videos: videosValidos, carpetaSalida, lineaTiempoGlobal });
+    const rutaListaEstandarizada = path.join(carpetaSalida, 'videos-concat-estandarizados.txt');
+    await fs.promises.writeFile(rutaListaEstandarizada, crearListaConcat(estandarizado.clips), 'utf8');
+    const resultadoFallback = await ejecutarConcatDemuxer({
+      rutaLista: rutaListaEstandarizada,
+      rutaSalida,
+      metodo: 'fallback-estandarizado-concat-demuxer'
+    });
+    return {
+      ...resultadoFallback,
+      errorPrimario: errorPrimario.message,
+      rutaListaEstandarizada,
+      clipsEstandarizados: estandarizado.clips.map((clip) => ({
+        videoId: clip.videoId,
+        rutaOriginalFuente: clip.rutaOriginalFuente,
+        rutaEstandarizada: clip.rutaProyecto,
+        nombreSeguro: clip.nombreSeguro
+      })),
+      objetivoEstandarizacion: estandarizado.objetivo
+    };
   }
 }
 
@@ -122,7 +249,7 @@ export async function unirVideosMaestroMultivideo({ proyectoId, carpetaProyecto,
   if (videosValidos.length === 1) {
     resultadoFfmpeg = copiarVideoUnico({ video: videosValidos[0], rutaSalida });
   } else {
-    resultadoFfmpeg = await ejecutarConcatDemuxer({ rutaLista, rutaSalida });
+    resultadoFfmpeg = await ejecutarUnionConFallback({ videosValidos, rutaLista, rutaSalida, carpetaSalida, lineaTiempoGlobal });
   }
 
   const videoMaestro = crearVideoMaestroDesdeSalida({ proyectoId, rutaSalida, carpetaSalida, videos: videosValidos, resultadoFfmpeg });
@@ -136,6 +263,8 @@ export async function unirVideosMaestroMultivideo({ proyectoId, carpetaProyecto,
     rutaLista,
     rutaSalida,
     metodo: resultadoFfmpeg.metodo,
+    fallbackAplicado: resultadoFfmpeg.metodo === 'fallback-estandarizado-concat-demuxer',
+    resultadoFfmpeg,
     mensaje: videosValidos.length > 1
       ? `${videosValidos.length} video(s) unidos en un maestro multivideo.`
       : 'Video único copiado como maestro compatible.',
