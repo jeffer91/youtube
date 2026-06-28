@@ -18,10 +18,16 @@ import {
   normalizarVideosEntendimiento,
   crearEntradaVideoEntendimiento
 } from './normalizar-videos-entendimiento.service.js';
+import { crearLineaTiempoMultivideo } from './linea-tiempo-multivideo.service.js';
 
 function texto(valor, respaldo = '') {
   const limpio = String(valor || '').trim();
   return limpio || respaldo;
+}
+
+function numero(valor, respaldo = 0) {
+  const n = Number(valor);
+  return Number.isFinite(n) ? n : respaldo;
 }
 
 function obtenerCarpetaProyecto(proyectoId) {
@@ -33,16 +39,21 @@ async function cargarVideosOriginalesProyecto(proyectoId) {
   return await leerJsonSiExiste(ruta, { ok: true, proyectoId, total: 0, totalValidos: 0, modo: 'sin-videos', esMultivideo: false, videos: [] });
 }
 
-function crearResumenEntendimiento(resultado, videosNormalizados = null) {
+function crearResumenEntendimiento(resultado, videosNormalizados = null, lineaTiempoGlobal = null) {
   const transcripcionesPorMotor = Array.isArray(resultado?.transcripcionesPorMotor) ? resultado.transcripcionesPorMotor : [];
   const resumenTranscripcion = resultado?.resumenTranscripcion || resultado?.transcripcion?.resumenTranscripcion || null;
   const motorPrincipal = resultado?.resumen?.motorTranscripcionPrincipal || resultado?.transcripcionPrincipal?.motor || resultado?.transcripcion?.motor || null;
-  const totalVideos = videosNormalizados?.totalValidos ?? resultado?.entrada?.multivideo?.totalValidos ?? 1;
-  const esMultivideo = Boolean(videosNormalizados?.esMultivideo || totalVideos > 1);
+  const resumenLinea = lineaTiempoGlobal?.resumen || {};
+  const totalVideos = resumenLinea.totalVideos || videosNormalizados?.totalValidos || resultado?.entrada?.multivideo?.totalValidos || 1;
+  const esMultivideo = Boolean(resumenLinea.esMultivideo || videosNormalizados?.esMultivideo || totalVideos > 1);
+  const duracionGlobal = numero(resumenLinea.duracionTotalSegundos, 0);
   return {
-    orientacion: resultado?.resumen?.orientacion || resultado?.analisis?.orientacion || 'desconocida',
-    duracionSegundos: resultado?.resumen?.duracionSegundos || resultado?.analisis?.duracionSegundos || null,
-    tieneAudio: Boolean(resultado?.analisis?.tieneAudio),
+    orientacion: resumenLinea.orientacionPredominante || resultado?.resumen?.orientacion || resultado?.analisis?.orientacion || 'desconocida',
+    duracionSegundos: duracionGlobal > 0 ? duracionGlobal : (resultado?.resumen?.duracionSegundos || resultado?.analisis?.duracionSegundos || null),
+    duracionTotalSegundos: duracionGlobal > 0 ? duracionGlobal : (resultado?.resumen?.duracionSegundos || resultado?.analisis?.duracionSegundos || null),
+    duracionVideoPrincipalSegundos: resultado?.resumen?.duracionSegundos || resultado?.analisis?.duracionSegundos || null,
+    tieneAudio: Boolean(resumenLinea.tieneAudio || resultado?.analisis?.tieneAudio),
+    todosTienenAudio: Boolean(resumenLinea.todosTienenAudio),
     tieneTranscripcionReal: Boolean(resultado?.resumen?.tieneTranscripcionReal),
     motorTranscripcionPrincipal: motorPrincipal,
     transcripcionesGeneradas: transcripcionesPorMotor.length,
@@ -53,9 +64,13 @@ function crearResumenEntendimiento(resultado, videosNormalizados = null) {
     necesidades: Array.isArray(resultado?.analisisVideo?.necesidades) ? resultado.analisisVideo.necesidades : [],
     videosOriginales: totalVideos,
     videosPreparados: totalVideos,
+    videosAnalizadosEnLineaTiempo: resumenLinea.videosAnalizados || 0,
+    videosConAudio: resumenLinea.videosConAudio || 0,
+    videosSinAudio: resumenLinea.videosSinAudio || 0,
     modoVideos: esMultivideo ? 'multivideo' : 'video-unico',
     esMultivideo,
-    videoPrincipalId: videosNormalizados?.videoPrincipal?.videoId || resultado?.entrada?.video?.videoId || null
+    videoPrincipalId: videosNormalizados?.videoPrincipal?.videoId || resultado?.entrada?.video?.videoId || null,
+    lineaTiempoGlobal: Boolean(lineaTiempoGlobal?.ok)
   };
 }
 
@@ -87,8 +102,22 @@ export async function procesarEntendimientoProyectoEtapa({ proyectoId, opciones 
       videosNormalizados,
       etapa: ETAPAS_AUTOVIDEO.ENTENDIMIENTO
     });
+
+    const lineaTiempoGlobal = await crearLineaTiempoMultivideo({
+      entrada,
+      videosNormalizados,
+      carpetaProyecto
+    });
+
+    entrada.lineaTiempoGlobal = lineaTiempoGlobal;
+    entrada.multivideo = {
+      ...(entrada.multivideo || {}),
+      lineaTiempoGlobal: Boolean(lineaTiempoGlobal?.ok),
+      duracionTotalSegundos: lineaTiempoGlobal?.resumen?.duracionTotalSegundos || null
+    };
+
     const resultadoEntendimiento = await entenderVideo(entrada, { ...opciones, ...(solicitud || {}), etapaSolicitada: ETAPAS_AUTOVIDEO.ENTENDIMIENTO });
-    const resumen = crearResumenEntendimiento(resultadoEntendimiento, videosNormalizados);
+    const resumen = crearResumenEntendimiento(resultadoEntendimiento, videosNormalizados, lineaTiempoGlobal);
 
     const guardado = await guardarResultadoEtapa({
       proyectoId,
@@ -105,23 +134,28 @@ export async function procesarEntendimientoProyectoEtapa({ proyectoId, opciones 
           videoPrincipalId: videosNormalizados.videoPrincipal?.videoId || null,
           videos: videosNormalizados.videos
         },
+        lineaTiempoGlobal,
         multivideo: {
           activo: videosNormalizados.esMultivideo,
-          fase: 'bloque-1-normalizado',
+          fase: 'bloque-2-linea-tiempo-global',
+          lineaTiempoGlobal: Boolean(lineaTiempoGlobal?.ok),
+          duracionTotalSegundos: lineaTiempoGlobal?.resumen?.duracionTotalSegundos || null,
+          videosAnalizados: lineaTiempoGlobal?.resumen?.videosAnalizados || 0,
           nota: videosNormalizados.esMultivideo
-            ? 'Los videos ya están normalizados. En el siguiente bloque se calculará línea de tiempo global y se procesarán todos.'
-            : 'Proyecto de un solo video normalizado con la misma estructura multivideo.'
+            ? 'Los videos ya tienen línea de tiempo global. En el siguiente bloque se procesará entendimiento completo por cada video.'
+            : 'Proyecto de un solo video normalizado y con línea de tiempo global.'
         }
       },
       metadata: {
         bloque: 7,
-        tipo: videosNormalizados.esMultivideo ? 'entendimiento-backend-preparado-multivideo' : 'entendimiento-backend-video-unico',
+        tipo: videosNormalizados.esMultivideo ? 'entendimiento-backend-linea-tiempo-multivideo' : 'entendimiento-backend-video-unico-linea-tiempo',
         origen: 'POST /api/proyectos/:proyectoId/entendimiento/procesar',
         videos: {
           total: videosNormalizados.total,
           totalValidos: videosNormalizados.totalValidos,
           modo: videosNormalizados.modo,
-          videoPrincipalId: videosNormalizados.videoPrincipal?.videoId || null
+          videoPrincipalId: videosNormalizados.videoPrincipal?.videoId || null,
+          duracionTotalSegundos: lineaTiempoGlobal?.resumen?.duracionTotalSegundos || null
         }
       }
     });
@@ -132,7 +166,7 @@ export async function procesarEntendimientoProyectoEtapa({ proyectoId, opciones 
       estadoDestino: ESTADOS_PROYECTO_ETAPAS.ENTENDIDO,
       archivoGenerado: guardado.ruta,
       mensaje: videosNormalizados.esMultivideo
-        ? 'Entendimiento completado con base multivideo normalizada.'
+        ? 'Entendimiento completado con línea de tiempo global multivideo.'
         : 'Entendimiento independiente completado.'
     });
 
@@ -145,6 +179,7 @@ export async function procesarEntendimientoProyectoEtapa({ proyectoId, opciones 
       resultado: resultadoEntendimiento,
       resumen,
       videosEntendimiento: videosNormalizados,
+      lineaTiempoGlobal,
       archivo: guardado,
       mensaje: resultadoEntendimiento.mensaje || 'Entendimiento completado.'
     };
