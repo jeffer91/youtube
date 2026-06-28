@@ -1,6 +1,6 @@
 /*
-  Bloque 4-5 - Generador de Plan por partes con dos opciones
-  Funcion: crear secciones, validarlas, generar opcion Gemini/local y elegir la mejor.
+  Bloque 4-6 - Generador de Plan por partes con dos opciones y JSON ejecutable
+  Funcion: crear secciones, validarlas, elegir la mejor opcion y producir instrucciones para Produccion.
 */
 
 import { PARTES_PLAN_EDICION } from './partes-plan.config.js';
@@ -8,6 +8,8 @@ import { validarPartePlan } from './validar-parte-plan.service.js';
 import { crearEstadoPlanPorPartes, guardarPartePlan, cerrarPlanPorPartes } from './guardar-parte-plan.service.js';
 import { ejecutarPlanConIA } from '../../ia/ia.conexion.js';
 import { generarOpcionesPlan } from './generar-opciones-plan.service.js';
+import { crearPlanEjecutableModelo } from './plan-ejecutable.modelo.js';
+import { repararPlanEjecutable } from './reparar-plan-ejecutable.service.js';
 
 function texto(valor = '', respaldo = '') {
   const limpio = String(valor ?? '').replace(/\s+/g, ' ').trim();
@@ -105,11 +107,16 @@ export async function generarPlanPorPartes({ proyectoId = '', contextoPlan = {},
 
   const cerrado = cerrarPlanPorPartes(estado);
   const opcionesPlan = await generarOpcionesPlan({ proyectoId, contextoPlan, planPorPartes: cerrado, opciones });
-  const listoParaProduccion = cerrado.progreso.conErrores === 0 && cerrado.progreso.completadas === cerrado.totalPartes && Boolean(opcionesPlan.seleccionAutomatica?.ok);
+  const baseParaEjecutable = { ...cerrado, opcionesPlan, mejorOpcionPlan: opcionesPlan.mejorOpcion };
+  const planEjecutableBase = crearPlanEjecutableModelo({ proyecto: contextoPlan.proyecto || { id: proyectoId }, contextoPlan, planPorPartes: baseParaEjecutable });
+  const { plan: planEjecutable, validacion: validacionPlanEjecutable } = repararPlanEjecutable(planEjecutableBase);
+  const listoParaProduccion = cerrado.progreso.conErrores === 0 && cerrado.progreso.completadas === cerrado.totalPartes && Boolean(opcionesPlan.seleccionAutomatica?.ok) && validacionPlanEjecutable.ok;
   return {
     ...cerrado,
     opcionesPlan,
     mejorOpcionPlan: opcionesPlan.mejorOpcion,
+    planEjecutable,
+    validacionPlanEjecutable,
     listoParaProduccion,
     resumen: {
       totalPartes: cerrado.totalPartes,
@@ -122,7 +129,10 @@ export async function generarPlanPorPartes({ proyectoId = '', contextoPlan = {},
       opcionesTotal: opcionesPlan.resumen.totalOpciones,
       mejorOpcionId: opcionesPlan.resumen.mejorId,
       mejorProveedor: opcionesPlan.resumen.proveedor,
-      mejorPuntaje: opcionesPlan.resumen.puntaje
+      mejorPuntaje: opcionesPlan.resumen.puntaje,
+      planEjecutableAcciones: planEjecutable.timeline.length,
+      planEjecutableRecursos: planEjecutable.recursos.length,
+      planEjecutableValido: validacionPlanEjecutable.ok
     }
   };
 }
