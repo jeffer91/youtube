@@ -1,5 +1,6 @@
 const TIPOS = ['video', 'imagen', 'audio'];
 const FORMATOS = ['horizontal-16-9', 'vertical-9-16', 'cuadrado-1-1', 'audio', 'imagen', 'desconocido'];
+const STORAGE_BIBLIOTECA_AREA = 'autovideojeff.bibliotecaArea';
 
 let ultimoRecursoPendiente = null;
 
@@ -222,21 +223,21 @@ function inferirFormatoBasico(tipo) {
   return 'desconocido';
 }
 
-function aplicarArchivoSeleccionado(archivo) {
-  const doc = obtenerDocumento();
-  if (!archivo || !doc) return;
+function aplicarArchivoSeleccionado(archivo = {}) {
+  const doc = obtenerDocumento(); if (!doc) return;
   const ruta = archivo.path || archivo.ruta || '';
-  const nombre = archivo.name || archivo.nombreOriginal || ruta.split(/[\\/]/).pop() || 'Recurso nuevo';
+  const nombre = archivo.name || archivo.nombreOriginal || ruta.split(/[\\/]/).pop() || 'archivo';
   const tipo = inferirTipoPorExtension(nombre);
+  const formato = inferirFormatoBasico(tipo);
+  doc.getElementById('librarySelectedFileName').textContent = nombre;
+  doc.getElementById('librarySelectedFileMeta').textContent = `${tipo} · ${formatearPeso(archivo.size || archivo.pesoBytes || 0)} · se analizará al guardar`;
   doc.getElementById('libraryNewName').value = nombre.replace(/\.[a-z0-9]+$/i, '');
+  doc.getElementById('libraryNewType').value = tipo;
+  doc.getElementById('libraryNewFormat').value = formato;
   doc.getElementById('libraryNewPath').value = ruta;
   doc.getElementById('libraryNewOriginalName').value = nombre;
   doc.getElementById('libraryNewMime').value = archivo.type || archivo.mime || '';
-  doc.getElementById('libraryNewSize').value = archivo.size || 0;
-  doc.getElementById('libraryNewType').value = tipo;
-  doc.getElementById('libraryNewFormat').value = inferirFormatoBasico(tipo);
-  doc.getElementById('librarySelectedFileName').textContent = nombre;
-  doc.getElementById('librarySelectedFileMeta').textContent = `${tipo} · ${formatearPeso(archivo.size || 0)}${ruta ? ` · ${ruta}` : ' · ruta no disponible'} · se analizará al guardar`;
+  doc.getElementById('libraryNewSize').value = archivo.size || archivo.pesoBytes || 0;
   doc.getElementById('libraryStatus').textContent = ruta ? 'Archivo cargado. Completa la clasificación y guarda para analizarlo.' : 'Archivo seleccionado, pero no se pudo leer la ruta local. Usa el selector de escritorio.';
 }
 
@@ -337,6 +338,33 @@ function cambiarTab(tabId) {
   });
 }
 
+function emitirAreaBiblioteca(area) {
+  const doc = obtenerDocumento();
+  if (!doc) return;
+  doc.dispatchEvent(new CustomEvent('autovideo:biblioteca-area', { detail: { area, fecha: new Date().toISOString() } }));
+}
+
+function cambiarAreaBiblioteca(area = 'general', { guardar = true } = {}) {
+  const doc = obtenerDocumento();
+  if (!doc) return;
+  const areaFinal = area === 'proyecto' ? 'proyecto' : 'general';
+  doc.querySelectorAll('[data-biblioteca-area-tab]').forEach((boton) => boton.classList.toggle('is-active', boton.dataset.bibliotecaAreaTab === areaFinal));
+  doc.querySelectorAll('[data-biblioteca-area-panel]').forEach((panel) => {
+    const activo = panel.dataset.bibliotecaAreaPanel === areaFinal;
+    panel.classList.toggle('is-active', activo);
+    panel.hidden = !activo;
+  });
+  if (guardar) localStorage.setItem(STORAGE_BIBLIOTECA_AREA, areaFinal);
+  emitirAreaBiblioteca(areaFinal);
+}
+
+function inicializarAreaBiblioteca() {
+  const doc = obtenerDocumento();
+  if (!doc?.querySelector('[data-library-unified-root]')) return;
+  const areaPendiente = localStorage.getItem(STORAGE_BIBLIOTECA_AREA) || 'general';
+  cambiarAreaBiblioteca(areaPendiente, { guardar: false });
+}
+
 function inicializarDropZone() {
   const doc = obtenerDocumento(); const zona = doc?.getElementById('libraryDropZone'); const input = doc?.getElementById('libraryFileInput');
   if (!zona || !input || zona.dataset.inicializado === 'true') return;
@@ -350,6 +378,9 @@ function inicializarDropZone() {
 export function inicializarBibliotecaUI({ crearUrlApi } = {}) {
   const doc = obtenerDocumento(); if (!doc) return false; asegurarEstilosBiblioteca();
   doc.addEventListener('click', async (evento) => {
+    const area = evento.target.closest('[data-biblioteca-area-tab]')?.dataset.bibliotecaAreaTab;
+    if (area) { cambiarAreaBiblioteca(area); if (area === 'general') await recargarBibliotecaUI({ crearUrlApi }); return; }
+
     const tab = evento.target.closest('[data-library-tab]')?.dataset.libraryTab;
     if (tab) { cambiarTab(tab); if (tab === 'recursos') await recargarBibliotecaUI({ crearUrlApi }); return; }
 
@@ -369,11 +400,13 @@ export function inicializarBibliotecaUI({ crearUrlApi } = {}) {
   doc.addEventListener('keydown', (evento) => { if (evento.key === 'Enter' && evento.target.id === 'librarySearchInput') recargarBibliotecaUI({ crearUrlApi }); });
   doc.addEventListener('autovideo:navegacion', async (evento) => {
     if (evento.detail?.pantallaId === 'biblioteca') {
+      inicializarAreaBiblioteca();
       inicializarDropZone();
       await cargarOpcionesBase({ crearUrlApi }).catch((error) => { const estado = doc.getElementById('libraryStatus'); if (estado) estado.textContent = error.message; });
-      recargarBibliotecaUI({ crearUrlApi });
+      if ((localStorage.getItem(STORAGE_BIBLIOTECA_AREA) || 'general') === 'general') recargarBibliotecaUI({ crearUrlApi });
     }
   });
+  inicializarAreaBiblioteca();
   inicializarDropZone();
   cargarOpcionesBase({ crearUrlApi }).catch(() => {});
   return true;
