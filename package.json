@@ -52,6 +52,7 @@
     "check:biblioteca-integral": "node scripts/verificar-biblioteca-integral.js",
     "check:biblioteca-subida-final": "node scripts/verificar-biblioteca-subida-final.js",
     "check:biblioteca-comunicacion-variables": "node scripts/verificar-biblioteca-comunicacion-variables.js",
+    "check:biblioteca-proyecto-orden-inteligente": "node scripts/verificar-biblioteca-proyecto-orden-inteligente.js",
     "check:biblioteca-ui": "node scripts/verificar-biblioteca-ui.js",
     "check:biblioteca-proyecto": "node scripts/verificar-biblioteca-proyecto.js",
     "check:recursos-externos": "node scripts/verificar-recursos-externos.js",
