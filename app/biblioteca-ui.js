@@ -35,38 +35,69 @@ function formatearPeso(bytes = 0) {
   return `${(numero / (1024 * 1024)).toFixed(1)} MB`;
 }
 
+function formatearDuracion(segundos = null) {
+  const total = Number(segundos);
+  if (!Number.isFinite(total) || total <= 0) return 'sin duración';
+  const min = Math.floor(total / 60);
+  const seg = Math.round(total % 60).toString().padStart(2, '0');
+  return `${min}:${seg}`;
+}
+
 function normalizarRecursoBiblioteca(recursoEntrada = {}) {
   const estilos = recursoEntrada.estilos || recursoEntrada.perfiles || (recursoEntrada.perfil ? [recursoEntrada.perfil] : ['general']);
+  const analisis = recursoEntrada.analisisArchivo || {};
   return {
     id: recursoEntrada.id || 'sin-id',
     nombre: recursoEntrada.nombre || recursoEntrada.titulo || 'Recurso sin nombre',
-    tipo: recursoEntrada.tipo || 'video',
+    tipo: recursoEntrada.tipo || analisis.tipo || 'video',
     categoria: recursoEntrada.categoria || 'otro',
     categoriaNombre: recursoEntrada.categoriaNombre || recursoEntrada.categoria || 'Otro',
     estilos,
     perfil: recursoEntrada.perfil || estilos[0] || 'general',
-    formato: recursoEntrada.formato || recursoEntrada.tamanoFormato || recursoEntrada.tamañoFormato || 'desconocido',
+    formato: recursoEntrada.formato || recursoEntrada.tamanoFormato || recursoEntrada.tamañoFormato || analisis.formatoDetectado || 'desconocido',
     etiquetas: Array.isArray(recursoEntrada.etiquetas) ? recursoEntrada.etiquetas : [],
     ruta: recursoEntrada.ruta || recursoEntrada.archivo?.rutaAbsoluta || '',
     rutaRelativa: recursoEntrada.rutaRelativa || recursoEntrada.archivo?.rutaRelativa || '',
     url: recursoEntrada.url || '',
     licencia: recursoEntrada.licencia || 'propio',
-    estadoTecnico: recursoEntrada.estadoTecnico || recursoEntrada.estado || 'pendiente',
-    pesoBytes: recursoEntrada.archivo?.pesoBytes || 0,
+    estadoTecnico: recursoEntrada.estadoTecnico || recursoEntrada.estado || analisis.estadoTecnico || 'pendiente',
+    pesoBytes: recursoEntrada.archivo?.pesoBytes || analisis.pesoBytes || 0,
+    duracionSegundos: recursoEntrada.duracionSegundos ?? analisis.duracionSegundos ?? null,
+    ancho: recursoEntrada.ancho ?? analisis.ancho ?? null,
+    alto: recursoEntrada.alto ?? analisis.alto ?? null,
+    resolucion: recursoEntrada.resolucion || analisis.resolucion || '',
+    orientacion: recursoEntrada.orientacion || analisis.orientacion || 'desconocida',
+    tieneAudio: Boolean(recursoEntrada.tieneAudio ?? analisis.tieneAudio ?? false),
+    tieneVideo: Boolean(recursoEntrada.tieneVideo ?? analisis.tieneVideo ?? false),
+    miniatura: recursoEntrada.miniatura || analisis.miniatura || null,
+    advertencias: recursoEntrada.advertencias || analisis.advertencias || [],
+    errores: recursoEntrada.errores || analisis.errores || [],
     actualizadoEn: recursoEntrada.actualizadoEn || recursoEntrada.creadoEn || ''
   };
+}
+
+function renderMiniatura(recurso = {}) {
+  const texto = recurso.tipo === 'audio' ? 'Audio' : recurso.tipo === 'imagen' ? 'Imagen' : 'Video';
+  const meta = recurso.resolucion || recurso.formato || recurso.orientacion;
+  return `<div class="library-thumb is-${escapar(recurso.tipo)}"><strong>${escapar(texto)}</strong><span>${escapar(meta || 'sin vista')}</span></div>`;
 }
 
 function renderRecursoCard(recursoEntrada = {}) {
   const recurso = normalizarRecursoBiblioteca(recursoEntrada);
   const ubicacion = recurso.rutaRelativa || recurso.ruta || recurso.url || 'sin ruta/url';
+  const audio = recurso.tieneAudio ? 'con audio' : 'sin audio';
+  const duracion = formatearDuracion(recurso.duracionSegundos);
+  const resolucion = recurso.resolucion || (recurso.ancho && recurso.alto ? `${recurso.ancho}x${recurso.alto}` : 'sin resolución');
   return `<article class="library-resource-card" data-resource-id="${escapar(recurso.id)}">
+    ${renderMiniatura(recurso)}
     <header><strong>${escapar(recurso.nombre)}</strong><span>${escapar(recurso.tipo)}</span></header>
-    <p>${escapar(recurso.categoriaNombre)} · ${escapar(recurso.formato)}</p>
+    <p>${escapar(recurso.categoriaNombre)} · ${escapar(recurso.formato)} · ${escapar(recurso.estadoTecnico)}</p>
     <dl>
       <div><dt>Estilo</dt><dd>${escapar(recurso.estilos.join(', '))}</dd></div>
-      <div><dt>Categoría</dt><dd>${escapar(recurso.categoria)}</dd></div>
-      <div><dt>Estado</dt><dd>${escapar(recurso.estadoTecnico)}</dd></div>
+      <div><dt>Resolución</dt><dd>${escapar(resolucion)}</dd></div>
+      <div><dt>Duración</dt><dd>${escapar(duracion)}</dd></div>
+      <div><dt>Audio</dt><dd>${escapar(audio)}</dd></div>
+      <div><dt>Peso</dt><dd>${escapar(formatearPeso(recurso.pesoBytes))}</dd></div>
       <div><dt>Etiquetas</dt><dd>${escapar(recurso.etiquetas.slice(0, 3).join(', ') || 'sin etiquetas')}</dd></div>
     </dl>
     <footer title="${escapar(ubicacion)}">${escapar(ubicacion)}</footer>
@@ -75,9 +106,10 @@ function renderRecursoCard(recursoEntrada = {}) {
 
 function renderRecursosTabla(recursos = []) {
   if (!recursos.length) return '<div class="library-empty">No hay recursos para mostrar con estos filtros.</div>';
-  return `<div class="library-table-wrap"><table class="library-table"><thead><tr><th>Nombre</th><th>Tipo</th><th>Estilo</th><th>Categoría</th><th>Formato</th><th>Estado</th></tr></thead><tbody>${recursos.map((item) => {
+  return `<div class="library-table-wrap"><table class="library-table"><thead><tr><th>Nombre</th><th>Tipo</th><th>Estilo</th><th>Categoría</th><th>Formato</th><th>Resolución</th><th>Duración</th><th>Audio</th><th>Estado</th></tr></thead><tbody>${recursos.map((item) => {
     const recurso = normalizarRecursoBiblioteca(item);
-    return `<tr><td>${escapar(recurso.nombre)}</td><td>${escapar(recurso.tipo)}</td><td>${escapar(recurso.estilos.join(', '))}</td><td>${escapar(recurso.categoria)}</td><td>${escapar(recurso.formato)}</td><td>${escapar(recurso.estadoTecnico)}</td></tr>`;
+    const resolucion = recurso.resolucion || (recurso.ancho && recurso.alto ? `${recurso.ancho}x${recurso.alto}` : '—');
+    return `<tr><td>${escapar(recurso.nombre)}</td><td>${escapar(recurso.tipo)}</td><td>${escapar(recurso.estilos.join(', '))}</td><td>${escapar(recurso.categoria)}</td><td>${escapar(recurso.formato)}</td><td>${escapar(resolucion)}</td><td>${escapar(formatearDuracion(recurso.duracionSegundos))}</td><td>${escapar(recurso.tieneAudio ? 'sí' : 'no')}</td><td>${escapar(recurso.estadoTecnico)}</td></tr>`;
   }).join('')}</tbody></table></div>`;
 }
 
@@ -204,8 +236,8 @@ function aplicarArchivoSeleccionado(archivo) {
   doc.getElementById('libraryNewType').value = tipo;
   doc.getElementById('libraryNewFormat').value = inferirFormatoBasico(tipo);
   doc.getElementById('librarySelectedFileName').textContent = nombre;
-  doc.getElementById('librarySelectedFileMeta').textContent = `${tipo} · ${formatearPeso(archivo.size || 0)}${ruta ? ` · ${ruta}` : ' · ruta no disponible'}`;
-  doc.getElementById('libraryStatus').textContent = ruta ? 'Archivo cargado. Completa la clasificación y guarda.' : 'Archivo seleccionado, pero no se pudo leer la ruta local. Usa el selector de escritorio.';
+  doc.getElementById('librarySelectedFileMeta').textContent = `${tipo} · ${formatearPeso(archivo.size || 0)}${ruta ? ` · ${ruta}` : ' · ruta no disponible'} · se analizará al guardar`;
+  doc.getElementById('libraryStatus').textContent = ruta ? 'Archivo cargado. Completa la clasificación y guarda para analizarlo.' : 'Archivo seleccionado, pero no se pudo leer la ruta local. Usa el selector de escritorio.';
 }
 
 async function elegirArchivoBiblioteca() {
@@ -229,14 +261,15 @@ function leerFormularioNuevoRecurso(accionDuplicado = 'preguntar') {
   const categoriaBase = doc.getElementById('libraryNewCategory')?.value || 'otro';
   const categoriaPersonalizada = doc.getElementById('libraryNewCustomCategory')?.value?.trim() || '';
   const etiquetas = normalizarLista(doc.getElementById('libraryNewTags')?.value || '');
+  const formato = doc.getElementById('libraryNewFormat')?.value || 'desconocido';
   return {
     nombre: doc.getElementById('libraryNewName')?.value?.trim() || '',
     tipo: doc.getElementById('libraryNewType')?.value || 'video',
     categoria: categoriaBase,
     categoriaEditable: categoriaPersonalizada || null,
     estilos: obtenerEstilosSeleccionados(),
-    formato: doc.getElementById('libraryNewFormat')?.value || 'desconocido',
-    formatoManual: true,
+    formato,
+    formatoManual: formato !== 'desconocido',
     etiquetas,
     rutaOrigen: doc.getElementById('libraryNewPath')?.value?.trim() || '',
     ruta: doc.getElementById('libraryNewPath')?.value?.trim() || '',
@@ -327,9 +360,9 @@ export function inicializarBibliotecaUI({ crearUrlApi } = {}) {
       if (accion === 'choose-file') { await elegirArchivoBiblioteca(); return; }
       if (accion === 'clear-form') { limpiarFormularioNuevoRecurso(); if (estado) estado.textContent = 'Formulario limpio.'; return; }
       if (accion === 'reload') { await recargarBibliotecaUI({ crearUrlApi }); return; }
-      if (accion === 'duplicate-replace') { if (estado) estado.textContent = 'Reemplazando recurso...'; await guardarRecurso({ crearUrlApi, accionDuplicado: 'reemplazar' }); if (estado) estado.textContent = 'Recurso reemplazado.'; await recargarBibliotecaUI({ crearUrlApi }); return; }
-      if (accion === 'duplicate-copy') { if (estado) estado.textContent = 'Guardando copia...'; await guardarRecurso({ crearUrlApi, accionDuplicado: 'duplicar' }); if (estado) estado.textContent = 'Copia guardada.'; await recargarBibliotecaUI({ crearUrlApi }); return; }
-      if (accion === 'save') { if (estado) estado.textContent = 'Guardando recurso...'; await guardarRecurso({ crearUrlApi }); if (estado) estado.textContent = 'Recurso guardado en biblioteca general.'; await recargarBibliotecaUI({ crearUrlApi }); }
+      if (accion === 'duplicate-replace') { if (estado) estado.textContent = 'Reemplazando y analizando recurso...'; await guardarRecurso({ crearUrlApi, accionDuplicado: 'reemplazar' }); if (estado) estado.textContent = 'Recurso reemplazado y analizado.'; await recargarBibliotecaUI({ crearUrlApi }); return; }
+      if (accion === 'duplicate-copy') { if (estado) estado.textContent = 'Guardando y analizando copia...'; await guardarRecurso({ crearUrlApi, accionDuplicado: 'duplicar' }); if (estado) estado.textContent = 'Copia guardada y analizada.'; await recargarBibliotecaUI({ crearUrlApi }); return; }
+      if (accion === 'save') { if (estado) estado.textContent = 'Guardando y analizando recurso...'; await guardarRecurso({ crearUrlApi }); if (estado) estado.textContent = 'Recurso guardado y analizado.'; await recargarBibliotecaUI({ crearUrlApi }); }
     } catch (error) { if (estado) estado.textContent = error.message; }
   });
   doc.addEventListener('change', (evento) => { if (evento.target.closest('[data-library-filter]')) recargarBibliotecaUI({ crearUrlApi }); });
