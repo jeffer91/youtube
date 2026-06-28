@@ -1,6 +1,6 @@
 /*
   Pantalla Plan de edicion
-  Funcion: cargar, crear y mostrar plan con biblioteca, contexto IA y plan por partes.
+  Funcion: cargar, crear, editar, aprobar y mostrar plan antes de Produccion.
 */
 
 const STORAGE_PROYECTO_ETAPAS = 'autovideojeff.proyectoEtapasId';
@@ -93,6 +93,8 @@ function obtenerTimeline(plan = {}) {
 function obtenerBiblioteca(plan = {}) { return plan.biblioteca || plan.fuente?.biblioteca || {}; }
 function obtenerContexto(plan = {}) { return plan.contextoPlan || plan.fuente?.contextoPlan || {}; }
 function obtenerPlanPorPartes(plan = {}) { return plan.planPorPartes || plan.fuente?.planPorPartes || {}; }
+function obtenerPlanEjecutable(plan = {}) { return plan.planEjecutable || plan.planPorPartes?.planEjecutable || plan.planProduccion?.planEjecutable || null; }
+function obtenerEditorPlan(plan = {}) { return plan.editorPlan || plan.planPorPartes?.editorPlan || plan.planProduccion?.editorPlan || {}; }
 
 function renderKpis(plan = {}) {
   const resumen = plan.resumen || {};
@@ -100,6 +102,7 @@ function renderKpis(plan = {}) {
   const biblioteca = obtenerBiblioteca(plan);
   const contexto = obtenerContexto(plan);
   const partes = obtenerPlanPorPartes(plan);
+  const editorPlan = obtenerEditorPlan(plan);
   const resumenBiblioteca = biblioteca.resumen || {};
   const resumenContexto = contexto.resumen || contexto || {};
   const resumenPartes = partes.resumen || partes || {};
@@ -113,8 +116,9 @@ function renderKpis(plan = {}) {
   if (contextoEl) contextoEl.textContent = resumen.contextoListoParaIA || resumenContexto.listoParaIA ? `${resumenContexto.totalPartes ?? resumen.contextoPartes ?? 0} partes` : 'Revisar';
   const partesEl = $('planPartes');
   if (partesEl) partesEl.textContent = `${resumenPartes.validadas ?? resumen.planPartesValidadas ?? 0}/${resumenPartes.totalPartes ?? resumen.planPartesTotal ?? 0}`;
-  $('planEfectos').textContent = String((resumen.efectos ?? 0) + (resumen.zooms ?? 0) + (resumen.animaciones ?? 0));
-  $('planListo').textContent = resumen.listoParaProduccion ? 'Si' : 'Revisar';
+  const editorEl = $('planEditor');
+  if (editorEl) editorEl.textContent = editorPlan.aprobado || resumen.planAprobadoParaProduccion ? 'Aprobado' : editorPlan.totalCambios ? 'Editado' : 'Pendiente';
+  $('planListo').textContent = resumen.listoParaProduccion && (editorPlan.aprobado || resumen.planAprobadoParaProduccion) ? 'Si' : 'Revisar';
 }
 
 function renderLectura(plan = {}) {
@@ -185,6 +189,34 @@ function renderPartes(plan = {}) {
   `).join('');
 }
 
+function renderEditor(plan = {}) {
+  const editorPlan = obtenerEditorPlan(plan);
+  const planEjecutable = obtenerPlanEjecutable(plan);
+  const acciones = Array.isArray(planEjecutable?.timeline) ? planEjecutable.timeline : [];
+  const estado = $('planEditorEstado');
+  const detalle = $('planEditorDetalle');
+  const aprobarBtn = $('planAprobarBtn');
+  if (estado) estado.textContent = editorPlan.aprobado ? 'Aprobado' : acciones.length ? 'En revision' : 'Sin datos';
+  if (aprobarBtn) aprobarBtn.disabled = !acciones.length || Boolean(editorPlan.aprobado);
+  if (!detalle) return;
+  if (!acciones.length) { detalle.innerHTML = '<div class="plan-empty">Sin JSON tecnico para editar.</div>'; return; }
+  detalle.innerHTML = `
+    <article><strong>Estado</strong><span>${editorPlan.aprobado ? 'Aprobado para Produccion' : 'Pendiente de aprobacion'} - cambios: ${escapar(editorPlan.totalCambios || 0)}</span></article>
+    ${acciones.slice(0, 40).map((accion) => `
+      <article class="plan-editor-item" data-accion-id="${escapar(accion.id)}">
+        <strong>${escapar(accion.orden || '')}. ${escapar(accion.accion || accion.tipo || 'accion')} · ${escapar(accion.inicio)}s-${escapar(accion.fin)}s</strong>
+        <span>${escapar(accion.textoPantalla || accion.subtitulo || accion.efecto || accion.audio || accion.recursoBiblioteca || 'Sin texto visible')}</span>
+        <small>${escapar(accion.motivo || '')}</small>
+        <div class="plan-actions">
+          <button type="button" class="secondary-button" data-editor-operacion="actualizar_accion" data-accion-id="${escapar(accion.id)}">Editar texto</button>
+          <button type="button" class="secondary-button" data-editor-operacion="duplicar_accion" data-accion-id="${escapar(accion.id)}">Duplicar</button>
+          <button type="button" class="secondary-button" data-editor-operacion="eliminar_accion" data-accion-id="${escapar(accion.id)}">Eliminar</button>
+        </div>
+      </article>
+    `).join('')}
+  `;
+}
+
 function renderTimeline(plan = {}) {
   const pistas = obtenerTimeline(plan);
   const elementos = obtenerElementos(plan);
@@ -228,12 +260,15 @@ function renderResultado(datos = {}) {
   renderFuente(plan);
   renderContexto(plan);
   renderPartes(plan);
+  renderEditor(plan);
   renderTimeline(plan);
   renderElementos(plan);
-  const listo = Boolean(plan.resumen?.listoParaProduccion || plan.validacion?.ok);
+  const editorPlan = obtenerEditorPlan(plan);
+  const aprobado = Boolean(editorPlan.aprobado || plan.resumen?.planAprobadoParaProduccion);
+  const listo = Boolean(plan.resumen?.listoParaProduccion || plan.validacion?.ok) && aprobado;
   const producirBtn = $('planProducirBtn');
   if (producirBtn) producirBtn.disabled = !listo;
-  setChip(listo ? 'Planificado' : 'Revisar', listo ? 'ok' : 'warn');
+  setChip(listo ? 'Aprobado' : aprobado ? 'Plan aprobado' : 'Revisar', listo ? 'ok' : 'warn');
 }
 
 async function cargarPlan() {
@@ -258,7 +293,37 @@ async function procesarPlan() {
   renderResultado(datos);
   const resumen = datos.biblioteca?.resumen || datos.resultado?.biblioteca?.resumen || {};
   const partes = datos.planPorPartes?.resumen || datos.resultado?.planPorPartes?.resumen || {};
-  setMensaje(datos.mensaje || `Plan creado: ${resumen.seleccionadosProyecto || 0} temporales, ${resumen.seleccionadosGeneral || 0} generales y ${partes.validadas || 0}/${partes.totalPartes || 0} partes.`, 'ok');
+  setMensaje(datos.mensaje || `Plan creado: ${resumen.seleccionadosProyecto || 0} temporales, ${resumen.seleccionadosGeneral || 0} generales y ${partes.validadas || 0}/${partes.totalPartes || 0} partes. Revisa y aprueba antes de producir.`, 'ok');
+}
+
+async function editarPlan(operacion, accionId = '') {
+  const proyectoId = obtenerProyectoId();
+  if (!proyectoId) { setMensaje('Falta proyectoId para editar.', 'warn'); return; }
+  let cambios = {};
+  if (operacion === 'actualizar_accion') {
+    const nuevoTexto = window.prompt('Nuevo texto en pantalla para esta accion:');
+    if (nuevoTexto === null) return;
+    cambios = { textoPantalla: nuevoTexto, motivo: 'Texto editado manualmente desde la pantalla Plan.' };
+  }
+  const datos = await api(`/api/proyectos/${encodeURIComponent(proyectoId)}/plan/editor`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ operacion, accionId, cambios, comentario: 'Editado desde UI Plan' })
+  });
+  setMensaje(datos.mensaje || 'Plan editado correctamente.', 'ok');
+  await cargarPlan();
+}
+
+async function aprobarPlan() {
+  const proyectoId = obtenerProyectoId();
+  if (!proyectoId) { setMensaje('Falta proyectoId para aprobar.', 'warn'); return; }
+  const datos = await api(`/api/proyectos/${encodeURIComponent(proyectoId)}/plan/editor`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ operacion: 'aprobar_plan', comentario: 'Aprobado desde UI Plan' })
+  });
+  setMensaje(datos.mensaje || 'Plan aprobado para Produccion.', 'ok');
+  await cargarPlan();
 }
 
 async function producirPlaceholder() {
@@ -276,7 +341,13 @@ function enlazarEventos() {
   if (input && !input.value) input.value = localStorage.getItem(STORAGE_PROYECTO_ETAPAS) || '';
   $('planCargarBtn')?.addEventListener('click', () => cargarPlan().catch((error) => setMensaje(error.message, 'error')));
   $('planProcesarBtn')?.addEventListener('click', () => procesarPlan().catch((error) => setMensaje(error.message, 'error')));
+  $('planAprobarBtn')?.addEventListener('click', () => aprobarPlan().catch((error) => setMensaje(error.message, 'error')));
   $('planProducirBtn')?.addEventListener('click', () => producirPlaceholder().catch((error) => setMensaje(error.message, 'error')));
+  $('planEditorDetalle')?.addEventListener('click', (evento) => {
+    const boton = evento.target?.closest?.('[data-editor-operacion]');
+    if (!boton) return;
+    editarPlan(boton.dataset.editorOperacion, boton.dataset.accionId || '').catch((error) => setMensaje(error.message, 'error'));
+  });
 }
 
 export function inicializarPlanEdicionUI() {
