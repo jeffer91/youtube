@@ -82,7 +82,7 @@ function verificarControladores() {
 
 function verificarEstilos() {
   const estilos = [
-    ['app/procesos-ui/proceso-visual.css', ['proceso-ui-resumen', 'proceso-ui-paso', 'data-proceso-avanzado']],
+    ['app/procesos-ui/proceso-visual.css', ['process-visual-summary', 'process-visual-steps', 'data-proceso-avanzado']],
     ['app/inicio.css', ['inicio-flow', 'inicio-wizard-panel']],
     ['app/nuevo-proyecto-limpio.css', ['clean-project-flow', 'clean-project-step']],
     ['app/biblioteca-ui.css', ['library-guided-layout', 'library-wizard-panel']],
