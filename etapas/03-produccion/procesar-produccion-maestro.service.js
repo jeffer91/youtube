@@ -19,6 +19,7 @@ import {
 } from '../../flujo-etapas/flujo-etapas.conexion.js';
 import { unirVideosMaestroMultivideo } from './unir-videos-maestro.service.js';
 import { construirTimelineEditorialProduccion } from './construir-marcadores-produccion.service.js';
+import { construirInstruccionesEdicionDesdePlan } from './aplicar-plan-ejecutable-edicion.service.js';
 
 function texto(valor, respaldo = '') {
   const limpio = String(valor ?? '').replace(/\s+/g, ' ').trim();
@@ -102,31 +103,11 @@ async function prepararVideoBaseProduccion({ proyectoId, carpetaProyecto, videos
   const multivideoActivo = esMultivideoProduccion({ videosValidos, entendimiento, plan });
   if (!multivideoActivo) {
     const video = seleccionarVideoPrincipal(videosValidos);
-    return {
-      ok: true,
-      multivideoActivo: false,
-      video,
-      unionVideos: null,
-      videosFuente: [video],
-      lineaTiempoGlobal
-    };
+    return { ok: true, multivideoActivo: false, video, unionVideos: null, videosFuente: [video], lineaTiempoGlobal };
   }
 
-  const unionVideos = await unirVideosMaestroMultivideo({
-    proyectoId,
-    carpetaProyecto,
-    videos: videosValidos,
-    lineaTiempoGlobal
-  });
-
-  return {
-    ok: true,
-    multivideoActivo: true,
-    video: unionVideos.videoMaestro,
-    unionVideos,
-    videosFuente: videosValidos,
-    lineaTiempoGlobal
-  };
+  const unionVideos = await unirVideosMaestroMultivideo({ proyectoId, carpetaProyecto, videos: videosValidos, lineaTiempoGlobal });
+  return { ok: true, multivideoActivo: true, video: unionVideos.videoMaestro, unionVideos, videosFuente: videosValidos, lineaTiempoGlobal };
 }
 
 function crearEntradaProduccion({ proyectoId, estado, video, carpetaProyecto, plan, videoBase }) {
@@ -172,7 +153,7 @@ function crearEntradaProduccion({ proyectoId, estado, video, carpetaProyecto, pl
   };
 }
 
-function crearOpcionesProduccion({ plan = {}, solicitud = {}, videoBase = null } = {}) {
+function crearOpcionesProduccion({ plan = {}, solicitud = {}, videoBase = null, puenteEdicion = null } = {}) {
   const proyecto = plan.proyecto || {};
   return {
     plataforma: texto(solicitud.plataforma || proyecto.plataforma, 'tiktok'),
@@ -185,12 +166,21 @@ function crearOpcionesProduccion({ plan = {}, solicitud = {}, videoBase = null }
     agregarTextosFlotantes: true,
     agregarSonidosEdicion: true,
     agregarEfectosVisualesDinamicos: true,
+    agregarAnimacionesVisuales: true,
+    agregarAnimaciones: true,
     usarMotorEfectos: true,
     intensidadEfectos: texto(solicitud.intensidadEfectos, 'normal'),
     maxEfectosVisuales: numero(solicitud.maxEfectosVisuales, 12),
     origen: videoBase?.multivideoActivo ? 'produccion-maestro-etapas-multivideo' : 'produccion-maestro-etapas',
     multivideo: videoBase?.multivideoActivo || false,
-    planEdicionId: plan.planProduccion?.id || null
+    planEdicionId: plan.planProduccion?.id || null,
+    usarPlanEjecutableEdicion: Boolean(puenteEdicion?.ok),
+    planEjecutable: puenteEdicion?.planEjecutable || null,
+    instruccionesEdicionPlan: puenteEdicion?.instrucciones || [],
+    eventosVisualesPlan: puenteEdicion?.eventosVisualesPlan || [],
+    eventosSonidoPlan: puenteEdicion?.eventosSonidoPlan || [],
+    eventosTextoPlan: puenteEdicion?.eventosTextoPlan || [],
+    resumenPuentePlanEdicion: puenteEdicion?.resumen || null
   };
 }
 
@@ -203,49 +193,51 @@ function crearTranscripcionDesdeEntendimiento(entendimiento = {}) {
   };
 }
 
-function obtenerPlanEjecutable(plan = {}) {
-  return plan.planEjecutable || plan.planPorPartes?.planEjecutable || plan.planProduccion?.planEjecutable || null;
-}
-
-function crearEdicionDinamicaDesdePlan(plan = {}) {
-  const elementos = Array.isArray(plan.planProduccion?.elementos) ? plan.planProduccion.elementos : [];
-  const planEjecutable = obtenerPlanEjecutable(plan);
-  const cortes = elementos.filter((item) => ['corte', 'segmento', 'subtitulo', 'texto', 'efecto', 'recurso', 'zoom', 'animacion', 'transicion', 'audio'].includes(item.tipo)).slice(0, 80);
+function crearEdicionDinamicaDesdePlan({ plan = {}, puenteEdicion = null } = {}) {
+  const puente = puenteEdicion || construirInstruccionesEdicionDesdePlan(plan);
+  const resumen = puente.resumen || {};
   return {
-    activo: cortes.length > 0,
-    omitido: cortes.length === 0,
-    origen: plan.multivideo?.activo ? 'plan-edicion-multivideo' : 'plan-edicion',
+    activo: Boolean(puente.ok && puente.mapaTiempo?.length),
+    omitido: !puente.ok || !puente.mapaTiempo?.length,
+    origen: plan.multivideo?.activo ? 'plan-ejecutable-gemini-multivideo' : 'plan-ejecutable-gemini',
     planProduccionId: plan.planProduccion?.id || null,
-    elementosUsados: cortes.length,
-    planEjecutable,
+    elementosUsados: puente.mapaTiempo?.length || 0,
+    planEjecutable: puente.planEjecutable || null,
+    puentePlanEdicion: puente,
+    instruccionesEdicion: puente.instrucciones || [],
+    eventosVisualesPlan: puente.eventosVisualesPlan || [],
+    eventosSonidoPlan: puente.eventosSonidoPlan || [],
+    eventosTextoPlan: puente.eventosTextoPlan || [],
+    globalesPlan: puente.globales || [],
     multivideo: plan.multivideo || plan.planProduccion?.multivideo || null,
     lineaTiempoGlobal: plan.planProduccion?.lineaTiempoGlobal || plan.fuente?.lineaTiempoGlobal || null,
-    mapaTiempo: cortes.map((item, index) => ({
-      id: item.id || `item-${index + 1}`,
-      tipo: item.tipo || 'elemento',
-      videoId: item.videoId || item.datos?.videoId || null,
-      indiceVideo: item.indiceVideo ?? item.datos?.indiceVideo ?? null,
-      ordenVideo: item.ordenVideo ?? item.datos?.ordenVideo ?? null,
-      inicioLocal: item.inicioLocal ?? item.datos?.inicioLocal ?? null,
-      finLocal: item.finLocal ?? item.datos?.finLocal ?? null,
-      inicioGlobal: item.inicioGlobal ?? item.datos?.inicioGlobal ?? item.inicio ?? null,
-      finGlobal: item.finGlobal ?? item.datos?.finGlobal ?? item.fin ?? null,
-      offsetGlobal: item.offsetGlobal ?? item.datos?.offsetGlobal ?? null,
-      inicio: numero(item.inicioGlobal ?? item.inicio, 0),
-      fin: numero(item.finGlobal ?? item.fin, numero(item.inicioGlobal ?? item.inicio, 0) + 2),
-      motivo: texto(item.motivo || item.descripcion, 'Elemento tomado del plan de edición.')
-    })),
+    mapaTiempo: puente.mapaTiempo || [],
+    resumenPlanEjecutable: {
+      totalInstrucciones: resumen.totalInstrucciones || 0,
+      visuales: resumen.visuales || 0,
+      sonidos: resumen.sonidos || 0,
+      textos: resumen.textos || 0,
+      globales: resumen.globales || 0,
+      cortes: resumen.cortes || 0,
+      zooms: resumen.zooms || 0,
+      efectos: resumen.efectos || 0,
+      animaciones: resumen.animaciones || 0,
+      transiciones: resumen.transiciones || 0,
+      audioSfx: resumen.audioSfx || 0
+    },
     diagnostico: {
-      mensaje: cortes.length
-        ? 'Producción basada en elementos del plan de edición con tiempos globales.'
-        : 'Plan sin elementos suficientes para edición dinámica.'
+      mensaje: puente.ok
+        ? 'Producción basada en el plan ejecutable aprobado por Gemini/IA y normalizada para edición real.'
+        : 'Plan sin instrucciones ejecutables suficientes para edición dinámica.',
+      fuentePrincipal: puente.diagnostico?.fuentePrincipal || 'plan'
     }
   };
 }
 
-function crearResumenProduccion({ plan, edicion, salida, videoBase, timelineEditorial }) {
+function crearResumenProduccion({ plan, edicion, salida, videoBase, timelineEditorial, puenteEdicion }) {
   const elementos = Array.isArray(plan.planProduccion?.elementos) ? plan.planProduccion.elementos : [];
   const resumenMarcadores = timelineEditorial?.resumen || {};
+  const resumenPuente = puenteEdicion?.resumen || {};
   return {
     totalElementosPlan: elementos.length,
     elementosAprobados: elementos.filter((item) => item.aprobado).length,
@@ -263,6 +255,15 @@ function crearResumenProduccion({ plan, edicion, salida, videoBase, timelineEdit
     antesDespues: Boolean(salida?.antesDespues?.ok),
     reporteFinal: salida?.reporteFinal?.nombreArchivo || null,
     listoParaAdaptacion: Boolean(salida?.ok && salida?.rutaExportada),
+    puentePlanEdicion: {
+      existe: Boolean(puenteEdicion?.ok),
+      proveedor: puenteEdicion?.proveedor || null,
+      totalInstrucciones: resumenPuente.totalInstrucciones || 0,
+      visuales: resumenPuente.visuales || 0,
+      sonidos: resumenPuente.sonidos || 0,
+      textos: resumenPuente.textos || 0,
+      globales: resumenPuente.globales || 0
+    },
     timelineEditorial: {
       existe: Boolean(timelineEditorial?.ok),
       totalMarcadores: resumenMarcadores.totalMarcadores || 0,
@@ -288,7 +289,7 @@ function crearResumenProduccion({ plan, edicion, salida, videoBase, timelineEdit
   };
 }
 
-function crearAuditoriaProduccion({ entrada, plan, edicion, salida, videoBase, timelineEditorial }) {
+function crearAuditoriaProduccion({ entrada, plan, edicion, salida, videoBase, timelineEditorial, puenteEdicion }) {
   return {
     tipo: videoBase?.multivideoActivo ? 'produccion-maestro-multivideo' : 'produccion-maestro',
     entrada: {
@@ -304,6 +305,13 @@ function crearAuditoriaProduccion({ entrada, plan, edicion, salida, videoBase, t
       resumen: plan.resumen || null,
       multivideo: plan.multivideo || plan.planProduccion?.multivideo || null
     },
+    puentePlanEdicion: puenteEdicion ? {
+      ok: Boolean(puenteEdicion.ok),
+      version: puenteEdicion.version || null,
+      proveedor: puenteEdicion.proveedor || null,
+      resumen: puenteEdicion.resumen || null,
+      diagnostico: puenteEdicion.diagnostico || null
+    } : null,
     timelineEditorial: timelineEditorial ? {
       ok: Boolean(timelineEditorial.ok),
       version: timelineEditorial.version || null,
@@ -324,7 +332,8 @@ function crearAuditoriaProduccion({ entrada, plan, edicion, salida, videoBase, t
       modo: edicion?.modo || null,
       filtroVideo: edicion?.render?.filtroVideo || null,
       sonidosAplicados: Boolean(edicion?.sonidos && !edicion.sonidos.omitido),
-      animacionesAplicadas: Boolean(edicion?.render?.animacionesRender)
+      animacionesAplicadas: Boolean(edicion?.render?.animacionesRender),
+      usaPlanEjecutable: Boolean(puenteEdicion?.ok)
     },
     salida: {
       ok: Boolean(salida?.ok),
@@ -361,17 +370,18 @@ export async function procesarProduccionMaestroProyectoEtapa({ proyectoId, opcio
     const estadoProcesando = await cargarEstadoProyectoEtapas({ proyectoId, crearSiFalta: false });
     const entendimiento = extraerEntendimiento(entendimientoGuardado);
     const plan = extraerPlan(planGuardado);
+    const puenteEdicion = construirInstruccionesEdicionDesdePlan(plan);
     const videoBase = await prepararVideoBaseProduccion({ proyectoId, carpetaProyecto, videosValidos, entendimiento, plan });
     const entrada = crearEntradaProduccion({ proyectoId, estado: estadoProcesando, video: videoBase.video, carpetaProyecto, plan, videoBase });
-    const opcionesProduccion = crearOpcionesProduccion({ plan, solicitud: { ...opciones, ...solicitud }, videoBase });
+    const opcionesProduccion = crearOpcionesProduccion({ plan, solicitud: { ...opciones, ...solicitud }, videoBase, puenteEdicion });
     const transcripcion = crearTranscripcionDesdeEntendimiento(entendimiento);
-    const edicionDinamica = crearEdicionDinamicaDesdePlan(plan);
+    const edicionDinamica = crearEdicionDinamicaDesdePlan({ plan, puenteEdicion });
 
     const edicion = await editarVideo({ entrada, entendimiento, audio: null, transcripcion, edicionDinamica, opciones: opcionesProduccion, progreso: null });
     const salida = await prepararSalida({ entrada, entendimiento, audio: null, transcripcion, edicionDinamica, edicion, opciones: opcionesProduccion, progreso: null });
     const timelineEditorial = construirTimelineEditorialProduccion({ plan, edicion, salida, videoBase, edicionDinamica });
-    const resumen = crearResumenProduccion({ plan, edicion, salida, videoBase, timelineEditorial });
-    const auditoria = crearAuditoriaProduccion({ entrada, plan, edicion, salida, videoBase, timelineEditorial });
+    const resumen = crearResumenProduccion({ plan, edicion, salida, videoBase, timelineEditorial, puenteEdicion });
+    const auditoria = crearAuditoriaProduccion({ entrada, plan, edicion, salida, videoBase, timelineEditorial, puenteEdicion });
 
     const produccion = {
       ok: true,
@@ -379,6 +389,8 @@ export async function procesarProduccionMaestroProyectoEtapa({ proyectoId, opcio
       proyectoId,
       entrada,
       resumen,
+      puentePlanEdicion: puenteEdicion,
+      instruccionesEdicionPlan: puenteEdicion.instrucciones || [],
       multivideo: {
         activo: Boolean(videoBase.multivideoActivo),
         fase: 'bloque-7-produccion-multivideo',
@@ -403,6 +415,7 @@ export async function procesarProduccionMaestroProyectoEtapa({ proyectoId, opcio
       pistasProduccion: timelineEditorial.pistas,
       marcadoresProduccion: timelineEditorial.marcadores,
       resumenMarcadores: timelineEditorial.resumen,
+      edicionDinamica,
       edicion,
       salida,
       auditoria,
@@ -419,6 +432,7 @@ export async function procesarProduccionMaestroProyectoEtapa({ proyectoId, opcio
         tipo: videoBase.multivideoActivo ? 'produccion-maestro-backend-multivideo' : 'produccion-maestro-backend',
         origen: 'POST /api/proyectos/:proyectoId/produccion/procesar',
         multivideo: produccion.multivideo,
+        puentePlanEdicion: produccion.resumen.puentePlanEdicion,
         timelineEditorial: produccion.resumenMarcadores
       }
     });
