@@ -113,7 +113,11 @@ function verificarUiProduccion() {
     'produccionMaestroAudioSfx',
     'produccionMaestroTimelineResumen',
     'produccionMaestroTimelineLeyenda',
-    'produccionMaestroMarcadorSeleccionado'
+    'produccionMaestroMarcadorSeleccionado',
+    'produccionMaestroFiltroPista',
+    'produccionMaestroFiltroEstado',
+    'produccionMaestroBuscarMarcador',
+    'produccionMaestroLimpiarFiltrosBtn'
   ]);
 
   contiene('app/etapas-ui/produccion-maestro-ui.js', [
@@ -124,7 +128,37 @@ function verificarUiProduccion() {
     'renderTimelineItem',
     'renderMarcadorSeleccionado',
     'timelineEditorial.marcadores',
-    'marcadoresProduccion'
+    'marcadoresProduccion',
+    'aplicarFiltrosMarcadores',
+    'refrescarTimelineConFiltros',
+    'limpiarFiltrosTimeline'
+  ]);
+}
+
+function verificarSincronizacionPreview() {
+  contiene('app/etapas-ui/produccion-maestro-ui.js', [
+    'marcadorActivoId',
+    'segmentoPreviewActivo',
+    'obtenerMarcadorPorId',
+    'marcarTimelineActivo',
+    'sincronizarPreviewConMarcador',
+    'manejarAccionMarcador',
+    'actualizarMarcadorActivoPorTiempo',
+    'data-marcador-action',
+    'data-inicio',
+    'data-fin',
+    'currentTime',
+    'video.play',
+    'timeupdate',
+    'produccionMaestroVideo'
+  ]);
+
+  contiene('app/produccion-editorial.css', [
+    '.produccion-maestro-timeline-item.is-active',
+    '.produccion-maestro-panel--preview.is-synced',
+    '.produccion-maestro-marker-actions',
+    'outline',
+    'box-shadow'
   ]);
 }
 
@@ -254,10 +288,11 @@ async function verificarImportsYDatosSinteticos() {
 async function main() {
   verificarArchivosClave();
   verificarUiProduccion();
+  verificarSincronizacionPreview();
   verificarVisualesYAudio();
   verificarReporteFinal();
   const resumen = await verificarImportsYDatosSinteticos();
-  console.log(`OK Producción editorial completa: ${resumen.instrucciones} instrucciones, ${resumen.visualesPlan} visual(es) plan, ${resumen.sfxPlan} SFX plan, ${resumen.marcadores} marcador(es), ${resumen.pistas} pista(s).`);
+  console.log(`OK Producción editorial completa: ${resumen.instrucciones} instrucciones, ${resumen.visualesPlan} visual(es) plan, ${resumen.sfxPlan} SFX plan, ${resumen.marcadores} marcador(es), ${resumen.pistas} pista(s), preview sincronizado.`);
 }
 
 main().catch((error) => {
