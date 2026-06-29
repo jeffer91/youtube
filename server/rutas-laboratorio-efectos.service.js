@@ -39,6 +39,36 @@ function crearUrlPublicaLaboratorio(nombreSalida = '') {
   return `/exports/laboratorio-efectos/${nombre}`;
 }
 
+function extensionVideoSegura(nombreArchivo = '') {
+  const ext = path.extname(texto(nombreArchivo, '')).toLowerCase();
+  const permitidas = new Set(['.mp4', '.mov', '.m4v', '.webm', '.mkv', '.avi']);
+  return permitidas.has(ext) ? ext : '.mp4';
+}
+
+function nombreOriginalLaboratorio({ nombreOriginal = '', nombreReferencia = '' } = {}) {
+  const baseReferencia = path.basename(texto(nombreReferencia, 'lab-original.mp4'), path.extname(texto(nombreReferencia, 'lab-original.mp4')));
+  const baseSeguro = baseReferencia.replace(/[^a-z0-9-_]+/gi, '-').replace(/-+/g, '-').replace(/^-|-$/g, '') || `lab-original-${Date.now()}`;
+  return `original-${baseSeguro}${extensionVideoSegura(nombreOriginal)}`;
+}
+
+async function copiarOriginalLaboratorio({ rutaTemporal, carpetaSalida, nombreOriginal, nombreReferencia } = {}) {
+  if (!rutaTemporal || !fs.existsSync(rutaTemporal)) return null;
+  const nombreSalida = nombreOriginalLaboratorio({ nombreOriginal, nombreReferencia });
+  const rutaSalida = path.join(carpetaSalida, nombreSalida);
+  await fs.promises.copyFile(rutaTemporal, rutaSalida);
+  const stats = await fs.promises.stat(rutaSalida);
+  if (!stats.isFile() || stats.size <= 0) throw new Error('No se pudo preparar la vista original para comparar.');
+  const urlPublica = crearUrlPublicaLaboratorio(nombreSalida);
+  return {
+    nombreOriginal: texto(nombreOriginal, 'video-original'),
+    nombreSalida,
+    rutaSalida,
+    pesoBytes: stats.size,
+    urlPublica,
+    rutaRelativa: urlPublica
+  };
+}
+
 function obtenerEfectoId(req) {
   return texto(req.body?.efectoId || req.body?.efecto || req.query?.efectoId || req.params?.efectoId, '');
 }
@@ -112,13 +142,26 @@ export function registrarRutasLaboratorioEfectos(app, opciones = {}) {
       const carpetaSalida = obtenerCarpetaSalida(rutasBase);
       const resultado = await renderizarEfectoLaboratorio({ rutaVideo: archivo.path, carpetaSalida, ...datos });
       const urlPublica = crearUrlPublicaLaboratorio(resultado.nombreSalida);
+      const original = await copiarOriginalLaboratorio({
+        rutaTemporal: archivo.path,
+        carpetaSalida,
+        nombreOriginal: archivo.originalname,
+        nombreReferencia: resultado.nombreSalida
+      });
       return responderOk(res, {
         mensaje: resultado.mensaje,
         resultado: {
           ...resultado,
           urlPublica,
           rutaRelativa: urlPublica,
-          videoEntrada: { nombreOriginal: archivo.originalname, nombreTemporal: archivo.filename, pesoBytes: archivo.size || null }
+          original,
+          videoEntrada: {
+            nombreOriginal: archivo.originalname,
+            nombreTemporal: archivo.filename,
+            pesoBytes: archivo.size || null,
+            urlPublica: original?.urlPublica || null,
+            rutaRelativa: original?.rutaRelativa || null
+          }
         },
         efecto: resultado.efecto,
         filtro: resultado.filtro,
