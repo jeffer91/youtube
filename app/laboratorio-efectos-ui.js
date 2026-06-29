@@ -1,6 +1,6 @@
 /*
-  Laboratorio de efectos - Bloque 5 + guia visual
-  Función: cargar catálogo, seleccionar un efecto, previsualizar original y comparar antes/después.
+  Laboratorio de efectos - UI guiada
+  Función: cargar catálogo, seleccionar efecto, renderizar prueba y comparar usando videos normalizados por backend.
 */
 
 import { aplicarProcesoVisual } from './procesos-ui/proceso-visual.service.js';
@@ -21,6 +21,7 @@ let efectoSeleccionado = null;
 let inicializado = false;
 let urlObjetoEntrada = '';
 let duracionEntrada = null;
+let ultimaComparacion = { original: '', resultado: '' };
 
 function $(id) { return document.getElementById(id); }
 function texto(valor, respaldo = '') { const limpio = String(valor ?? '').replace(/\s+/g, ' ').trim(); return limpio || respaldo; }
@@ -28,21 +29,18 @@ function escapar(valor) { return texto(valor, '').replace(/&/g, '&amp;').replace
 function normalizar(valor = '') { return String(valor || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase(); }
 function segundos(valor) { const n = Number(valor); return Number.isFinite(n) ? n : 0; }
 function tieneVideoEntrada() { return Boolean($('labEfectosVideoInput')?.files?.[0]); }
-function tieneResultado() { return Boolean($('labEfectosResultadoVideo')?.src || ($('labEfectosResultadoPanel') && !$('labEfectosResultadoPanel').hidden)); }
+function tieneResultado() { return Boolean(ultimaComparacion.resultado || $('labEfectosResultadoVideo')?.src || ($('labEfectosResultadoPanel') && !$('labEfectosResultadoPanel').hidden)); }
 
 function asegurarCssLaboratorio() {
-  if (!document.querySelector('link[data-lab-efectos-css]')) {
+  for (const item of [
+    ['data-lab-efectos-css', './laboratorio-efectos.css'],
+    ['data-lab-efectos-guiado-css', './laboratorio-efectos-guiado.css']
+  ]) {
+    if (document.querySelector(`link[${item[0]}]`)) continue;
     const link = document.createElement('link');
     link.rel = 'stylesheet';
-    link.href = './laboratorio-efectos.css';
-    link.dataset.labEfectosCss = '1';
-    document.head.appendChild(link);
-  }
-  if (!document.querySelector('link[data-lab-efectos-guiado-css]')) {
-    const link = document.createElement('link');
-    link.rel = 'stylesheet';
-    link.href = './laboratorio-efectos-guiado.css';
-    link.dataset.labEfectosGuiadoCss = '1';
+    link.href = item[1];
+    link.setAttribute(item[0], '1');
     document.head.appendChild(link);
   }
 }
@@ -70,6 +68,13 @@ async function urlPublica(ruta) {
   if (!ruta) return '';
   if (/^https?:\/\//i.test(ruta)) return ruta;
   return await urlApi(ruta);
+}
+
+function urlPreviewSinCache(url = '') {
+  const limpia = texto(url, '');
+  if (!limpia || /^blob:/i.test(limpia) || /^data:/i.test(limpia)) return limpia;
+  const separador = limpia.includes('?') ? '&' : '?';
+  return `${limpia}${separador}v=${Date.now()}`;
 }
 
 async function apiJson(ruta, opciones = {}) {
@@ -107,12 +112,13 @@ function estadoPaso(paso, activo) {
   const video = tieneVideoEntrada();
   const efecto = Boolean(efectoSeleccionado);
   const resultado = tieneResultado();
-  if (paso === 'video') return activo === paso ? 'active' : video ? 'done' : 'active';
-  if (paso === 'catalogo') return !video ? 'locked' : activo === paso ? 'active' : efecto ? 'done' : 'active';
-  if (paso === 'efecto') return !efecto ? 'locked' : activo === paso ? 'active' : 'done';
-  if (paso === 'esperado') return !efecto ? 'locked' : activo === paso ? 'active' : 'done';
-  if (paso === 'probar') return !video || !efecto ? 'locked' : activo === paso ? 'active' : resultado ? 'done' : 'active';
-  if (paso === 'comparar') return !resultado ? 'locked' : activo === paso ? 'active' : 'done';
+  if (activo === paso) return 'active';
+  if (paso === 'video') return video ? 'done' : 'active';
+  if (paso === 'catalogo') return !video ? 'locked' : efecto ? 'done' : 'active';
+  if (paso === 'efecto') return !efecto ? 'locked' : 'done';
+  if (paso === 'esperado') return !efecto ? 'locked' : 'done';
+  if (paso === 'probar') return !video || !efecto ? 'locked' : resultado ? 'done' : 'active';
+  if (paso === 'comparar') return !resultado ? 'locked' : 'done';
   return 'locked';
 }
 
@@ -162,6 +168,7 @@ async function irAPasoLaboratorioEfectos(paso = 'video') {
   }
   ocultarMensaje();
   activarPasoLaboratorioEfectos(paso);
+  if (paso === 'comparar') refrescarComparacionVisible();
 }
 
 function liberarUrlEntrada() {
@@ -185,20 +192,17 @@ function evaluarDuracionEntrada(duracion) {
   if (etiqueta) etiqueta.textContent = `Duración: ${formatearDuracion(dur)}`;
   if (!aviso) return;
   aviso.className = 'lab-effects-duration-hint';
-  if (dur >= 9 && dur <= 14) {
-    aviso.textContent = 'Duración ideal para probar efectos rápidos.';
+  if (dur >= 4 && dur <= 14) {
+    aviso.textContent = 'Duración válida para laboratorio de efectos.';
     aviso.classList.add('is-ok');
-  } else if (dur > 0 && dur < 9) {
-    aviso.textContent = 'El clip es muy corto; el efecto puede verse demasiado rápido.';
-    aviso.classList.add('is-warn');
   } else if (dur > 14 && dur <= 25) {
-    aviso.textContent = 'El clip sirve, pero para pruebas rápidas es mejor 10 a 12 segundos.';
+    aviso.textContent = 'El clip sirve, pero para pruebas rápidas es mejor 5 a 12 segundos.';
     aviso.classList.add('is-warn');
   } else if (dur > 25) {
-    aviso.textContent = 'El clip es largo para laboratorio; se recomienda cortar a 10 o 12 segundos.';
+    aviso.textContent = 'El clip es largo para laboratorio; se recomienda cortar a 5 o 12 segundos.';
     aviso.classList.add('is-warn');
   } else {
-    aviso.textContent = 'El clip ideal para esta prueba es de 10 a 12 segundos.';
+    aviso.textContent = 'El clip ideal para esta prueba es de 5 a 12 segundos.';
   }
 }
 
@@ -211,47 +215,46 @@ function limpiarVideo(video) {
   } catch (_error) {}
 }
 
-function mostrarPrimerFrameVideo(video) {
-  if (!video) return;
-
-  const ponerPrimerFrame = () => {
-    try {
-      const duracion = Number(video.duration);
-      if (Number.isFinite(duracion) && duracion > 0.35) {
-        video.currentTime = Math.min(0.35, Math.max(0, duracion - 0.2));
-      } else {
-        video.currentTime = 0;
-      }
-      video.pause?.();
-    } catch (_error) {}
-  };
-
-  video.addEventListener('loadedmetadata', ponerPrimerFrame, { once: true });
-  video.addEventListener('loadeddata', ponerPrimerFrame, { once: true });
-  video.addEventListener('canplay', ponerPrimerFrame, { once: true });
+function puntoVisible(video, preferido = 0.45) {
+  const duracion = Number(video?.duration);
+  if (!Number.isFinite(duracion) || duracion <= 0) return 0;
+  if (duracion <= 0.8) return 0;
+  return Math.min(preferido, Math.max(0, duracion - 0.35));
 }
 
-function asignarFuenteVideo(video, url, { muted = false, resetearFrame = true } = {}) {
-  if (!video) return;
+function forzarFrameVisible(video, preferido = 0.45) {
+  if (!video || !video.src) return;
+  try {
+    video.pause?.();
+    const punto = puntoVisible(video, preferido);
+    if (Number.isFinite(punto) && Math.abs((video.currentTime || 0) - punto) > 0.05) {
+      video.currentTime = punto;
+    }
+  } catch (_error) {}
+}
 
-  if (!url) {
+function prepararFrameVisible(video, preferido = 0.45) {
+  if (!video) return;
+  const ejecutar = () => forzarFrameVisible(video, preferido);
+  video.addEventListener('loadedmetadata', ejecutar, { once: true });
+  video.addEventListener('loadeddata', ejecutar, { once: true });
+  video.addEventListener('canplay', ejecutar, { once: true });
+  [60, 220, 600, 1100].forEach((ms) => setTimeout(ejecutar, ms));
+}
+
+function asignarFuenteVideo(video, url, { muted = false, resetearFrame = true, preferido = 0.45 } = {}) {
+  if (!video) return;
+  const limpia = texto(url, '');
+  if (!limpia) {
     limpiarVideo(video);
     return;
   }
-
   try {
     video.preload = 'auto';
     video.muted = Boolean(muted);
     video.playsInline = true;
-
-    if (video.src !== url) {
-      video.src = url;
-    }
-
-    if (resetearFrame) {
-      mostrarPrimerFrameVideo(video);
-    }
-
+    video.src = urlPreviewSinCache(limpia);
+    if (resetearFrame) prepararFrameVisible(video, preferido);
     video.load?.();
   } catch (_error) {
     limpiarVideo(video);
@@ -262,11 +265,9 @@ function asignarPreviewOriginal(url) {
   const panelEntrada = $('labEfectosPreviewEntradaPanel');
   const preview = $('labEfectosPreviewEntradaVideo');
   const comparacion = $('labEfectosComparacionOriginal');
-
   if (panelEntrada) panelEntrada.hidden = !url;
-
-  asignarFuenteVideo(preview, url, { muted: true, resetearFrame: true });
-  asignarFuenteVideo(comparacion, url, { muted: true, resetearFrame: true });
+  asignarFuenteVideo(preview, url, { muted: true, resetearFrame: true, preferido: 0.45 });
+  asignarFuenteVideo(comparacion, url, { muted: true, resetearFrame: true, preferido: 0.45 });
 }
 
 function ocultarResultadoAnterior() {
@@ -275,19 +276,16 @@ function ocultarResultadoAnterior() {
   const original = $('labEfectosComparacionOriginal');
   const descarga = $('labEfectosDescarga');
   const resumen = $('labEfectosResultadoResumen');
-
+  ultimaComparacion = { original: '', resultado: '' };
   if (panel) panel.hidden = true;
   limpiarVideo(video);
   limpiarVideo(original);
-
   if (descarga) {
     descarga.hidden = true;
     descarga.removeAttribute('href');
     descarga.removeAttribute('download');
   }
-
   if (resumen) resumen.textContent = '';
-
   activarPasoLaboratorioEfectos(localStorage.getItem(STORAGE_LAB_STEP) || 'video', { guardar: false });
 }
 
@@ -353,7 +351,6 @@ function renderCatalogo() {
     contenedor.innerHTML = '<div class="lab-effects-empty">No se pudo cargar el catálogo.</div>';
     return;
   }
-
   const html = acordeones.map((categoria, index) => {
     const efectos = (categoria.efectos || []).filter((efecto) => efectoCoincideBusqueda(efecto, busqueda));
     if (!efectos.length && busqueda) return '';
@@ -372,14 +369,11 @@ function renderCatalogo() {
       </details>
     `;
   }).join('');
-
   contenedor.innerHTML = html || '<div class="lab-effects-empty">No hay efectos que coincidan con la búsqueda.</div>';
 }
 
 function crearChecklistEfecto() {
-  if (!efectoSeleccionado) {
-    return ['Selecciona un efecto.', 'Sube un clip corto.', 'Compara original contra resultado.'];
-  }
+  if (!efectoSeleccionado) return ['Selecciona un efecto.', 'Sube un clip corto.', 'Compara original contra resultado.'];
   return [
     `Debe verse: ${efectoSeleccionado.queDebeSalir}`,
     efectoSeleccionado.requiereTexto ? 'Este efecto usa texto; puedes cambiarlo en el campo opcional.' : 'Este efecto no necesita texto.',
@@ -445,6 +439,34 @@ function bloquearFormulario(bloqueado) {
   if (recargar) recargar.disabled = bloqueado;
 }
 
+function pintarComparacion({ originalUrl, resultadoUrl, nombreSalida = '' } = {}) {
+  const panel = $('labEfectosResultadoPanel');
+  const video = $('labEfectosResultadoVideo');
+  const original = $('labEfectosComparacionOriginal');
+  const descarga = $('labEfectosDescarga');
+  if (panel) panel.hidden = false;
+  if (resultadoUrl) {
+    if (descarga) {
+      descarga.hidden = false;
+      descarga.href = resultadoUrl;
+      descarga.download = nombreSalida || 'laboratorio-efecto.mp4';
+    }
+  }
+  asignarFuenteVideo(original, originalUrl, { muted: true, resetearFrame: true, preferido: 0.45 });
+  asignarFuenteVideo(video, resultadoUrl, { muted: false, resetearFrame: true, preferido: 0.45 });
+}
+
+function refrescarComparacionVisible() {
+  if (!ultimaComparacion.original && !ultimaComparacion.resultado) return;
+  const ejecutar = () => pintarComparacion({
+    originalUrl: ultimaComparacion.original,
+    resultadoUrl: ultimaComparacion.resultado,
+    nombreSalida: ultimaComparacion.nombreSalida
+  });
+  if (typeof requestAnimationFrame === 'function') requestAnimationFrame(ejecutar);
+  else setTimeout(ejecutar, 0);
+}
+
 async function enviarPrueba(evento) {
   evento.preventDefault();
   const archivo = $('labEfectosVideoInput')?.files?.[0] || null;
@@ -462,41 +484,36 @@ async function enviarPrueba(evento) {
     activarPasoLaboratorioEfectos('probar');
     bloquearFormulario(true);
     setEstado('Renderizando...', 'normal');
-    setMensaje(`Aplicando ${efectoSeleccionado.nombre}.`, 'normal');
+    setMensaje(`Normalizando original y aplicando ${efectoSeleccionado.nombre}.`, 'normal');
+
     const datos = await apiJson('/api/laboratorio-efectos/probar', { method: 'POST', body: formData });
     const resultado = datos.resultado || {};
-    const panel = $('labEfectosResultadoPanel');
-    const video = $('labEfectosResultadoVideo');
-    const original = $('labEfectosComparacionOriginal');
-    const descarga = $('labEfectosDescarga');
     const resumen = $('labEfectosResultadoResumen');
-    const url = await urlPublica(resultado.urlPublica || resultado.rutaRelativa || '');
-    const urlOriginalPublica = await urlPublica(
+    const urlResultado = await urlPublica(resultado.urlPublica || resultado.rutaRelativa || '');
+    const urlOriginal = await urlPublica(
       resultado.original?.urlPublica ||
       resultado.original?.rutaRelativa ||
       resultado.videoEntrada?.urlPublica ||
       resultado.videoEntrada?.rutaRelativa ||
       ''
     );
-    const urlOriginal = urlOriginalPublica || urlObjetoEntrada;
 
-    if (panel) panel.hidden = false;
+    ultimaComparacion = {
+      original: urlOriginal || urlObjetoEntrada,
+      resultado: urlResultado,
+      nombreSalida: resultado.nombreSalida || 'laboratorio-efecto.mp4'
+    };
 
-    asignarFuenteVideo(original, urlOriginal, { muted: true, resetearFrame: true });
-    asignarFuenteVideo(video, url, { muted: false, resetearFrame: true });
+    activarPasoLaboratorioEfectos('comparar');
+    refrescarComparacionVisible();
 
-    if (descarga && url) {
-      descarga.hidden = false;
-      descarga.href = url;
-      descarga.download = resultado.nombreSalida || 'laboratorio-efecto.mp4';
-    }
     if (resumen) {
       const duracion = duracionEntrada ? ` Duración original: ${formatearDuracion(duracionEntrada)}.` : '';
-      resumen.textContent = `${datos.mensaje || 'Efecto generado.'}${duracion} Debe salir: ${datos.queDebeSalir || efectoSeleccionado.queDebeSalir}`;
+      const originalOk = urlOriginal ? ' Original normalizado para comparación.' : ' Original local usado como respaldo.';
+      resumen.textContent = `${datos.mensaje || 'Efecto generado.'}${duracion}${originalOk} Debe salir: ${datos.queDebeSalir || efectoSeleccionado.queDebeSalir}`;
     }
     setEstado('Prueba lista', 'ok');
     setMensaje('Video generado correctamente. Compara el antes/después.', 'ok');
-    activarPasoLaboratorioEfectos('comparar');
   } catch (error) {
     setEstado('Error', 'error');
     setMensaje(error.message || 'No se pudo probar el efecto.', 'error');
@@ -512,9 +529,7 @@ function enlazarEventos() {
   root.dataset.labInicializado = '1';
   root.addEventListener('click', async (evento) => {
     const paso = evento.target.closest('[data-lab-wizard-go]')?.dataset.labWizardGo;
-    if (paso) {
-      await irAPasoLaboratorioEfectos(paso);
-    }
+    if (paso) await irAPasoLaboratorioEfectos(paso);
   });
   $('labEfectosVideoInput')?.addEventListener('change', actualizarArchivoSeleccionado);
   $('labEfectosPreviewEntradaVideo')?.addEventListener('loadedmetadata', (evento) => evaluarDuracionEntrada(evento.target.duration));
