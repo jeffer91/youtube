@@ -1,6 +1,6 @@
 /*
-  Laboratorio de efectos - Bloque 4
-  Función: pantalla simple para subir video corto, elegir un efecto y producir una prueba individual.
+  Laboratorio de efectos - Bloque 5
+  Función: pantalla simple para subir video corto, elegir un efecto, previsualizar antes/después y producir una prueba individual.
 */
 
 export function renderLaboratorioEfectosView() {
@@ -10,7 +10,7 @@ export function renderLaboratorioEfectosView() {
         <div>
           <p class="eyebrow">Laboratorio de efectos</p>
           <h1>Probar un efecto en un video corto</h1>
-          <p class="hero-description">Sube un video de 10 a 12 segundos, elige un solo efecto y revisa si realmente se ve como esperamos. Esta pantalla no usa plan, Gemini ni Producción maestro.</p>
+          <p class="hero-description">Sube un video de 10 a 12 segundos, elige un solo efecto y compara el antes/después. Esta pantalla no usa plan, Gemini ni Producción maestro.</p>
         </div>
         <div class="lab-effects-status" id="labEfectosEstado">Catálogo pendiente</div>
       </div>
@@ -31,6 +31,15 @@ export function renderLaboratorioEfectosView() {
           </label>
           <input id="labEfectosVideoInput" name="video" type="file" accept="video/*,.mp4,.mov,.m4v,.avi,.mkv,.webm" required />
           <p id="labEfectosFileName" class="lab-effects-file">Ningún video seleccionado.</p>
+
+          <section id="labEfectosPreviewEntradaPanel" class="lab-effects-mini-preview" hidden>
+            <div class="lab-effects-mini-preview-head">
+              <strong>Preview original</strong>
+              <span id="labEfectosDuracionEntrada">Duración pendiente</span>
+            </div>
+            <video id="labEfectosPreviewEntradaVideo" class="lab-effects-video lab-effects-video--mini" controls muted playsinline></video>
+            <p id="labEfectosAvisoDuracion" class="lab-effects-duration-hint">El clip ideal para esta prueba es de 10 a 12 segundos.</p>
+          </section>
 
           <label class="lab-effects-field" for="labEfectosTextoPersonalizado">
             <span>Texto opcional para efectos de texto</span>
@@ -89,18 +98,32 @@ export function renderLaboratorioEfectosView() {
               <span>Qué debe salir</span>
               <p id="labEfectosQueDebeSalir">Selecciona un efecto para ver la explicación esperada.</p>
             </div>
+            <ul id="labEfectosChecklist" class="lab-effects-checklist">
+              <li>Selecciona un efecto.</li>
+              <li>Sube un clip corto.</li>
+              <li>Compara original contra resultado.</li>
+            </ul>
           </section>
 
           <section id="labEfectosResultadoPanel" class="lab-effects-card lab-effects-result" hidden>
             <div class="lab-effects-card-header">
               <div>
                 <span class="lab-effects-step">4</span>
-                <h2>Resultado</h2>
-                <p>Video generado únicamente con el efecto seleccionado.</p>
+                <h2>Comparación antes/después</h2>
+                <p>Izquierda: video original. Derecha: video generado con el efecto seleccionado.</p>
               </div>
               <a id="labEfectosDescarga" class="download-link" href="#" download hidden>Descargar</a>
             </div>
-            <video id="labEfectosResultadoVideo" class="lab-effects-video" controls playsinline></video>
+            <div class="lab-effects-compare">
+              <div class="lab-effects-compare-item">
+                <strong>Antes</strong>
+                <video id="labEfectosComparacionOriginal" class="lab-effects-video" controls muted playsinline></video>
+              </div>
+              <div class="lab-effects-compare-item">
+                <strong>Después</strong>
+                <video id="labEfectosResultadoVideo" class="lab-effects-video" controls playsinline></video>
+              </div>
+            </div>
             <p id="labEfectosResultadoResumen" class="lab-effects-result-summary"></p>
           </section>
         </aside>
