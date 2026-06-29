@@ -1,6 +1,6 @@
 /*
   Bloque 11: Pantalla Producción maestro
-  Función: cargar, producir y mostrar el video maestro desde la UI por etapas.
+  Función: cargar, producir y revisar el video maestro con timeline editorial filtrable.
 */
 
 const STORAGE_PROYECTO_ETAPAS = 'autovideojeff.proyectoEtapasId';
@@ -29,6 +29,7 @@ function numero(valor, respaldo = null) { const n = Number(valor); return Number
 function arr(valor) { return Array.isArray(valor) ? valor : []; }
 function peso(bytes) { const n = numero(bytes, 0); if (!n) return '—'; if (n < 1024 * 1024) return `${Math.round(n / 1024)} KB`; return `${(n / (1024 * 1024)).toFixed(1)} MB`; }
 function setTexto(id, valor) { const el = $(id); if (el) el.textContent = String(valor ?? '—'); }
+function limpiar(valor = '') { return texto(valor, '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase(); }
 
 async function obtenerBaseApi() {
   const apiElectron = window.AutoVideoJeff?.servidor?.obtenerEstado;
@@ -149,12 +150,7 @@ function obtenerMarcadores(produccion = {}) {
 function obtenerPistas(produccion = {}) {
   const pistas = produccion.pistasProduccion || produccion.timelineEditorial?.pistas || [];
   if (Array.isArray(pistas) && pistas.length) return pistas;
-  const marcadores = obtenerMarcadores(produccion);
-  return PISTAS_FALLBACK.map((pista) => ({
-    ...pista,
-    total: marcadores.filter((item) => item.pista === pista.id || item.tipo === pista.id).length,
-    marcadores: marcadores.filter((item) => item.pista === pista.id || item.tipo === pista.id)
-  })).filter((pista) => pista.total > 0);
+  return construirPistasDesdeMarcadores(obtenerMarcadores(produccion));
 }
 
 function obtenerDuracionTimeline(produccion = {}, marcadores = []) {
@@ -169,19 +165,7 @@ function etiquetaPista(pistaId = '') {
 }
 
 function etiquetaTipo(tipo = '') {
-  const mapa = {
-    corte: 'Corte',
-    subtitulo: 'Subtítulo',
-    texto: 'Texto',
-    zoom: 'Zoom',
-    efecto: 'Efecto',
-    animacion: 'Animación',
-    transicion: 'Transición',
-    'audio-sfx': 'Audio / SFX',
-    recurso: 'Recurso',
-    diagnostico: 'Diagnóstico',
-    otro: 'Otro'
-  };
+  const mapa = { corte: 'Corte', subtitulo: 'Subtítulo', texto: 'Texto', zoom: 'Zoom', efecto: 'Efecto', animacion: 'Animación', transicion: 'Transición', 'audio-sfx': 'Audio / SFX', recurso: 'Recurso', diagnostico: 'Diagnóstico', otro: 'Otro' };
   return mapa[tipo] || texto(tipo, 'Marcador');
 }
 
@@ -192,6 +176,76 @@ function claseEstadoMarcador(marcador = {}) {
   if (estado.includes('fallback')) return 'fallback';
   if (estado.includes('revision') || estado.includes('revisión')) return 'revision';
   return 'planificado';
+}
+
+function leerFiltrosTimeline() {
+  return {
+    pista: $('produccionMaestroFiltroPista')?.value || 'todas',
+    estado: $('produccionMaestroFiltroEstado')?.value || 'todos',
+    busqueda: limpiar($('produccionMaestroBuscarMarcador')?.value || '')
+  };
+}
+
+function textoBusquedaMarcador(marcador = {}) {
+  return limpiar([
+    marcador.id,
+    marcador.tipo,
+    marcador.pista,
+    marcador.nombre,
+    marcador.descripcion,
+    marcador.estado,
+    marcador.origen,
+    marcador.fuente,
+    marcador.videoId,
+    marcador.motivo,
+    marcador.datos?.tipo,
+    marcador.datos?.accion,
+    marcador.datos?.nombre,
+    marcador.datos?.texto,
+    marcador.datos?.textoPantalla,
+    marcador.datos?.subtitulo,
+    marcador.datos?.efecto,
+    marcador.datos?.audio,
+    marcador.datos?.sonido,
+    marcador.datos?.transicion,
+    marcador.datos?.motivo,
+    marcador.datos?.descripcion
+  ].filter(Boolean).join(' '));
+}
+
+function aplicarFiltrosMarcadores(marcadores = []) {
+  const filtros = leerFiltrosTimeline();
+  return marcadores.filter((marcador) => {
+    const pistaMarcador = marcador.pista || (marcador.global ? 'global' : 'otros');
+    const estadoMarcador = claseEstadoMarcador(marcador);
+    const coincidePista = filtros.pista === 'todas' || pistaMarcador === filtros.pista || marcador.tipo === filtros.pista;
+    const coincideEstado = filtros.estado === 'todos' || estadoMarcador === filtros.estado;
+    const coincideBusqueda = !filtros.busqueda || textoBusquedaMarcador(marcador).includes(filtros.busqueda);
+    return coincidePista && coincideEstado && coincideBusqueda;
+  });
+}
+
+function filtrosActivos() {
+  const filtros = leerFiltrosTimeline();
+  return filtros.pista !== 'todas' || filtros.estado !== 'todos' || Boolean(filtros.busqueda);
+}
+
+function construirPistasDesdeMarcadores(marcadores = []) {
+  return PISTAS_FALLBACK.map((pista) => {
+    const items = marcadores.filter((item) => (item.pista || (item.global ? 'global' : 'otros')) === pista.id || item.tipo === pista.id);
+    return { ...pista, total: items.length, marcadores: items };
+  }).filter((pista) => pista.total > 0);
+}
+
+function renderFiltroResumen(total = 0, visibles = 0) {
+  const contenedor = $('produccionMaestroFiltroResumen');
+  if (!contenedor) return;
+  const filtros = leerFiltrosTimeline();
+  const partes = [];
+  if (filtros.pista !== 'todas') partes.push(`pista: ${etiquetaPista(filtros.pista)}`);
+  if (filtros.estado !== 'todos') partes.push(`estado: ${filtros.estado}`);
+  if (filtros.busqueda) partes.push(`búsqueda: ${$('produccionMaestroBuscarMarcador')?.value || ''}`);
+  contenedor.textContent = partes.length ? `${visibles}/${total} marcador(es) visibles · ${partes.join(' · ')}` : `${total} marcador(es) visibles · sin filtros aplicados`;
 }
 
 async function renderKpis(produccion = {}) {
@@ -246,29 +300,29 @@ async function renderComparacion(produccion = {}) {
   if (estado) estado.textContent = antesUrl || despuesUrl ? 'Disponible' : 'Pendiente';
 }
 
-function renderTimelineResumen(produccion = {}, marcadores = []) {
+function renderTimelineResumen(produccion = {}, marcadores = [], totalMarcadores = marcadores.length) {
   const contenedor = $('produccionMaestroTimelineResumen');
-  const resumen = obtenerResumenMarcadores(produccion);
   if (!contenedor) return;
-  if (!marcadores.length) {
+  if (!totalMarcadores) {
     contenedor.innerHTML = '<div class="produccion-maestro-empty">Sin resumen de timeline.</div>';
     return;
   }
   const items = [
-    ['Aplicados', resumen.aplicados ?? marcadores.filter((item) => item.aplicado).length],
-    ['Planificados', resumen.planificados ?? marcadores.filter((item) => !item.aplicado).length],
-    ['Globales', resumen.globales ?? marcadores.filter((item) => item.global).length],
-    ['Omitidos', resumen.omitidos ?? 0],
-    ['Duración', `${Number(obtenerDuracionTimeline(produccion, marcadores)).toFixed(1)}s`]
+    ['Visibles', `${marcadores.length}/${totalMarcadores}`],
+    ['Aplicados', marcadores.filter((item) => item.aplicado || claseEstadoMarcador(item) === 'aplicado').length],
+    ['Planificados', marcadores.filter((item) => claseEstadoMarcador(item) === 'planificado').length],
+    ['Globales', marcadores.filter((item) => item.global || item.pista === 'global').length],
+    ['Omitidos', marcadores.filter((item) => claseEstadoMarcador(item) === 'omitido').length],
+    ['Duración', `${Number(obtenerDuracionTimeline(produccion, obtenerMarcadores(produccion))).toFixed(1)}s`]
   ];
   contenedor.innerHTML = `<div class="produccion-maestro-timeline-metrics">${items.map(([label, value]) => `<article><span>${escapar(label)}</span><strong>${escapar(value)}</strong></article>`).join('')}</div>`;
 }
 
-function renderTimelineLeyenda(pistas = []) {
+function renderTimelineLeyenda(pistas = [], pistaActiva = 'todas') {
   const contenedor = $('produccionMaestroTimelineLeyenda');
   if (!contenedor) return;
   const visibles = pistas.length ? pistas : PISTAS_FALLBACK.slice(0, 8).map((pista) => ({ ...pista, total: 0 }));
-  contenedor.innerHTML = visibles.map((pista) => `<span class="produccion-maestro-legend-chip is-${escapar(pista.id)}"><b></b>${escapar(pista.nombre || pista.id)} <small>${escapar(pista.total ?? 0)}</small></span>`).join('');
+  contenedor.innerHTML = visibles.map((pista) => `<button class="produccion-maestro-legend-chip is-${escapar(pista.id)} ${pistaActiva === pista.id ? 'is-active' : ''}" data-pista-filter="${escapar(pista.id)}" type="button"><b></b>${escapar(pista.nombre || pista.id)} <small>${escapar(pista.total ?? 0)}</small></button>`).join('');
 }
 
 function renderTimelineItem(marcador = {}, duracion = 30) {
@@ -286,16 +340,22 @@ function renderTimelineItem(marcador = {}, duracion = 30) {
 function renderTimeline(produccion = {}) {
   const contenedor = $('produccionMaestroTimeline');
   const estado = $('produccionMaestroTimelineEstado');
-  const marcadores = obtenerMarcadores(produccion);
-  const pistas = obtenerPistas(produccion);
-  const duracion = obtenerDuracionTimeline(produccion, marcadores);
-  if (estado) estado.textContent = `${marcadores.length} marcador(es)`;
-  renderTimelineResumen(produccion, marcadores);
-  renderTimelineLeyenda(pistas);
+  const todos = obtenerMarcadores(produccion);
+  const marcadores = aplicarFiltrosMarcadores(todos);
+  const pistas = construirPistasDesdeMarcadores(marcadores);
+  const duracion = obtenerDuracionTimeline(produccion, todos);
+  if (estado) estado.textContent = `${marcadores.length}/${todos.length} marcador(es)`;
+  renderFiltroResumen(todos.length, marcadores.length);
+  renderTimelineResumen(produccion, marcadores, todos.length);
+  renderTimelineLeyenda(filtrosActivos() ? pistas : obtenerPistas(produccion), leerFiltrosTimeline().pista);
   renderMarcadorSeleccionado(null);
   if (!contenedor) return;
-  if (!marcadores.length) {
+  if (!todos.length) {
     contenedor.innerHTML = '<div class="produccion-maestro-empty">No hay marcadores editoriales en esta producción. Vuelve a producir para generar la timeline editorial.</div>';
+    return;
+  }
+  if (!marcadores.length) {
+    contenedor.innerHTML = '<div class="produccion-maestro-empty">No hay marcadores que coincidan con los filtros actuales.</div>';
     return;
   }
   contenedor.innerHTML = pistas.map((pista) => {
@@ -356,11 +416,16 @@ function renderAuditoria(produccion = {}) {
 function renderDetalle(produccion = {}) {
   const detalle = $('produccionMaestroDetalle');
   const estado = $('produccionMaestroDetalleEstado');
-  const marcadores = obtenerMarcadores(produccion);
+  const todos = obtenerMarcadores(produccion);
+  const marcadores = todos.length ? aplicarFiltrosMarcadores(todos) : [];
   const elementos = elementosPlan(produccion);
-  if (estado) estado.textContent = String(marcadores.length || elementos.length);
+  if (estado) estado.textContent = todos.length ? `${marcadores.length}/${todos.length}` : String(elementos.length);
   if (!detalle) return;
-  if (!marcadores.length && !elementos.length) {
+  if (todos.length && !marcadores.length) {
+    detalle.innerHTML = '<div class="produccion-maestro-empty">No hay marcadores que coincidan con los filtros actuales.</div>';
+    return;
+  }
+  if (!todos.length && !elementos.length) {
     detalle.innerHTML = '<div class="produccion-maestro-empty">Sin marcadores ni elementos de plan para revisar.</div>';
     return;
   }
@@ -387,6 +452,22 @@ async function renderResultado(datos = {}) {
   const adaptar = $('produccionMaestroAdaptarBtn');
   if (adaptar) adaptar.disabled = !listo;
   setChip(listo ? 'Producido' : 'Revisar', listo ? 'ok' : 'warn');
+}
+
+function refrescarTimelineConFiltros() {
+  if (!produccionActual) return;
+  renderTimeline(produccionActual);
+  renderDetalle(produccionActual);
+}
+
+function limpiarFiltrosTimeline() {
+  const pista = $('produccionMaestroFiltroPista');
+  const estado = $('produccionMaestroFiltroEstado');
+  const buscar = $('produccionMaestroBuscarMarcador');
+  if (pista) pista.value = 'todas';
+  if (estado) estado.value = 'todos';
+  if (buscar) buscar.value = '';
+  refrescarTimelineConFiltros();
 }
 
 async function cargarProduccion() {
@@ -433,6 +514,17 @@ function enlazarEventos() {
   $('produccionMaestroCargarBtn')?.addEventListener('click', () => cargarProduccion().catch((error) => setMensaje(error.message, 'error')));
   $('produccionMaestroProcesarBtn')?.addEventListener('click', () => procesarProduccion().catch((error) => setMensaje(error.message, 'error')));
   $('produccionMaestroAdaptarBtn')?.addEventListener('click', () => solicitarAdaptacion().catch((error) => setMensaje(error.message, 'error')));
+  $('produccionMaestroFiltroPista')?.addEventListener('change', refrescarTimelineConFiltros);
+  $('produccionMaestroFiltroEstado')?.addEventListener('change', refrescarTimelineConFiltros);
+  $('produccionMaestroBuscarMarcador')?.addEventListener('input', refrescarTimelineConFiltros);
+  $('produccionMaestroLimpiarFiltrosBtn')?.addEventListener('click', limpiarFiltrosTimeline);
+  $('produccionMaestroTimelineLeyenda')?.addEventListener('click', (evento) => {
+    const boton = evento.target?.closest?.('[data-pista-filter]');
+    if (!boton) return;
+    const pista = $('produccionMaestroFiltroPista');
+    if (pista) pista.value = boton.dataset.pistaFilter || 'todas';
+    refrescarTimelineConFiltros();
+  });
   $('produccionMaestroTimeline')?.addEventListener('click', (evento) => {
     const boton = evento.target?.closest?.('[data-marcador-id]');
     if (!boton) return;
