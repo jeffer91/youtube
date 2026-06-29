@@ -83,11 +83,11 @@ export async function exportarVideoSimple({ entrada, entendimiento, audio = null
 
   const antesDespues = await crearAntesDespues({ entrada, salida: salidaBase, audio, transcripcion, edicionDinamica, edicion, opciones: { ...opciones, plataforma, modo } });
   const salidaSinReporte = { ...salidaBase, antesDespues };
-  const reporteFinal = await crearReporteFinalEdicion({ entrada, entendimiento, audio, transcripcion, edicion, salida: salidaSinReporte, opciones: { ...opciones, plataforma, modo } });
+  const reporteFinal = await crearReporteFinalEdicion({ entrada, entendimiento, audio, transcripcion, edicionDinamica, edicion, salida: salidaSinReporte, opciones: { ...opciones, plataforma, modo } });
   const salida = { ...salidaSinReporte, reporteFinal };
 
   await escribirJson(rutaResumenSalida, salida);
   if (rutaResumenCompatibilidad !== rutaResumenSalida) await escribirJson(rutaResumenCompatibilidad, salida);
-  await reportarModulo(progreso, { etapa: 'salida', porcentaje: 99, titulo: 'Resultado y reporte listo', detalle: `${nombreExportado} exportado con reporte final de efectos, textos, imágenes, animaciones y audio.`, datos: { nombreExportado, pesoBytes: stats.size, urlPublica: salida.urlPublica, audio: resumenAudio.tipo, antesDespues: Boolean(antesDespues?.ok), fallbackVisualUsado: exportacion.fallbackVisualUsado, reporteFinal: reporteFinal.nombreArchivo }, archivo: 'salida/reporte-final/reporte-final.service.js' });
+  await reportarModulo(progreso, { etapa: 'salida', porcentaje: 99, titulo: 'Resultado y reporte listo', detalle: `${nombreExportado} exportado con auditoría final de plan, efectos, textos, imágenes, animaciones y audio.`, datos: { nombreExportado, pesoBytes: stats.size, urlPublica: salida.urlPublica, audio: resumenAudio.tipo, antesDespues: Boolean(antesDespues?.ok), fallbackVisualUsado: exportacion.fallbackVisualUsado, reporteFinal: reporteFinal.nombreArchivo, auditoriaPlan: reporteFinal.reporte?.auditoriaEdicionFinal?.estado || null }, archivo: 'salida/reporte-final/reporte-final.service.js' });
   return { ...salida, rutaResumenSalida };
 }
