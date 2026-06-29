@@ -1,9 +1,23 @@
+import { aplicarProcesoVisual } from './procesos-ui/proceso-visual.service.js';
+
 const STORAGE_PROYECTO_ETAPAS = 'autovideojeff.proyectoEtapasId';
 const STORAGE_BIBLIOTECA_AREA = 'autovideojeff.bibliotecaArea';
+const STORAGE_BIBLIOTECA_PROYECTO_STEP = 'autovideojeff.bibliotecaProyectoPaso';
 const TIPOS = ['video', 'imagen', 'audio'];
 const FORMATOS = ['horizontal-16-9', 'vertical-9-16', 'cuadrado-1-1', 'audio', 'imagen', 'desconocido'];
+const PASOS_BIBLIOTECA_PROYECTO = ['proyecto', 'archivo', 'categoria', 'datos', 'guardar', 'revisar', 'plan'];
+const MAPA_PASO_PROCESO = Object.freeze({
+  proyecto: 'cargar-proyecto',
+  archivo: 'elegir-archivo',
+  categoria: 'categoria',
+  datos: 'uso-etiquetas',
+  guardar: 'guardar-temporal',
+  revisar: 'revisar-recursos',
+  plan: 'ir-plan'
+});
 
 let puenteEntendimientoRegistrado = false;
+let pasoActualProyecto = 'proyecto';
 let estadoInteligente = {
   proyectoId: '',
   proyectoCargado: false,
@@ -141,9 +155,45 @@ function actualizarPaso(id, estado = 'locked') {
   paso.classList.add(`is-${estado}`);
 }
 
+function actualizarRevisionGuardado() {
+  const titulo = $('projectLibrarySaveReviewTitle');
+  const textoBox = $('projectLibrarySaveReviewText');
+  if (!titulo || !textoBox) return;
+  const nombre = $('projectLibraryNewName')?.value || 'Recurso temporal';
+  const categoria = $('projectLibraryNewCategory')?.value || 'otro';
+  const uso = $('projectLibraryNewUsage')?.value || 'uso pendiente';
+  titulo.textContent = nombre;
+  textoBox.textContent = `${categoria} · ${uso}. Al guardar, se analizará y quedará disponible para el Plan de edición.`;
+}
+
+function activarPasoBibliotecaProyecto(paso = 'proyecto', { guardar = true } = {}) {
+  const root = document.querySelector('[data-project-library-root]');
+  if (!root) return;
+  const pasoFinal = PASOS_BIBLIOTECA_PROYECTO.includes(paso) ? paso : 'proyecto';
+  pasoActualProyecto = pasoFinal;
+  root.dataset.procesoPasoActivo = MAPA_PASO_PROCESO[pasoFinal] || 'cargar-proyecto';
+  root.querySelectorAll('[data-project-library-wizard-panel]').forEach((panel) => {
+    const activo = panel.dataset.projectLibraryWizardPanel === pasoFinal;
+    panel.classList.toggle('is-active', activo);
+    panel.hidden = !activo;
+  });
+  aplicarProcesoVisual({ contenedor: root, procesoId: 'biblioteca-proyecto', pasoActivoId: root.dataset.procesoPasoActivo });
+  actualizarRevisionGuardado();
+  if (guardar) localStorage.setItem(STORAGE_BIBLIOTECA_PROYECTO_STEP, pasoFinal);
+}
+
+function estadoDePaso(paso, disponible, completo = false) {
+  if (!disponible) return 'locked';
+  if (pasoActualProyecto === paso) return 'active';
+  return completo ? 'done' : 'locked';
+}
+
 function actualizarVistaInteligente() {
   const root = document.querySelector('[data-project-library-root]');
   const uploadCard = document.querySelector('[data-smart-section="upload"]');
+  const categoryCard = document.querySelector('[data-smart-section="categoria"]');
+  const dataCard = document.querySelector('[data-smart-section="datos"]');
+  const saveCard = document.querySelector('[data-smart-section="guardar"]');
   const reviewCard = document.querySelector('[data-smart-section="review"]');
   const footer = document.querySelector('[data-smart-section="plan"]');
   const drop = $('projectLibraryDropZone');
@@ -167,12 +217,18 @@ function actualizarVistaInteligente() {
     root.dataset.smartState = !tieneProyecto ? 'sin-proyecto' : !activa ? 'bloqueada' : conRecursos ? 'lista-plan' : conArchivo ? 'clasificando' : 'activa';
   }
 
-  actualizarPaso('projectLibraryStepProject', activa ? 'done' : 'active');
-  actualizarPaso('projectLibraryStepUpload', !activa ? 'locked' : conArchivo || conRecursos ? 'done' : 'active');
-  actualizarPaso('projectLibraryStepReview', !activa ? 'locked' : conRecursos ? 'done' : conArchivo ? 'active' : 'locked');
-  actualizarPaso('projectLibraryStepPlan', puedeIrPlan ? 'active' : 'locked');
+  actualizarPaso('projectLibraryStepProject', estadoDePaso('proyecto', true, activa));
+  actualizarPaso('projectLibraryStepUpload', estadoDePaso('archivo', activa, conArchivo || conRecursos));
+  actualizarPaso('projectLibraryStepCategory', estadoDePaso('categoria', activa && conArchivo, conRecursos || ['datos', 'guardar', 'revisar', 'plan'].includes(pasoActualProyecto)));
+  actualizarPaso('projectLibraryStepData', estadoDePaso('datos', activa && conArchivo, conRecursos || ['guardar', 'revisar', 'plan'].includes(pasoActualProyecto)));
+  actualizarPaso('projectLibraryStepSave', estadoDePaso('guardar', puedeGuardar, conRecursos));
+  actualizarPaso('projectLibraryStepReview', estadoDePaso('revisar', activa, conRecursos || pasoActualProyecto === 'revisar'));
+  actualizarPaso('projectLibraryStepPlan', estadoDePaso('plan', puedeIrPlan, false));
 
   toggleClase(uploadCard, 'is-disabled', !activa);
+  toggleClase(categoryCard, 'is-disabled', !(activa && conArchivo));
+  toggleClase(dataCard, 'is-disabled', !(activa && conArchivo));
+  toggleClase(saveCard, 'is-disabled', !puedeGuardar);
   toggleClase(reviewCard, 'is-disabled', !activa);
   toggleClase(footer, 'is-disabled', !puedeIrPlan);
   toggleClase(drop, 'is-disabled', !activa);
@@ -195,7 +251,7 @@ function actualizarVistaInteligente() {
       : !activa
         ? 'Procesa Entendimiento para habilitar la carga temporal.'
         : conArchivo
-          ? 'Revisa la clasificación sugerida y guarda el recurso.'
+          ? 'Ahora elige categoría, uso y guarda el recurso temporal.'
           : 'Elige un archivo; la app sugerirá nombre, categoría, uso y etiquetas.';
   }
 
@@ -206,6 +262,37 @@ function actualizarVistaInteligente() {
         ? 'Guarda al menos un recurso temporal para activar el paso hacia el Plan.'
         : 'La biblioteca del proyecto se activará cuando exista Entendimiento.';
   }
+  actualizarRevisionGuardado();
+}
+
+async function irAPasoBibliotecaProyecto(paso = 'proyecto') {
+  const tieneProyecto = Boolean(estadoInteligente.proyectoId || obtenerProyectoId());
+  const activa = Boolean(estadoInteligente.habilitada);
+  const conArchivo = Boolean(estadoInteligente.archivoSeleccionado && $('projectLibraryNewPath')?.value?.trim());
+  const conRecursos = Number(estadoInteligente.totalRecursos || 0) > 0;
+
+  if (paso !== 'proyecto' && !tieneProyecto) {
+    setMensaje('Primero carga el ID del proyecto.', 'warn');
+    activarPasoBibliotecaProyecto('proyecto');
+    return;
+  }
+  if (!['proyecto'].includes(paso) && !activa) {
+    setMensaje('Primero procesa Entendimiento para activar la biblioteca del proyecto.', 'warn');
+    activarPasoBibliotecaProyecto('proyecto');
+    return;
+  }
+  if (['categoria', 'datos', 'guardar'].includes(paso) && !conArchivo) {
+    setMensaje('Primero elige un archivo temporal.', 'warn');
+    activarPasoBibliotecaProyecto('archivo');
+    return;
+  }
+  if (paso === 'plan' && !conRecursos) {
+    setMensaje('Primero guarda al menos un recurso temporal para continuar al Plan.', 'warn');
+    activarPasoBibliotecaProyecto('revisar');
+    return;
+  }
+  activarPasoBibliotecaProyecto(paso);
+  if (paso === 'revisar') await cargarBibliotecaProyecto().catch((error) => setMensaje(error.message, 'error'));
 }
 
 function aplicarHabilitada(habilitada, datos = {}) {
@@ -294,6 +381,7 @@ async function cargarBibliotecaProyecto() {
   if (!proyectoId) {
     estadoInteligente = { ...estadoInteligente, proyectoId: '', proyectoCargado: false, habilitada: false, totalRecursos: 0, totalVideos: 0 };
     actualizarVistaInteligente();
+    activarPasoBibliotecaProyecto('proyecto', { guardar: false });
     setMensaje('Falta proyectoId. Crea o carga un proyecto primero.', 'warn');
     return null;
   }
@@ -308,6 +396,8 @@ async function cargarBibliotecaProyecto() {
   renderRecursos(datos.recursos || []);
   setChip(datos.habilitada ? 'Activa' : 'Bloqueada', datos.habilitada ? 'ok' : 'warn');
   const total = Number(datos.totalRecursos || datos.recursos?.length || 0);
+  if (datos.habilitada && !estadoInteligente.archivoSeleccionado) activarPasoBibliotecaProyecto(total > 0 ? 'revisar' : 'archivo');
+  if (!datos.habilitada) activarPasoBibliotecaProyecto('proyecto');
   setMensaje(
     datos.habilitada
       ? total > 0
@@ -342,6 +432,7 @@ function aplicarArchivoSeleccionado(archivo = {}) {
   $('projectLibraryNewMime').value = archivo.type || archivo.mime || '';
   $('projectLibraryNewSize').value = archivo.size || 0;
   estadoInteligente = { ...estadoInteligente, archivoSeleccionado: Boolean(ruta) };
+  activarPasoBibliotecaProyecto('categoria');
   actualizarVistaInteligente();
 }
 
@@ -392,6 +483,7 @@ function limpiarFormulario() {
   const duplicado = $('projectLibraryDuplicateBox');
   if (duplicado) duplicado.hidden = true;
   estadoInteligente = { ...estadoInteligente, archivoSeleccionado: false, guardando: false };
+  activarPasoBibliotecaProyecto(estadoInteligente.habilitada ? 'archivo' : 'proyecto');
   actualizarVistaInteligente();
 }
 
@@ -402,6 +494,7 @@ function mostrarDuplicado(resultado = {}) {
   const duplicado = resultado.duplicado || resultado.recurso?.duplicado || null;
   if (textoBox) textoBox.textContent = duplicado?.nombre ? `Parece repetido con: ${duplicado.nombre}` : 'Decide si reemplazarlo o duplicarlo.';
   box.hidden = false;
+  activarPasoBibliotecaProyecto('guardar');
 }
 
 async function guardarRecurso(accionDuplicado = 'preguntar') {
@@ -488,15 +581,28 @@ function enlazarEventos() {
   const input = $('projectLibraryProjectId');
   if (input && !input.value) input.value = localStorage.getItem(STORAGE_PROYECTO_ETAPAS) || '';
   estadoInteligente = { ...estadoInteligente, proyectoId: input?.value?.trim() || '', proyectoCargado: Boolean(input?.value?.trim()) };
+  pasoActualProyecto = localStorage.getItem(STORAGE_BIBLIOTECA_PROYECTO_STEP) || 'proyecto';
   inicializarDropZone();
+  activarPasoBibliotecaProyecto(pasoActualProyecto, { guardar: false });
   actualizarVistaInteligente();
   cargarCategorias().catch((error) => setMensaje(error.message, 'error'));
-  $('projectLibraryLoadBtn')?.addEventListener('click', () => cargarBibliotecaProyecto().catch((error) => { estadoInteligente = { ...estadoInteligente, habilitada: false }; actualizarVistaInteligente(); setMensaje(error.message, 'error'); }));
+  $('projectLibraryLoadBtn')?.addEventListener('click', () => cargarBibliotecaProyecto().catch((error) => { estadoInteligente = { ...estadoInteligente, habilitada: false }; actualizarVistaInteligente(); activarPasoBibliotecaProyecto('proyecto'); setMensaje(error.message, 'error'); }));
   $('projectLibraryRefreshBtn')?.addEventListener('click', () => cargarBibliotecaProyecto().catch((error) => setMensaje(error.message, 'error')));
   $('projectLibraryViewMode')?.addEventListener('change', () => cargarBibliotecaProyecto().catch((error) => setMensaje(error.message, 'error')));
   $('projectLibraryCreatePlanBtn')?.addEventListener('click', irAPlan);
-  root.addEventListener('input', () => actualizarVistaInteligente());
+  root.addEventListener('input', () => { actualizarVistaInteligente(); actualizarRevisionGuardado(); });
+  root.addEventListener('change', (evento) => {
+    if (evento.target.id === 'projectLibraryNewCategory') {
+      const nombre = $('projectLibraryNewOriginalName')?.value || $('projectLibraryNewName')?.value || '';
+      const tipo = $('projectLibraryNewType')?.value || '';
+      $('projectLibraryNewUsage').value = sugerirUso(nombre, evento.target.value, tipo);
+    }
+    actualizarRevisionGuardado();
+  });
   root.addEventListener('click', async (evento) => {
+    const wizard = evento.target.closest('[data-project-library-wizard-go]')?.dataset.projectLibraryWizardGo;
+    if (wizard) { await irAPasoBibliotecaProyecto(wizard); return; }
+
     const accion = evento.target.closest('[data-project-library-action]')?.dataset.projectLibraryAction;
     if (!accion) return;
     try {
@@ -521,7 +627,7 @@ function activarBibliotecaProyecto() {
     if (!root) return;
     const proyectoId = obtenerProyectoId();
     if (proyectoId) cargarBibliotecaProyecto().catch((error) => setMensaje(error.message, 'warn'));
-    else actualizarVistaInteligente();
+    else { activarPasoBibliotecaProyecto('proyecto', { guardar: false }); actualizarVistaInteligente(); }
   }, 0);
 }
 
