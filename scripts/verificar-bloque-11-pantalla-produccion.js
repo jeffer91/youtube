@@ -18,6 +18,20 @@ function verificarVista() {
   contiene('app/pantallas/produccion.view.js', [
     'produccion-maestro-view',
     'data-produccion-maestro-root',
+    'data-proceso-root="produccion-maestro"',
+    'data-proceso-resumen="produccion-maestro"',
+    'data-produccion-wizard-go="cargar"',
+    'data-produccion-wizard-go="preview"',
+    'data-produccion-wizard-go="comparacion"',
+    'data-produccion-wizard-go="problemas"',
+    'data-produccion-wizard-go="adaptacion"',
+    'data-produccion-wizard-go="avanzado"',
+    'data-produccion-wizard-panel="cargar"',
+    'data-produccion-wizard-panel="preview"',
+    'data-produccion-wizard-panel="comparacion"',
+    'data-produccion-wizard-panel="problemas"',
+    'data-produccion-wizard-panel="adaptacion"',
+    'data-produccion-wizard-panel="avanzado"',
     'produccionMaestroProyectoId',
     'produccionMaestroCargarBtn',
     'produccionMaestroProcesarBtn',
@@ -48,9 +62,29 @@ function verificarControlador() {
   ]);
 }
 
+function verificarWizardVisual() {
+  contiene('app/etapas-ui/produccion-maestro-wizard-ui.js', [
+    'inicializarProduccionMaestroWizardUI',
+    'activarPasoProduccionMaestro',
+    'irAPasoProduccionMaestro',
+    'MAPA_PASO_PROCESO',
+    'PASOS_PRODUCCION',
+    'hayProduccionVisible',
+    'comparacionDisponible',
+    'listoParaAdaptacion',
+    '../procesos-ui/proceso-visual.service.js',
+    'data-produccion-wizard-panel',
+    'data-produccion-wizard-go',
+    'produccionMaestroCargarBtn',
+    'produccionMaestroProcesarBtn',
+    'produccionMaestroAdaptarBtn'
+  ]);
+}
+
 function verificarBootstrapMenu() {
   contiene('app/navegacion/navegacion-bootstrap.js', [
     'inicializarProduccionMaestroUI',
+    'inicializarProduccionMaestroWizardUI',
     'produccion-maestro.css',
     'produccionMaestroStyles'
   ]);
@@ -63,13 +97,30 @@ function verificarBootstrapMenu() {
 function verificarCss() {
   contiene('app/produccion-maestro.css', [
     'produccion-maestro-view',
+    'produccion-maestro-flow',
+    'produccion-maestro-step',
+    'produccion-maestro-wizard',
+    'produccion-maestro-wizard-panel',
     'produccion-maestro-toolbar',
     'produccion-maestro-kpis',
     'produccion-maestro-video',
     'produccion-maestro-compare',
     'produccion-maestro-timeline',
     'produccion-maestro-audit',
-    'produccion-maestro-table'
+    'produccion-maestro-table',
+    'produccion-maestro-footer'
+  ]);
+}
+
+function verificarProcesosUi() {
+  contiene('app/procesos-ui/procesos.config.js', [
+    'produccion-maestro',
+    'cargar-producir',
+    'preview',
+    'comparacion',
+    'problemas',
+    'adaptacion',
+    'timeline-auditoria'
   ]);
 }
 
@@ -87,19 +138,24 @@ async function verificarImportaciones() {
   exigir(typeof vistas.renderProduccionView === 'function', 'renderProduccionView no está exportada.');
   const ui = await import('../app/etapas-ui/produccion-maestro-ui.js');
   exigir(typeof ui.inicializarProduccionMaestroUI === 'function', 'inicializarProduccionMaestroUI no está exportada.');
+  const wizard = await import('../app/etapas-ui/produccion-maestro-wizard-ui.js');
+  exigir(typeof wizard.inicializarProduccionMaestroWizardUI === 'function', 'inicializarProduccionMaestroWizardUI no está exportada.');
+  exigir(typeof wizard.activarPasoProduccionMaestro === 'function', 'activarPasoProduccionMaestro no está exportada.');
 }
 
 async function main() {
   verificarVista();
   verificarControlador();
+  verificarWizardVisual();
   verificarBootstrapMenu();
   verificarCss();
+  verificarProcesosUi();
   verificarDocumentacion();
   await verificarImportaciones();
-  console.log('OK Bloque 11: pantalla Producción maestro conectada.');
+  console.log('OK Producción maestro guiada: vista por pasos, controlador, wizard visual, navegación y CSS conectados.');
 }
 
 main().catch((error) => {
-  console.error('ERROR Bloque 11:', error.message);
+  console.error('ERROR Producción maestro guiada:', error.message);
   process.exit(1);
 });
