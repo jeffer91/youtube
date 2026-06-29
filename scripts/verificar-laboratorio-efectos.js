@@ -1,3 +1,4 @@
+import fs from 'fs';
 import path from 'path';
 import {
   VERSION_CATALOGO_EFECTOS_LAB,
@@ -16,6 +17,11 @@ import { VERSION_RENDER_LABORATORIO_EFECTOS, construirComandoFfmpegLaboratorio, 
 
 function exigir(condicion, mensaje) {
   if (!condicion) throw new Error(mensaje);
+}
+
+function leer(ruta) {
+  exigir(fs.existsSync(ruta), `Falta archivo: ${ruta}`);
+  return fs.readFileSync(ruta, 'utf-8');
 }
 
 function verificarCategoria(categoria) {
@@ -113,6 +119,21 @@ function verificarMotorRender() {
   exigir(comando[comando.length - 1] === 'salida.mp4', 'Comando FFmpeg no termina con la salida.');
 }
 
+function verificarRutasApi() {
+  const rutas = leer('server/rutas-laboratorio-efectos.service.js');
+  const modulares = leer('server/rutas-modulares.service.js');
+  exigir(rutas.includes('registrarRutasLaboratorioEfectos'), 'Falta función registrarRutasLaboratorioEfectos.');
+  exigir(rutas.includes("/api/laboratorio-efectos/catalogo"), 'Falta endpoint catálogo laboratorio.');
+  exigir(rutas.includes("/api/laboratorio-efectos/efectos/:efectoId"), 'Falta endpoint detalle de efecto.');
+  exigir(rutas.includes("/api/laboratorio-efectos/preparar"), 'Falta endpoint preparar efecto.');
+  exigir(rutas.includes("/api/laboratorio-efectos/probar"), 'Falta endpoint probar efecto.');
+  exigir(rutas.includes("upload.single('video')"), 'La ruta probar debe recibir archivo video.');
+  exigir(rutas.includes('renderizarEfectoLaboratorio'), 'La ruta probar no conecta con motor de render.');
+  exigir(rutas.includes('/exports/laboratorio-efectos/'), 'La ruta no devuelve URL pública de exports.');
+  exigir(modulares.includes('registrarRutasLaboratorioEfectos(app, opciones)'), 'Rutas modulares no registran laboratorio.');
+  exigir(modulares.includes('laboratorio-efectos'), 'El módulo laboratorio-efectos no aparece registrado.');
+}
+
 function main() {
   exigir(VERSION_CATALOGO_EFECTOS_LAB, 'Falta versión de catálogo.');
   exigir(CATEGORIAS_LABORATORIO_EFECTOS.length >= 7, 'Faltan categorías base del laboratorio.');
@@ -126,8 +147,9 @@ function main() {
   verificarRespuestaApi();
   verificarFiltrosFfmpeg();
   verificarMotorRender();
+  verificarRutasApi();
 
-  console.log(`OK Laboratorio de efectos: ${CATEGORIAS_LABORATORIO_EFECTOS.length} categorías, ${EFECTOS_LABORATORIO.length} efectos, filtros FFmpeg y motor render listos.`);
+  console.log(`OK Laboratorio de efectos: ${CATEGORIAS_LABORATORIO_EFECTOS.length} categorías, ${EFECTOS_LABORATORIO.length} efectos, filtros FFmpeg, motor render y rutas API listos.`);
 }
 
 main();
