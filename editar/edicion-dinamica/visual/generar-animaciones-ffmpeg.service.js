@@ -10,7 +10,7 @@ function obtenerPerfil(opciones = {}) {
 }
 
 function construirEnable(inicio, fin) {
-  return `between(t\\,${numero(inicio).toFixed(3)}\\,${numero(fin).toFixed(3)})`;
+  return `between(t\,${numero(inicio).toFixed(3)}\,${numero(fin).toFixed(3)})`;
 }
 
 function obtenerEstiloAnimacion(opciones = {}) {
@@ -38,7 +38,8 @@ function crearEventosFallback({ duracionSegundos = 0, estilo } = {}) {
       inicio: redondearTiempo(inicio),
       fin: redondearTiempo(Math.min(inicio + duracionEvento, duracion)),
       texto: estilo.texto,
-      motivo: 'Animación automática de ritmo para evitar video plano.'
+      motivo: 'Animación automática de ritmo para evitar video plano.',
+      origen: 'fallback-visual'
     });
   }
   return eventos;
@@ -51,10 +52,16 @@ function normalizarEventosAnimacion({ eventos = [], duracionSegundos = 0, estilo
     .map((evento, index) => {
       const inicio = Math.max(0, numero(evento.inicio, index * 5));
       const fin = Math.min(duracion || inicio + 1, Math.max(inicio + 0.35, numero(evento.fin, inicio + numero(estilo?.duracion, 0.9))));
-      return { ...evento, inicio: redondearTiempo(inicio), fin: redondearTiempo(fin), texto: evento.texto || estilo.texto };
+      return {
+        ...evento,
+        inicio: redondearTiempo(inicio),
+        fin: redondearTiempo(fin),
+        texto: evento.texto || estilo.texto,
+        desdePlan: String(evento.origen || '').includes('plan') || String(evento.tipo || '').includes('plan')
+      };
     })
     .filter((evento) => evento.fin > evento.inicio)
-    .slice(0, Math.max(3, Math.min(10, numero(estilo?.maximo, 7))));
+    .slice(0, Math.max(3, Math.min(12, numero(estilo?.maximo, 7) + 2)));
 
   return base.length ? base : crearEventosFallback({ duracionSegundos, estilo });
 }
@@ -68,18 +75,45 @@ function crearFiltroZoomInOut({ width, height, estilo }) {
   return `scale=w='${w}*${expr}':h='${h}*${expr}':eval=frame,crop=w=${w}:h=${h}:x=(iw-${w})/2:y=(ih-${h})/2`;
 }
 
+function esEventoZoomPlan(evento = {}) {
+  return String(evento.tipo || '').includes('zoom') || String(evento.efecto || '').toLowerCase().includes('zoom');
+}
+
+function esEventoTransicionPlan(evento = {}) {
+  const base = `${evento.tipo || ''} ${evento.transicion || ''} ${evento.efecto || ''}`.toLowerCase();
+  return base.includes('transicion') || base.includes('transition') || base.includes('flash');
+}
+
+function esEventoAnimacionPlan(evento = {}) {
+  const base = `${evento.tipo || ''} ${evento.efecto || ''} ${evento.texto || ''}`.toLowerCase();
+  return base.includes('animacion') || base.includes('animation') || base.includes('lower') || base.includes('entrada') || base.includes('salida');
+}
+
+function crearFiltroZoomsDesdePlan({ eventos = [], width, height } = {}) {
+  const zooms = eventos.filter(esEventoZoomPlan).slice(0, 8);
+  if (!zooms.length) return null;
+  const w = Math.round(numero(width, 1080));
+  const h = Math.round(numero(height, 1920));
+  const activadores = zooms
+    .map((evento) => `if(${construirEnable(evento.inicio, evento.fin)}\,1\,0)`)
+    .join('+');
+  const expr = `(1+0.060*(${activadores}))`;
+  return `scale=w='${w}*${expr}':h='${h}*${expr}':eval=frame,crop=w=${w}:h=${h}:x=(iw-${w})/2:y=(ih-${h})/2`;
+}
+
 function crearFiltroFlash(evento, estilo) {
   const inicio = numero(evento.inicio, 0);
   const fin = Math.min(numero(evento.fin, inicio + 0.6), inicio + 0.65);
   const enable = construirEnable(inicio, fin);
-  return `drawbox=x=0:y=0:w=iw:h=ih:color=${estilo.color}:t=fill:enable='${enable}'`;
+  const color = evento.desdePlan && esEventoTransicionPlan(evento) ? 'white@0.52' : estilo.color;
+  return `drawbox=x=0:y=0:w=iw:h=ih:color=${color}:t=fill:enable='${enable}'`;
 }
 
 function crearFiltroExplosion(evento, estilo, index) {
   const inicio = numero(evento.inicio, 0);
   const fin = Math.min(numero(evento.fin, inicio + 0.75), inicio + 0.75);
   const enable = construirEnable(inicio, fin);
-  const texto = String(index === 0 ? estilo.texto : (evento.texto || estilo.texto || 'WOW')).replace(/'/g, '').slice(0, 14).toUpperCase();
+  const texto = String(index === 0 ? (evento.texto || estilo.texto) : (evento.texto || estilo.texto || 'WOW')).replace(/'/g, '').slice(0, 14).toUpperCase();
   return [
     'drawtext',
     `text='${texto}'`,
@@ -106,19 +140,45 @@ function crearFiltroBarrasTransicion(evento) {
   return `drawbox=x=0:y=h*0.08:w=iw:h=18:color=white@0.55:t=fill:enable='${enable}',drawbox=x=0:y=h*0.90:w=iw:h=18:color=white@0.55:t=fill:enable='${enable}'`;
 }
 
+function crearFiltroPulsoTextoPlan(evento) {
+  const inicio = numero(evento.inicio, 0);
+  const fin = Math.min(numero(evento.fin, inicio + 0.9), inicio + 1.2);
+  const enable = construirEnable(inicio, fin);
+  const texto = String(evento.texto || 'CLAVE').replace(/'/g, '').slice(0, 18).toUpperCase();
+  return [
+    'drawtext',
+    `text='${texto}'`,
+    'x=(w-text_w)/2',
+    'y=h*0.18',
+    'fontsize=58',
+    'fontcolor=white',
+    'borderw=5',
+    'bordercolor=black@0.88',
+    'box=1',
+    'boxcolor=black@0.36',
+    'boxborderw=18',
+    `enable='${enable}'`
+  ].join(':');
+}
+
 export function generarAnimacionesFfmpeg({ eventos = [], duracionSegundos = 0, width = 1080, height = 1920, opciones = {} } = {}) {
   const activo = opciones.agregarAnimacionesVisuales !== false && opciones.agregarAnimaciones !== false;
   if (!activo) return { ok: true, omitido: true, eventos: [], filtrosMovimiento: [], filtrosOverlay: [], mensaje: 'Animaciones visuales desactivadas.' };
 
   const estilo = obtenerEstiloAnimacion(opciones);
   const eventosAnimacion = normalizarEventosAnimacion({ eventos, duracionSegundos, estilo });
-  const filtrosMovimiento = [crearFiltroZoomInOut({ width, height, estilo })];
+  const zoomsPlan = eventosAnimacion.filter(esEventoZoomPlan);
+  const transicionesPlan = eventosAnimacion.filter(esEventoTransicionPlan);
+  const animacionesPlan = eventosAnimacion.filter(esEventoAnimacionPlan);
+  const filtroZoomPlan = crearFiltroZoomsDesdePlan({ eventos: eventosAnimacion, width, height });
+  const filtrosMovimiento = [crearFiltroZoomInOut({ width, height, estilo }), filtroZoomPlan].filter(Boolean);
   const filtrosOverlay = [];
 
   eventosAnimacion.forEach((evento, index) => {
     filtrosOverlay.push(crearFiltroFlash(evento, estilo));
-    filtrosOverlay.push(crearFiltroBarrasTransicion(evento));
-    if (index === 0 || ['punch-in', 'gancho-explosion', 'momento-importante'].includes(evento.tipo)) filtrosOverlay.push(crearFiltroExplosion(evento, estilo, index));
+    if (esEventoTransicionPlan(evento) || index % 2 === 0) filtrosOverlay.push(crearFiltroBarrasTransicion(evento));
+    if (index === 0 || evento.desdePlan || ['punch-in', 'gancho-explosion', 'momento-importante'].includes(evento.tipo)) filtrosOverlay.push(crearFiltroExplosion(evento, estilo, index));
+    if (evento.desdePlan && (esEventoAnimacionPlan(evento) || evento.texto)) filtrosOverlay.push(crearFiltroPulsoTextoPlan(evento));
   });
 
   return {
@@ -130,7 +190,13 @@ export function generarAnimacionesFfmpeg({ eventos = [], duracionSegundos = 0, w
     filtrosMovimiento,
     filtrosOverlay,
     filtros: [...filtrosMovimiento, ...filtrosOverlay],
-    mensaje: `${eventosAnimacion.length} animaciones visibles generadas: zoom in/out, flashes, barras de transición y explosión visual.`
+    desdePlan: {
+      total: eventosAnimacion.filter((item) => item.desdePlan).length,
+      zooms: zoomsPlan.length,
+      transiciones: transicionesPlan.length,
+      animaciones: animacionesPlan.length
+    },
+    mensaje: `${eventosAnimacion.length} animaciones visibles generadas desde plan/fallback: zoom in/out, flashes, barras, explosiones visuales y textos de énfasis.`
   };
 }
 
