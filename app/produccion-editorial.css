@@ -75,6 +75,32 @@
   filter: saturate(.9);
 }
 
+.produccion-maestro-timeline-item.is-active {
+  outline: 3px solid rgba(15, 23, 42, .24);
+  outline-offset: 2px;
+  transform: translateY(-2px) scale(1.015);
+  box-shadow: 0 16px 34px rgba(15, 23, 42, .30);
+  z-index: 6;
+}
+
+.produccion-maestro-panel--preview.is-synced {
+  border-color: #2563eb;
+  box-shadow: 0 18px 44px rgba(37, 99, 235, .18);
+}
+
+.produccion-maestro-marker-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 10px 0 12px;
+}
+
+.produccion-maestro-marker-actions button {
+  padding: 9px 12px;
+  font-size: .82rem;
+  box-shadow: none;
+}
+
 .produccion-maestro-marker-card.is-aplicado {
   border-color: #bbf7d0;
   background: linear-gradient(180deg, #f0fdf4, #ffffff);
@@ -103,5 +129,8 @@
   .produccion-maestro-filter-summary {
     border-radius: 14px;
     width: 100%;
+  }
+  .produccion-maestro-marker-actions {
+    display: grid;
   }
 }
