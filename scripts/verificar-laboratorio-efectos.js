@@ -189,6 +189,27 @@ function verificarUiLaboratorio() {
   contiene('app/navegacion/navegacion.service.js', ['renderLaboratorioEfectosView', 'inicializarLaboratorioEfectosUI', "'laboratorio-efectos': renderLaboratorioEfectosView"]);
 }
 
+function verificarIntegracionNavegacion() {
+  contiene('app/pantallas/inicio.view.js', [
+    'data-pantalla-destino="laboratorio-efectos"',
+    'Laboratorio de efectos',
+    'Probar un solo efecto en un clip corto',
+    'Prueba rápida disponible'
+  ]);
+  contiene('app/navegacion/submenus.service.js', [
+    "'laboratorio-efectos'",
+    'Video corto',
+    'Catálogo',
+    'Antes/después',
+    'data-submenu'
+  ]);
+  const menu = leer('app/navegacion/menu.config.js');
+  const indicePlan = menu.indexOf("id: 'plan-edicion'");
+  const indiceLab = menu.indexOf("id: 'laboratorio-efectos'");
+  const indiceProduccion = menu.indexOf("id: 'produccion'");
+  exigir(indicePlan >= 0 && indiceLab > indicePlan && indiceProduccion > indiceLab, 'Laboratorio debe quedar entre Plan de edición y Producción maestro.');
+}
+
 function main() {
   exigir(VERSION_CATALOGO_EFECTOS_LAB, 'Falta versión de catálogo.');
   exigir(CATEGORIAS_LABORATORIO_EFECTOS.length >= 7, 'Faltan categorías base del laboratorio.');
@@ -204,8 +225,9 @@ function main() {
   verificarMotorRender();
   verificarRutasApi();
   verificarUiLaboratorio();
+  verificarIntegracionNavegacion();
 
-  console.log(`OK Laboratorio de efectos: ${CATEGORIAS_LABORATORIO_EFECTOS.length} categorías, ${EFECTOS_LABORATORIO.length} efectos, filtros FFmpeg, motor render, rutas API, pantalla UI y comparación antes/después listos.`);
+  console.log(`OK Laboratorio de efectos: ${CATEGORIAS_LABORATORIO_EFECTOS.length} categorías, ${EFECTOS_LABORATORIO.length} efectos, filtros FFmpeg, motor render, rutas API, pantalla UI, comparación e integración de navegación listos.`);
 }
 
 main();
