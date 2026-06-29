@@ -46,6 +46,7 @@
     "check:efectos-cierre": "node scripts/verificar-cierre-final-efectos.js",
     "check:efectos-fallback": "node scripts/verificar-fallback-exportacion-efectos.js",
     "check:efectos": "node scripts/verificar-efectos-autovideo.js",
+    "check:laboratorio-efectos": "node scripts/verificar-laboratorio-efectos.js",
     "check:biblioteca": "node scripts/verificar-biblioteca.js",
     "check:biblioteca-bloque1": "node scripts/verificar-biblioteca-bloque-1.js",
     "check:biblioteca-bloque3": "node scripts/verificar-biblioteca-bloque-3.js",
@@ -142,7 +143,7 @@
     "productName": "AutoVideoJeff",
     "asar": false,
     "directories": { "output": "release" },
-    "files": ["app/**/*", "aprendizaje/**/*", "audio/**/*", "biblioteca/**/*", "biblioteca-proyecto/**/*", "comun/**/*", "diagnostico/**/*", "docs/**/*", "editar/**/*", "entrada/**/*", "entender/**/*", "entrega/**/*", "etapas/**/*", "exportacion/**/*", "gemini/**/*", "ia/**/*", "motor/**/*", "perfiles/**/*", "produccion/**/*", "progreso/**/*", "proyectos/**/*", "recursos-externos/**/*", "salida/**/*", "scripts/**/*", "server/**/*", "subtitulos/**/*", "textos/**/*", "transcripcion/**/*", "visual/**/*", "main.js", "preload.js", "server.js", "package.json"],
+    "files": ["app/**/*", "aprendizaje/**/*", "audio/**/*", "biblioteca/**/*", "biblioteca-proyecto/**/*", "comun/**/*", "diagnostico/**/*", "docs/**/*", "editar/**/*", "entrada/**/*", "entender/**/*", "entrega/**/*", "etapas/**/*", "exportacion/**/*", "gemini/**/*", "ia/**/*", "motor/**/*", "perfiles/**/*", "produccion/**/*", "progreso/**/*", "proyectos/**/*", "recursos-externos/**/*", "salida/**/*", "scripts/**/*", "server/**/*", "subtitulos/**/*", "textos/**/*", "transcripcion/**/*", "visual/**/*", "laboratorio-efectos/**/*", "main.js", "preload.js", "server.js", "package.json"],
     "extraResources": [{ "from": "docs", "to": "docs" }],
     "win": { "target": ["nsis"] },
     "nsis": { "oneClick": false, "perMachine": false, "allowToChangeInstallationDirectory": true, "createDesktopShortcut": true, "createStartMenuShortcut": true }
