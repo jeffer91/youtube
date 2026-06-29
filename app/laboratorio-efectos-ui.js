@@ -202,27 +202,91 @@ function evaluarDuracionEntrada(duracion) {
   }
 }
 
+function limpiarVideo(video) {
+  if (!video) return;
+  try {
+    video.pause?.();
+    video.removeAttribute('src');
+    video.load?.();
+  } catch (_error) {}
+}
+
+function mostrarPrimerFrameVideo(video) {
+  if (!video) return;
+
+  const ponerPrimerFrame = () => {
+    try {
+      const duracion = Number(video.duration);
+      if (Number.isFinite(duracion) && duracion > 0.2) {
+        video.currentTime = Math.min(0.08, Math.max(0, duracion - 0.15));
+      } else {
+        video.currentTime = 0;
+      }
+      video.pause?.();
+    } catch (_error) {}
+  };
+
+  video.addEventListener('loadedmetadata', ponerPrimerFrame, { once: true });
+  video.addEventListener('loadeddata', ponerPrimerFrame, { once: true });
+}
+
+function asignarFuenteVideo(video, url, { muted = false, resetearFrame = true } = {}) {
+  if (!video) return;
+
+  if (!url) {
+    limpiarVideo(video);
+    return;
+  }
+
+  try {
+    video.preload = 'metadata';
+    video.muted = Boolean(muted);
+    video.playsInline = true;
+
+    if (video.src !== url) {
+      video.src = url;
+    }
+
+    if (resetearFrame) {
+      mostrarPrimerFrameVideo(video);
+    }
+
+    video.load?.();
+  } catch (_error) {
+    limpiarVideo(video);
+  }
+}
+
 function asignarPreviewOriginal(url) {
   const panelEntrada = $('labEfectosPreviewEntradaPanel');
   const preview = $('labEfectosPreviewEntradaVideo');
   const comparacion = $('labEfectosComparacionOriginal');
+
   if (panelEntrada) panelEntrada.hidden = !url;
-  for (const video of [preview, comparacion]) {
-    if (!video || !url) continue;
-    video.src = url;
-    video.load?.();
-  }
+
+  asignarFuenteVideo(preview, url, { muted: true, resetearFrame: true });
+  asignarFuenteVideo(comparacion, url, { muted: true, resetearFrame: true });
 }
 
 function ocultarResultadoAnterior() {
   const panel = $('labEfectosResultadoPanel');
   const video = $('labEfectosResultadoVideo');
+  const original = $('labEfectosComparacionOriginal');
   const descarga = $('labEfectosDescarga');
   const resumen = $('labEfectosResultadoResumen');
+
   if (panel) panel.hidden = true;
-  if (video) video.removeAttribute('src');
-  if (descarga) { descarga.hidden = true; descarga.removeAttribute('href'); }
+  limpiarVideo(video);
+  limpiarVideo(original);
+
+  if (descarga) {
+    descarga.hidden = true;
+    descarga.removeAttribute('href');
+    descarga.removeAttribute('download');
+  }
+
   if (resumen) resumen.textContent = '';
+
   activarPasoLaboratorioEfectos(localStorage.getItem(STORAGE_LAB_STEP) || 'video', { guardar: false });
 }
 
@@ -407,14 +471,10 @@ async function enviarPrueba(evento) {
     const resumen = $('labEfectosResultadoResumen');
     const url = await urlPublica(resultado.urlPublica || resultado.rutaRelativa || '');
     if (panel) panel.hidden = false;
-    if (original && urlObjetoEntrada) {
-      original.src = urlObjetoEntrada;
-      original.load?.();
-    }
-    if (video && url) {
-      video.src = url;
-      video.load?.();
-    }
+
+    asignarFuenteVideo(original, urlObjetoEntrada, { muted: true, resetearFrame: true });
+    asignarFuenteVideo(video, url, { muted: false, resetearFrame: true });
+
     if (descarga && url) {
       descarga.hidden = false;
       descarga.href = url;
