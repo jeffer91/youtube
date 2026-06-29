@@ -18,6 +18,20 @@ function verificarVista() {
   contiene('app/pantallas/adaptacion.view.js', [
     'renderAdaptacionView',
     'data-adaptacion-root',
+    'data-proceso-root="adaptacion"',
+    'data-proceso-resumen="adaptacion"',
+    'data-adaptacion-wizard-go="cargar"',
+    'data-adaptacion-wizard-go="plataformas"',
+    'data-adaptacion-wizard-go="adaptar"',
+    'data-adaptacion-wizard-go="versiones"',
+    'data-adaptacion-wizard-go="resultado"',
+    'data-adaptacion-wizard-go="avanzado"',
+    'data-adaptacion-wizard-panel="cargar"',
+    'data-adaptacion-wizard-panel="plataformas"',
+    'data-adaptacion-wizard-panel="adaptar"',
+    'data-adaptacion-wizard-panel="versiones"',
+    'data-adaptacion-wizard-panel="resultado"',
+    'data-adaptacion-wizard-panel="avanzado"',
     'adaptacionProyectoId',
     'adaptacionCargarBtn',
     'adaptacionProcesarBtn',
@@ -44,16 +58,39 @@ function verificarControlador() {
   ]);
 }
 
+function verificarWizardVisual() {
+  contiene('app/etapas-ui/adaptacion-wizard-ui.js', [
+    'inicializarAdaptacionWizardUI',
+    'activarPasoAdaptacion',
+    'irAPasoAdaptacion',
+    'MAPA_PASO_PROCESO',
+    'PASOS_ADAPTACION',
+    'hayPlataformasSeleccionadas',
+    'hayAdaptacionVisible',
+    'listoParaResultado',
+    '../procesos-ui/proceso-visual.service.js',
+    'data-adaptacion-wizard-panel',
+    'data-adaptacion-wizard-go',
+    'adaptacionCargarBtn',
+    'adaptacionProcesarBtn',
+    'adaptacionResultadoBtn'
+  ]);
+}
+
 function verificarConexionNavegacion() {
   contiene('app/navegacion/menu.config.js', ['adaptacion', 'Versiones finales para TikTok, Reels, Shorts y YouTube']);
   contiene('app/pantallas/pantallas.conexion.js', ['renderAdaptacionView']);
   contiene('app/navegacion/navegacion.service.js', ['renderAdaptacionView', 'adaptacion: renderAdaptacionView']);
-  contiene('app/navegacion/navegacion-bootstrap.js', ['inicializarAdaptacionUI', 'adaptacion.css', 'adaptacionStyles']);
+  contiene('app/navegacion/navegacion-bootstrap.js', ['inicializarAdaptacionUI', 'inicializarAdaptacionWizardUI', 'adaptacion.css', 'adaptacionStyles']);
 }
 
 function verificarCss() {
   contiene('app/adaptacion.css', [
     'adaptacion-view',
+    'adaptacion-flow',
+    'adaptacion-step',
+    'adaptacion-wizard',
+    'adaptacion-wizard-panel',
     'adaptacion-toolbar',
     'adaptacion-options',
     'adaptacion-kpis',
@@ -61,6 +98,18 @@ function verificarCss() {
     'adaptacion-platforms',
     'adaptacion-table',
     'adaptacion-footer'
+  ]);
+}
+
+function verificarProcesosUi() {
+  contiene('app/procesos-ui/procesos.config.js', [
+    'adaptacion',
+    'cargar-proyecto',
+    'plataformas',
+    'adaptar',
+    'revisar-versiones',
+    'resultado-final',
+    'opciones-avanzadas'
   ]);
 }
 
@@ -78,19 +127,24 @@ async function verificarImportaciones() {
   exigir(typeof vistas.renderAdaptacionView === 'function', 'renderAdaptacionView no está exportada.');
   const ui = await import('../app/etapas-ui/adaptacion-ui.js');
   exigir(typeof ui.inicializarAdaptacionUI === 'function', 'inicializarAdaptacionUI no está exportada.');
+  const wizard = await import('../app/etapas-ui/adaptacion-wizard-ui.js');
+  exigir(typeof wizard.inicializarAdaptacionWizardUI === 'function', 'inicializarAdaptacionWizardUI no está exportada.');
+  exigir(typeof wizard.activarPasoAdaptacion === 'function', 'activarPasoAdaptacion no está exportada.');
 }
 
 async function main() {
   verificarVista();
   verificarControlador();
+  verificarWizardVisual();
   verificarConexionNavegacion();
   verificarCss();
+  verificarProcesosUi();
   verificarDocumentacion();
   await verificarImportaciones();
-  console.log('OK Bloque 16: pantalla Adaptación conectada.');
+  console.log('OK Adaptación guiada: vista por pasos, controlador, wizard visual, navegación y CSS conectados.');
 }
 
 main().catch((error) => {
-  console.error('ERROR Bloque 16:', error.message);
+  console.error('ERROR Adaptación guiada:', error.message);
   process.exit(1);
 });
