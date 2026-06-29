@@ -21,8 +21,9 @@ export function renderLaboratorioEfectosView() {
         <button class="lab-effects-flow-step is-active" type="button" data-lab-wizard-go="video" data-proceso-step="video-corto"><b>1</b><span><strong>Video</strong><small>Clip corto</small></span></button>
         <button class="lab-effects-flow-step is-locked" type="button" data-lab-wizard-go="catalogo" data-proceso-step="categoria-efecto"><b>2</b><span><strong>Catálogo</strong><small>Categorías</small></span></button>
         <button class="lab-effects-flow-step is-locked" type="button" data-lab-wizard-go="efecto" data-proceso-step="efecto"><b>3</b><span><strong>Efecto</strong><small>Confirmar</small></span></button>
-        <button class="lab-effects-flow-step is-locked" type="button" data-lab-wizard-go="probar" data-proceso-step="probar"><b>4</b><span><strong>Probar</strong><small>Render corto</small></span></button>
-        <button class="lab-effects-flow-step is-locked" type="button" data-lab-wizard-go="comparar" data-proceso-step="comparar"><b>5</b><span><strong>Comparar</strong><small>Antes/después</small></span></button>
+        <button class="lab-effects-flow-step is-locked" type="button" data-lab-wizard-go="esperado" data-proceso-step="esperado"><b>4</b><span><strong>Esperado</strong><small>Qué debe salir</small></span></button>
+        <button class="lab-effects-flow-step is-locked" type="button" data-lab-wizard-go="probar" data-proceso-step="probar"><b>5</b><span><strong>Probar</strong><small>Render corto</small></span></button>
+        <button class="lab-effects-flow-step is-locked" type="button" data-lab-wizard-go="comparar" data-proceso-step="comparar"><b>6</b><span><strong>Comparar</strong><small>Antes/después</small></span></button>
       </section>
 
       <form id="labEfectosForm" class="lab-effects-layout lab-effects-wizard-form">
@@ -82,22 +83,13 @@ export function renderLaboratorioEfectosView() {
               <div>
                 <span class="lab-effects-step">3</span>
                 <h2>Efecto seleccionado</h2>
-                <p>Antes de producir, confirma qué debe verse.</p>
+                <p>Confirma el efecto y ajusta texto o intensidad cuando aplique.</p>
               </div>
             </div>
             <div id="labEfectosResumenSeleccion" class="lab-effects-selected-box">
               <strong>Sin efecto seleccionado</strong>
               <span>Elige un efecto del catálogo.</span>
             </div>
-            <div class="lab-effects-expected">
-              <span>Qué debe salir</span>
-              <p id="labEfectosQueDebeSalir">Selecciona un efecto para ver la explicación esperada.</p>
-            </div>
-            <ul id="labEfectosChecklist" class="lab-effects-checklist">
-              <li>Selecciona un efecto.</li>
-              <li>Sube un clip corto.</li>
-              <li>Compara original contra resultado.</li>
-            </ul>
             <label class="lab-effects-field" for="labEfectosTextoPersonalizado">
               <span>Texto opcional para efectos de texto</span>
               <input id="labEfectosTextoPersonalizado" name="textoPersonalizado" type="text" maxlength="42" placeholder="Ejemplo: MIRA ESTO" />
@@ -112,7 +104,29 @@ export function renderLaboratorioEfectosView() {
               </select>
             </label>
             <input id="labEfectosSeleccionado" name="efectoId" type="hidden" />
-            <div class="lab-effects-actions-row"><button class="primary-button" type="button" data-lab-wizard-go="probar">Continuar a prueba</button></div>
+            <div class="lab-effects-actions-row"><button class="primary-button" type="button" data-lab-wizard-go="esperado">Ver qué debe salir</button></div>
+          </section>
+        </article>
+
+        <article class="lab-effects-wizard-panel" data-lab-wizard-panel="esperado" hidden>
+          <section class="lab-effects-card lab-effects-selected">
+            <div class="lab-effects-card-header">
+              <div>
+                <span class="lab-effects-step">4</span>
+                <h2>Qué debe salir</h2>
+                <p>Revisa la expectativa antes de producir el clip de prueba.</p>
+              </div>
+            </div>
+            <div class="lab-effects-expected">
+              <span>Qué debe salir</span>
+              <p id="labEfectosQueDebeSalir">Selecciona un efecto para ver la explicación esperada.</p>
+            </div>
+            <ul id="labEfectosChecklist" class="lab-effects-checklist">
+              <li>Selecciona un efecto.</li>
+              <li>Sube un clip corto.</li>
+              <li>Compara original contra resultado.</li>
+            </ul>
+            <div class="lab-effects-actions-row"><button class="secondary-button" type="button" data-lab-wizard-go="efecto">Volver</button><button class="primary-button" type="button" data-lab-wizard-go="probar">Continuar a prueba</button></div>
           </section>
         </article>
 
@@ -120,7 +134,7 @@ export function renderLaboratorioEfectosView() {
           <section class="lab-effects-card lab-effects-test">
             <div class="lab-effects-card-header">
               <div>
-                <span class="lab-effects-step">4</span>
+                <span class="lab-effects-step">5</span>
                 <h2>Probar efecto</h2>
                 <p>Ejecuta el render corto solo cuando ya tengas video y efecto seleccionado.</p>
               </div>
@@ -134,7 +148,7 @@ export function renderLaboratorioEfectosView() {
           <section id="labEfectosResultadoPanel" class="lab-effects-card lab-effects-result" hidden>
             <div class="lab-effects-card-header">
               <div>
-                <span class="lab-effects-step">5</span>
+                <span class="lab-effects-step">6</span>
                 <h2>Comparación antes/después</h2>
                 <p>Izquierda: video original. Derecha: video generado con el efecto seleccionado.</p>
               </div>
