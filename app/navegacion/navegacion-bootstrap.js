@@ -6,6 +6,7 @@ import { inicializarEntendimientoUI } from '../etapas-ui/entendimiento-ui.js';
 import { inicializarEntendimientoWizardUI } from '../etapas-ui/entendimiento-wizard-ui.js';
 import { inicializarBibliotecaProyectoUI } from '../biblioteca-proyecto-ui.js';
 import { inicializarPlanEdicionUI } from '../etapas-ui/plan-edicion-ui.js';
+import { inicializarPlanEdicionWizardUI } from '../etapas-ui/plan-edicion-wizard-ui.js';
 import { inicializarProduccionMaestroUI } from '../etapas-ui/produccion-maestro-ui.js';
 import { inicializarAdaptacionUI } from '../etapas-ui/adaptacion-ui.js';
 
@@ -42,6 +43,7 @@ function iniciarNavegacion() {
   inicializarEntendimientoWizardUI();
   inicializarBibliotecaProyectoUI();
   inicializarPlanEdicionUI();
+  inicializarPlanEdicionWizardUI();
   inicializarProduccionMaestroUI();
   inicializarAdaptacionUI();
 }
