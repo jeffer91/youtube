@@ -5,7 +5,7 @@
 
 import { obtenerEfectoLabPorId, validarEfectoLab } from './catalogo-efectos-lab.js';
 
-export const VERSION_FILTROS_FFMPEG_LAB = '1.0.1';
+export const VERSION_FILTROS_FFMPEG_LAB = '1.0.2';
 
 function numero(valor, respaldo = 0) {
   const n = Number(valor);
@@ -43,14 +43,32 @@ function filtroBase() {
   return 'scale=trunc(iw/2)*2:trunc(ih/2)*2,setsar=1';
 }
 
+function filtroZoomCentroVisible(factor = 1.18) {
+  const z = Math.max(1.08, Math.min(1.45, numero(factor, 1.18)));
+
+  return [
+    `scale=trunc(iw*${z.toFixed(3)}/2)*2:trunc(ih*${z.toFixed(3)}/2)*2`,
+    `crop=trunc(iw/${z.toFixed(3)}/2)*2:trunc(ih/${z.toFixed(3)}/2)*2:(iw-ow)/2:(ih-oh)/2`,
+    'setsar=1'
+  ].join(',');
+}
+
+function filtroZoomOutVisible(factor = 1.14) {
+  const z = Math.max(1.06, Math.min(1.35, numero(factor, 1.14)));
+
+  return [
+    `scale=trunc(iw*${z.toFixed(3)}/2)*2:trunc(ih*${z.toFixed(3)}/2)*2`,
+    `crop=trunc(iw/${z.toFixed(3)}/2)*2:trunc(ih/${z.toFixed(3)}/2)*2:(iw-ow)/2:(ih-oh)/2`,
+    'setsar=1'
+  ].join(',');
+}
+
 function filtroZoomEstatico(factor = 1.1) {
-  const z = Math.max(1.01, Math.min(1.35, numero(factor, 1.1)));
-  return `scale=trunc(iw*${z.toFixed(3)}/2)*2:trunc(ih*${z.toFixed(3)}/2)*2,crop=trunc(iw/${z.toFixed(3)}/2)*2:trunc(ih/${z.toFixed(3)}/2)*2:(iw-ow)/2:(ih-oh)/2`;
+  return filtroZoomCentroVisible(factor);
 }
 
 function filtroZoomOut(factor = 1.1) {
-  const z = Math.max(1.01, Math.min(1.25, numero(factor, 1.1)));
-  return `scale=trunc(iw*${z.toFixed(3)}/2)*2:trunc(ih*${z.toFixed(3)}/2)*2,crop=trunc(iw/${z.toFixed(3)}/2)*2:trunc(ih/${z.toFixed(3)}/2)*2:(iw-ow)/2:(ih-oh)/2`;
+  return filtroZoomOutVisible(factor);
 }
 
 function filtroFlash({ color = 'white@0.45', inicio = 1, duracion = 0.5 } = {}) {
@@ -130,11 +148,30 @@ function construirFiltrosPorId({ efecto, textoPersonalizado = '', intensidad = n
   const textoFinal = textoPersonalizado || efecto.textoPrueba || efecto.nombre;
 
   switch (id) {
-    case 'zoom-in-centro': return [filtroZoomEstatico(1.12 * factor)];
-    case 'zoom-out-centro': return [filtroZoomOut(1.10 * factor)];
-    case 'zoom-pulso': return [filtroZoomEstatico(1.06 * factor), filtroFlash({ color: 'white@0.12', inicio, duracion: 0.8 })];
-    case 'punch-in-rapido': return [filtroZoomEstatico(1.18 * factor), filtroFlash({ color: 'white@0.18', inicio, duracion: 0.35 })];
-    case 'zoom-dramatico-final': return [filtroZoomEstatico(1.22 * factor), filtroTexto({ textoEfecto: 'FINAL', posicion: 'centro', inicio, duracion: 1.2, tamano: 54 })];
+    case 'zoom-in-centro':
+      return [filtroZoomCentroVisible(1.22 * factor)];
+
+    case 'zoom-out-centro':
+      return [filtroZoomOutVisible(1.16 * factor)];
+
+    case 'zoom-pulso':
+      return [
+        filtroZoomCentroVisible(1.16 * factor),
+        filtroFlash({ color: 'white@0.16', inicio, duracion: 0.8 })
+      ];
+
+    case 'punch-in-rapido':
+      return [
+        filtroZoomCentroVisible(1.28 * factor),
+        filtroFlash({ color: 'white@0.22', inicio, duracion: 0.35 })
+      ];
+
+    case 'zoom-dramatico-final':
+      return [
+        filtroZoomCentroVisible(1.34 * factor),
+        filtroTexto({ textoEfecto: 'FINAL', posicion: 'centro', inicio, duracion: 1.2, tamano: 54 })
+      ];
+
     case 'shake-suave': return [filtroRebote({ inicio, duracion: p.duracion || 0.55, amplitud: 10 * factor })];
     case 'flash-blanco-impacto': return [filtroFlash({ color: p.color || 'white@0.55', inicio, duracion: p.duracion || 0.45 })];
     case 'golpe-rojo': return [filtroFlash({ color: p.color || 'red@0.38', inicio, duracion: p.duracion || 0.5 })];
