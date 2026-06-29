@@ -25,6 +25,7 @@ import { diagnosticarMotoresTranscripcion } from '../transcripcion/motores/diagn
 import { obtenerInstalacionGuiadaMotoresTranscripcion } from '../transcripcion/motores/instalacion-guiada-motores.service.js';
 import { seleccionarTranscripcionPrincipalProyecto } from '../transcripcion/motores/seleccionar-transcripcion-principal.service.js';
 import { registrarRutasEtapas } from './rutas-etapas.service.js';
+import { registrarRutasLaboratorioEfectos } from './rutas-laboratorio-efectos.service.js';
 
 function responderOk(res, datos = {}) { return res.json({ ok: true, ...datos, fecha: new Date().toISOString() }); }
 function responderError(res, error, codigo = 500) { return res.status(codigo).json({ ok: false, mensaje: error?.message || 'Error en rutas modulares.', fecha: new Date().toISOString() }); }
@@ -35,8 +36,9 @@ function normalizarListaTexto(valor = []) { if (Array.isArray(valor)) return val
 export function registrarRutasModulares(app, opciones = {}) {
   const aplicarCabeceras = opciones.aplicarCabecerasSinCache || (() => {});
   registrarRutasEtapas(app, opciones);
+  registrarRutasLaboratorioEfectos(app, opciones);
 
-  app.get('/api/autovideo/modulos', (_req, res) => { aplicarCabeceras(res); return responderOk(res, { modulos: ['proyectos', 'flujo-etapas', 'api-etapas', 'perfiles', 'exportacion', 'audio', 'subtitulos', 'textos', 'visual', 'efectos', 'efectos-premium', 'sfx-premium', 'biblioteca', 'biblioteca-produccion', 'gemini', 'produccion', 'aprendizaje', 'diagnostico-fuerte', 'diagnostico-final-redisenio', 'auditoria-integral', 'reintento-etapa', 'transcripcion-diagnostico', 'transcripcion-instalacion-guiada', 'transcripcion-seleccion-principal'], flujo: ['nuevo-proyecto', 'entendimiento', 'plan-edicion', 'produccion', 'adaptacion-plataformas', 'resultado'], bibliotecaExternaAlFlujo: true }); });
+  app.get('/api/autovideo/modulos', (_req, res) => { aplicarCabeceras(res); return responderOk(res, { modulos: ['proyectos', 'flujo-etapas', 'api-etapas', 'perfiles', 'exportacion', 'audio', 'subtitulos', 'textos', 'visual', 'efectos', 'efectos-premium', 'sfx-premium', 'laboratorio-efectos', 'biblioteca', 'biblioteca-produccion', 'gemini', 'produccion', 'aprendizaje', 'diagnostico-fuerte', 'diagnostico-final-redisenio', 'auditoria-integral', 'reintento-etapa', 'transcripcion-diagnostico', 'transcripcion-instalacion-guiada', 'transcripcion-seleccion-principal'], flujo: ['nuevo-proyecto', 'entendimiento', 'plan-edicion', 'produccion', 'adaptacion-plataformas', 'resultado'], bibliotecaExternaAlFlujo: true }); });
   app.get('/api/autovideo/diagnostico/fuerte', async (_req, res) => { try { aplicarCabeceras(res); const diagnostico = await crearDiagnosticoFuerte({ guardarReporte: true }); return responderOk(res, { diagnostico }); } catch (error) { return responderError(res, error, 500); } });
   app.get('/api/autovideo/diagnostico/auditoria-integral', async (_req, res) => { try { aplicarCabeceras(res); const auditoria = await crearAuditoriaIntegral({ guardarReporte: true }); return responderOk(res, { auditoria }); } catch (error) { return responderError(res, error, 500); } });
   app.get('/api/autovideo/diagnostico/final-redisenio', async (_req, res) => { try { aplicarCabeceras(res); const diagnostico = await crearDiagnosticoFinalRedisenio({ guardarReporte: true }); return responderOk(res, { diagnostico }); } catch (error) { return responderError(res, error, 500); } });
