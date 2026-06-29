@@ -1,5 +1,6 @@
 import { inicializarNavegacionAutoVideoJeff } from './navegacion.service.js';
 import { inicializarDiagnosticoFuerteUI } from '../diagnostico-fuerte-ui.js';
+import { inicializarDiagnosticoWizardUI } from '../diagnostico-wizard-ui.js';
 import { inicializarAuditoriaIntegralUI } from '../auditoria-integral-ui.js';
 import { inicializarResultadoFinalUI } from '../resultado-final-ui.js';
 import { inicializarResultadoFinalWizardUI } from '../resultado-final-wizard-ui.js';
@@ -36,6 +37,7 @@ function asegurarEstilosBloques() {
   asegurarCss('resultadoFinalStyles', './resultado-final.css');
   asegurarCss('perfilesStyles', './perfiles.css');
   asegurarCss('ajustesStyles', './ajustes.css');
+  asegurarCss('diagnosticoStyles', './diagnostico.css');
 }
 
 function iniciarNavegacion() {
@@ -45,6 +47,7 @@ function iniciarNavegacion() {
     contenedorVista: document.getElementById('pantallaDinamica')
   });
   inicializarDiagnosticoFuerteUI();
+  inicializarDiagnosticoWizardUI();
   inicializarAuditoriaIntegralUI();
   inicializarResultadoFinalUI();
   inicializarResultadoFinalWizardUI();
