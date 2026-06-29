@@ -48,6 +48,19 @@ function existeArchivo(rutaArchivo) {
   }
 }
 
+function asegurarCarpetaProduccion(rutaCarpeta) {
+  const ruta = texto(rutaCarpeta, '');
+  if (!ruta) throw new Error('No se puede preparar Producción: falta ruta de carpeta de trabajo.');
+  fs.mkdirSync(ruta, { recursive: true });
+  return ruta;
+}
+
+function crearCarpetasProduccion(carpetaProyecto) {
+  const carpetaProduccion = asegurarCarpetaProduccion(path.join(carpetaProyecto, 'produccion'));
+  const carpetaEdicionDinamica = asegurarCarpetaProduccion(path.join(carpetaProduccion, 'edicion-dinamica'));
+  return { carpetaProduccion, carpetaEdicionDinamica };
+}
+
 function rutaVideoSeguro(video = {}) {
   const ruta = texto(video.rutaProyecto || video.rutaOriginal || video.ruta, '');
   if (!ruta) throw new Error(`No se puede preparar Producción: el video ${video.videoId || video.id || 'sin-id'} no tiene ruta válida.`);
@@ -67,12 +80,30 @@ function extensionSegura(rutaVideo = '', respaldo = '.mp4') {
   return ext || respaldo;
 }
 
+function resumirStack(error) {
+  return String(error?.stack || '').split('\n').slice(1, 5).map((linea) => linea.trim()).filter(Boolean).join(' | ');
+}
+
 function enriquecerErrorProduccion(error, contexto = {}) {
   const mensaje = String(error?.message || error || 'Error desconocido en Producción.');
+  const paso = contexto.paso ? ` Paso: ${contexto.paso}.` : '';
+  const stack = resumirStack(error);
+  const detalleStack = stack ? ` Ubicación probable: ${stack}` : '';
   if (mensaje.includes('The "path" argument must be of type string') || mensaje.includes('Received null')) {
-    return new Error(`Producción recibió una ruta de archivo vacía o nula. Proyecto: ${contexto.proyectoId || 'sin proyecto'}. Etapa: ${contexto.etapa || 'producción'}. Se protegió el flujo para exigir rutas válidas antes de renderizar. Detalle original: ${mensaje}`);
+    return new Error(`Producción recibió una ruta de archivo vacía o nula. Proyecto: ${contexto.proyectoId || 'sin proyecto'}. Etapa: ${contexto.etapa || 'producción'}.${paso} Se protegió el flujo para exigir rutas válidas antes de renderizar. Detalle original: ${mensaje}.${detalleStack}`);
+  }
+  if (contexto.paso && !mensaje.includes(contexto.paso)) {
+    return new Error(`Error en Producción. Proyecto: ${contexto.proyectoId || 'sin proyecto'}. Paso: ${contexto.paso}. Detalle: ${mensaje}.${detalleStack}`);
   }
   return error;
+}
+
+async function ejecutarPasoProduccion({ proyectoId, paso }, accion) {
+  try {
+    return await accion();
+  } catch (error) {
+    throw enriquecerErrorProduccion(error, { proyectoId, etapa: ETAPAS_AUTOVIDEO.PRODUCCION, paso });
+  }
 }
 
 function seleccionarVideoPrincipal(videos = []) {
@@ -139,12 +170,14 @@ async function prepararVideoBaseProduccion({ proyectoId, carpetaProyecto, videos
   return { ok: true, multivideoActivo: true, video: unionVideos.videoMaestro, unionVideos, videosFuente: videosValidos, lineaTiempoGlobal };
 }
 
-function crearEntradaProduccion({ proyectoId, estado, video, carpetaProyecto, plan, videoBase }) {
+function crearEntradaProduccion({ proyectoId, estado, video, carpetaProyecto, plan, videoBase, carpetasProduccion = {} }) {
   if (!carpetaProyecto) throw new Error('No se puede preparar Producción: falta carpeta del proyecto.');
   const proyectoPlan = plan.proyecto || {};
   const multivideoActivo = Boolean(videoBase?.multivideoActivo);
   const rutaVideo = rutaVideoSeguro(video);
   const nombreSeguro = nombreArchivoSeguro(video, rutaVideo);
+  const carpetaProduccion = texto(carpetasProduccion.carpetaProduccion, '') || path.join(carpetaProyecto, 'produccion');
+  const carpetaEdicionDinamica = texto(carpetasProduccion.carpetaEdicionDinamica, '') || path.join(carpetaProduccion, 'edicion-dinamica');
   return {
     ok: true,
     etapa: ETAPAS_AUTOVIDEO.PRODUCCION,
@@ -180,7 +213,8 @@ function crearEntradaProduccion({ proyectoId, estado, video, carpetaProyecto, pl
     rutas: {
       carpetaProyecto,
       rutaVideoOriginal: rutaVideo,
-      carpetaProduccion: path.join(carpetaProyecto, 'produccion')
+      carpetaProduccion,
+      carpetaEdicionDinamica
     }
   };
 }
@@ -225,7 +259,7 @@ function crearTranscripcionDesdeEntendimiento(entendimiento = {}) {
   };
 }
 
-function crearEdicionDinamicaDesdePlan({ plan = {}, puenteEdicion = null } = {}) {
+function crearEdicionDinamicaDesdePlan({ plan = {}, puenteEdicion = null, carpetasProduccion = {} } = {}) {
   const puente = puenteEdicion || construirInstruccionesEdicionDesdePlan(plan);
   const resumen = puente.resumen || {};
   return {
@@ -233,6 +267,8 @@ function crearEdicionDinamicaDesdePlan({ plan = {}, puenteEdicion = null } = {})
     omitido: !puente.ok || !puente.mapaTiempo?.length,
     origen: plan.multivideo?.activo ? 'plan-ejecutable-gemini-multivideo' : 'plan-ejecutable-gemini',
     planProduccionId: plan.planProduccion?.id || null,
+    carpetaProduccion: carpetasProduccion.carpetaProduccion || null,
+    carpetaEdicionDinamica: carpetasProduccion.carpetaEdicionDinamica || null,
     elementosUsados: puente.mapaTiempo?.length || 0,
     planEjecutable: puente.planEjecutable || null,
     puentePlanEdicion: puente,
@@ -402,15 +438,16 @@ export async function procesarProduccionMaestroProyectoEtapa({ proyectoId, opcio
     const estadoProcesando = await cargarEstadoProyectoEtapas({ proyectoId, crearSiFalta: false });
     const entendimiento = extraerEntendimiento(entendimientoGuardado);
     const plan = extraerPlan(planGuardado);
+    const carpetasProduccion = crearCarpetasProduccion(carpetaProyecto);
     const puenteEdicion = construirInstruccionesEdicionDesdePlan(plan);
-    const videoBase = await prepararVideoBaseProduccion({ proyectoId, carpetaProyecto, videosValidos, entendimiento, plan });
-    const entrada = crearEntradaProduccion({ proyectoId, estado: estadoProcesando, video: videoBase.video, carpetaProyecto, plan, videoBase });
+    const videoBase = await ejecutarPasoProduccion({ proyectoId, paso: 'preparar video base' }, () => prepararVideoBaseProduccion({ proyectoId, carpetaProyecto, videosValidos, entendimiento, plan }));
+    const entrada = crearEntradaProduccion({ proyectoId, estado: estadoProcesando, video: videoBase.video, carpetaProyecto, plan, videoBase, carpetasProduccion });
     const opcionesProduccion = crearOpcionesProduccion({ plan, solicitud: { ...opciones, ...solicitud }, videoBase, puenteEdicion });
     const transcripcion = crearTranscripcionDesdeEntendimiento(entendimiento);
-    const edicionDinamica = crearEdicionDinamicaDesdePlan({ plan, puenteEdicion });
+    const edicionDinamica = crearEdicionDinamicaDesdePlan({ plan, puenteEdicion, carpetasProduccion });
 
-    const edicion = await editarVideo({ entrada, entendimiento, audio: null, transcripcion, edicionDinamica, opciones: opcionesProduccion, progreso: null });
-    const salida = await prepararSalida({ entrada, entendimiento, audio: null, transcripcion, edicionDinamica, edicion, opciones: opcionesProduccion, progreso: null });
+    const edicion = await ejecutarPasoProduccion({ proyectoId, paso: 'editar video maestro' }, () => editarVideo({ entrada, entendimiento, audio: null, transcripcion, edicionDinamica, opciones: opcionesProduccion, progreso: null }));
+    const salida = await ejecutarPasoProduccion({ proyectoId, paso: 'exportar salida y reporte final' }, () => prepararSalida({ entrada, entendimiento, audio: null, transcripcion, edicionDinamica, edicion, opciones: opcionesProduccion, progreso: null }));
     const timelineEditorial = construirTimelineEditorialProduccion({ plan, edicion, salida, videoBase, edicionDinamica });
     const resumen = crearResumenProduccion({ plan, edicion, salida, videoBase, timelineEditorial, puenteEdicion });
     const auditoria = crearAuditoriaProduccion({ entrada, plan, edicion, salida, videoBase, timelineEditorial, puenteEdicion });
@@ -488,7 +525,7 @@ export async function procesarProduccionMaestroProyectoEtapa({ proyectoId, opcio
       mensaje: videoBase.multivideoActivo ? 'Video maestro multivideo producido correctamente.' : 'Video maestro producido correctamente.'
     };
   } catch (error) {
-    const errorSeguro = enriquecerErrorProduccion(error, { proyectoId, etapa: ETAPAS_AUTOVIDEO.PRODUCCION });
+    const errorSeguro = enriquecerErrorProduccion(error, { proyectoId, etapa: ETAPAS_AUTOVIDEO.PRODUCCION, paso: 'flujo general' });
     await marcarErrorEstadoProyectoEtapas({ proyectoId, etapa: ETAPAS_AUTOVIDEO.PRODUCCION, error: errorSeguro, mensaje: 'Error en producción maestro.' }).catch(() => null);
     throw errorSeguro;
   }
