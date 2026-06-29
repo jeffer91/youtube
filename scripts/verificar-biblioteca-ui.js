@@ -1,8 +1,16 @@
-/* Verificacion Bloque Biblioteca 2: pantalla Carga y Recursos. */
+/* Verificacion Biblioteca UI: pantalla Carga guiada y Recursos. */
 
 import fs from 'fs';
 import { renderBibliotecaView } from '../app/pantallas/biblioteca.view.js';
 import { renderRecursosBiblioteca } from '../app/biblioteca-ui.js';
+
+function exigir(condicion, mensaje) {
+  if (!condicion) throw new Error(mensaje);
+}
+
+function contiene(contenido, claves, contexto) {
+  for (const clave of claves) exigir(contenido.includes(clave), `${contexto} no contiene ${clave}`);
+}
 
 function main() {
   const vista = renderBibliotecaView();
@@ -13,19 +21,55 @@ function main() {
     { id: 'recurso-1', nombre: 'Intro 11 contra 11', tipo: 'video', categoria: 'intro', estilos: ['11-contra-11'], formato: 'horizontal-16-9', estadoTecnico: 'listo' }
   ], 'table');
   const ui = fs.readFileSync('app/biblioteca-ui.js', 'utf-8');
+  const css = fs.readFileSync('app/biblioteca-ui.css', 'utf-8');
+  const procesos = fs.readFileSync('app/procesos-ui/procesos.config.js', 'utf-8');
   const rutas = fs.readFileSync('server/rutas-modulares.service.js', 'utf-8');
   const main = fs.readFileSync('main.js', 'utf-8');
   const preload = fs.readFileSync('preload.js', 'utf-8');
 
-  if (!vista.includes('data-library-tab="carga"') || !vista.includes('data-library-tab="recursos"')) throw new Error('Faltan pestanas Carga y Recursos.');
-  if (!vista.includes('libraryNewStyles') || !vista.includes('libraryNewCategory') || !vista.includes('libraryNewFormat')) throw new Error('Formulario compacto de carga incompleto.');
-  if (!tarjetas.includes('Intro 11 contra 11') || !tarjetas.includes('11-contra-11')) throw new Error('Render de tarjetas incompleto.');
-  if (!tabla.includes('<table') || !tabla.includes('horizontal-16-9')) throw new Error('Vista tabla incompleta.');
-  if (!ui.includes('/api/autovideo/biblioteca/estilos') || !ui.includes('duplicate-replace')) throw new Error('UI Biblioteca no conecta estilos o duplicados.');
-  if (!rutas.includes('/api/autovideo/biblioteca/estilos') || !rutas.includes('guardarRecursoBiblioteca(payload')) throw new Error('Rutas API biblioteca incompletas.');
-  if (!main.includes('biblioteca:seleccionarArchivo') || !preload.includes('seleccionarArchivo')) throw new Error('Selector seguro de archivos no expuesto a UI.');
+  contiene(vista, [
+    'data-proceso-root="biblioteca-general"',
+    'data-proceso-resumen="biblioteca-general"',
+    'data-library-tab="carga"',
+    'data-library-tab="recursos"',
+    'data-library-wizard-panel="archivo"',
+    'data-library-wizard-panel="categoria"',
+    'data-library-wizard-panel="datos"',
+    'data-library-wizard-panel="guardar"',
+    'libraryNewStyles',
+    'libraryNewCategory',
+    'libraryNewFormat',
+    'libraryDuplicateBox'
+  ], 'Vista biblioteca');
 
-  console.log('OK biblioteca UI bloque 2: Carga y Recursos conectados');
+  exigir(tarjetas.includes('Intro 11 contra 11') && tarjetas.includes('11-contra-11'), 'Render de tarjetas incompleto.');
+  exigir(tabla.includes('<table') && tabla.includes('horizontal-16-9'), 'Vista tabla incompleta.');
+
+  contiene(ui, [
+    './procesos-ui/proceso-visual.service.js',
+    'activarPasoBibliotecaGeneral',
+    'irAPasoBibliotecaGeneral',
+    'MAPA_PASO_PROCESO',
+    'data-library-wizard-go',
+    '/api/autovideo/biblioteca/estilos',
+    'duplicate-replace',
+    'duplicate-copy'
+  ], 'UI Biblioteca');
+
+  contiene(css, [
+    '.library-guided-layout',
+    '.library-guided-rail',
+    '.library-wizard-step',
+    '.library-wizard-panel',
+    '.library-save-review',
+    '.library-advanced-filters'
+  ], 'CSS Biblioteca');
+
+  contiene(procesos, ['biblioteca-general', 'subir-archivo', 'categoria', 'datos-basicos', 'guardar', 'revisar'], 'Procesos UI');
+  exigir(rutas.includes('/api/autovideo/biblioteca/estilos') && rutas.includes('guardarRecursoBiblioteca(payload'), 'Rutas API biblioteca incompletas.');
+  exigir(main.includes('biblioteca:seleccionarArchivo') && preload.includes('seleccionarArchivo'), 'Selector seguro de archivos no expuesto a UI.');
+
+  console.log('OK biblioteca UI guiada: carga por pasos, recursos, API, CSS y proceso visual conectados.');
 }
 
 try {
