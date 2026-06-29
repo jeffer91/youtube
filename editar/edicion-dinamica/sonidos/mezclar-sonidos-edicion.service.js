@@ -5,6 +5,7 @@ import ffmpegStatic from 'ffmpeg-static';
 
 function resolverRutaFfmpeg() { return typeof ffmpegStatic === 'string' ? ffmpegStatic : ffmpegStatic?.path; }
 function msDelay(segundos) { return Math.max(0, Math.round(Number(segundos || 0) * 1000)); }
+function texto(valor, respaldo = '') { const limpio = String(valor ?? '').trim(); return limpio || respaldo; }
 
 function ejecutarFfmpeg(args) {
   return new Promise((resolve, reject) => {
@@ -22,6 +23,18 @@ function ejecutarFfmpeg(args) {
 
 function validarAudioBase(rutaAudioBase) { if (!rutaAudioBase || !fs.existsSync(rutaAudioBase)) throw new Error(`No se encontró audio base para mezclar sonidos: ${rutaAudioBase || 'sin ruta'}`); }
 function construirEntradasSonidos(eventos, sonidosBase) { return eventos.map((evento) => ({ ...evento, ruta: sonidosBase.sonidos[evento.sonido].ruta })); }
+
+function resolverCarpetaSonidos({ carpetaSonidos, rutaVideoBase, rutaAudioBase } = {}) {
+  const carpeta = texto(carpetaSonidos, '');
+  if (carpeta) return carpeta;
+  const base = texto(rutaVideoBase || rutaAudioBase, '');
+  if (base) return path.join(path.dirname(base), 'sonidos-edicion');
+  throw new Error('No se puede mezclar sonidos porque falta carpeta de sonidos y ruta de video base.');
+}
+
+function resolverNombreSalida(nombreSalida) {
+  return texto(nombreSalida, 'audio-con-sonidos-edicion.m4a').replace(/[\\/:*?"<>|]/g, '-');
+}
 
 function construirFiltroAudio(eventosConRuta) {
   const filtros = ['[0:a]aresample=async=1:first_pts=0,volume=1.0[a0]'];
@@ -42,7 +55,10 @@ export async function mezclarSonidosEdicion({ rutaVideoBase, rutaAudioBase = nul
   if (!Array.isArray(eventos) || eventos.length === 0) return { ok: true, omitido: true, audioConSonidos: null, mensaje: 'No hay sonidos para mezclar.' };
   const audioBase = rutaAudioBase || rutaVideoBase;
   validarAudioBase(audioBase);
-  const rutaSalida = path.join(carpetaSonidos, nombreSalida);
+  const carpetaFinal = resolverCarpetaSonidos({ carpetaSonidos, rutaVideoBase, rutaAudioBase: audioBase });
+  const nombreFinal = resolverNombreSalida(nombreSalida);
+  await fs.promises.mkdir(carpetaFinal, { recursive: true });
+  const rutaSalida = path.join(carpetaFinal, nombreFinal);
   const eventosConRuta = construirEntradasSonidos(eventos, sonidosBase);
   const filtroAudio = construirFiltroAudio(eventosConRuta);
   const args = ['-y', '-hide_banner', '-i', audioBase];
