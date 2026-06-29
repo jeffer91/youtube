@@ -112,6 +112,8 @@ function enlazarEventos() {
   root.addEventListener('click', async (evento) => {
     const accion = evento.target.closest('[data-diagnostic-action]')?.dataset.diagnosticAction;
     if (accion) {
+      evento.preventDefault();
+      evento.stopPropagation();
       await ejecutarAccionDiagnostico(accion);
       return;
     }
