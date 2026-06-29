@@ -10,6 +10,7 @@ import { inicializarPlanEdicionWizardUI } from '../etapas-ui/plan-edicion-wizard
 import { inicializarProduccionMaestroUI } from '../etapas-ui/produccion-maestro-ui.js';
 import { inicializarProduccionMaestroWizardUI } from '../etapas-ui/produccion-maestro-wizard-ui.js';
 import { inicializarAdaptacionUI } from '../etapas-ui/adaptacion-ui.js';
+import { inicializarAdaptacionWizardUI } from '../etapas-ui/adaptacion-wizard-ui.js';
 
 function asegurarCss(id, href) {
   if (typeof document === 'undefined') return;
@@ -48,6 +49,7 @@ function iniciarNavegacion() {
   inicializarProduccionMaestroUI();
   inicializarProduccionMaestroWizardUI();
   inicializarAdaptacionUI();
+  inicializarAdaptacionWizardUI();
 }
 
 document.addEventListener('DOMContentLoaded', iniciarNavegacion);
