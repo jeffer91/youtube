@@ -6,12 +6,14 @@
 import { MENU_PRINCIPAL, obtenerItemMenu } from './menu.config.js';
 import { guardarPantallaActiva, obtenerPantallaActiva } from './estado-pantalla.service.js';
 import { renderizarSubmenu } from './submenus.service.js';
+import { inicializarLaboratorioEfectosUI } from '../laboratorio-efectos-ui.js';
 import {
   renderInicioView,
   renderNuevoProyectoView,
   renderEntendimientoView,
   renderBibliotecaProyectoView,
   renderPlanEdicionView,
+  renderLaboratorioEfectosView,
   renderAdaptacionView,
   renderProcesadoView,
   renderProduccionView,
@@ -29,6 +31,7 @@ const VISTAS = Object.freeze({
   entendimiento: renderEntendimientoView,
   'biblioteca-proyecto': renderBibliotecaProyectoView,
   'plan-edicion': renderPlanEdicionView,
+  'laboratorio-efectos': renderLaboratorioEfectosView,
   adaptacion: renderAdaptacionView,
   procesado: renderProcesadoView,
   produccion: renderProduccionView,
@@ -71,6 +74,10 @@ function emitirEventoNavegacion(item) {
   }));
 }
 
+function inicializarPantallaEspecial(item) {
+  if (item.id === 'laboratorio-efectos') setTimeout(inicializarLaboratorioEfectosUI, 0);
+}
+
 export function renderizarMenuPrincipal(contenedor, pantallaActiva = 'inicio') {
   if (!contenedor) return;
   contenedor.innerHTML = `<nav class="aj-main-menu" aria-label="Menu principal AutoVideoJeff">${renderLogoMenu()}${MENU_PRINCIPAL.map((item) => renderBotonMenu(item, item.id === pantallaActiva)).join('')}</nav>`;
@@ -84,6 +91,7 @@ export function renderizarPantalla(contenedor, pantallaId = 'inicio') {
   contenedor.innerHTML = `${render()}${renderizarSubmenu(item.id)}`;
   guardarPantallaActiva(item.id);
   emitirEventoNavegacion(item);
+  inicializarPantallaEspecial(item);
 }
 
 export function cambiarPantalla({ pantallaId, contenedorMenu, contenedorVista }) {
