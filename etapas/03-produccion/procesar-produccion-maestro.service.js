@@ -18,6 +18,7 @@ import {
   cargarResultadoEtapa
 } from '../../flujo-etapas/flujo-etapas.conexion.js';
 import { unirVideosMaestroMultivideo } from './unir-videos-maestro.service.js';
+import { construirTimelineEditorialProduccion } from './construir-marcadores-produccion.service.js';
 
 function texto(valor, respaldo = '') {
   const limpio = String(valor ?? '').replace(/\s+/g, ' ').trim();
@@ -202,15 +203,21 @@ function crearTranscripcionDesdeEntendimiento(entendimiento = {}) {
   };
 }
 
+function obtenerPlanEjecutable(plan = {}) {
+  return plan.planEjecutable || plan.planPorPartes?.planEjecutable || plan.planProduccion?.planEjecutable || null;
+}
+
 function crearEdicionDinamicaDesdePlan(plan = {}) {
   const elementos = Array.isArray(plan.planProduccion?.elementos) ? plan.planProduccion.elementos : [];
-  const cortes = elementos.filter((item) => ['corte', 'segmento', 'subtitulo', 'texto', 'efecto', 'recurso', 'zoom', 'animacion'].includes(item.tipo)).slice(0, 80);
+  const planEjecutable = obtenerPlanEjecutable(plan);
+  const cortes = elementos.filter((item) => ['corte', 'segmento', 'subtitulo', 'texto', 'efecto', 'recurso', 'zoom', 'animacion', 'transicion', 'audio'].includes(item.tipo)).slice(0, 80);
   return {
     activo: cortes.length > 0,
     omitido: cortes.length === 0,
     origen: plan.multivideo?.activo ? 'plan-edicion-multivideo' : 'plan-edicion',
     planProduccionId: plan.planProduccion?.id || null,
     elementosUsados: cortes.length,
+    planEjecutable,
     multivideo: plan.multivideo || plan.planProduccion?.multivideo || null,
     lineaTiempoGlobal: plan.planProduccion?.lineaTiempoGlobal || plan.fuente?.lineaTiempoGlobal || null,
     mapaTiempo: cortes.map((item, index) => ({
@@ -236,8 +243,9 @@ function crearEdicionDinamicaDesdePlan(plan = {}) {
   };
 }
 
-function crearResumenProduccion({ plan, edicion, salida, videoBase }) {
+function crearResumenProduccion({ plan, edicion, salida, videoBase, timelineEditorial }) {
   const elementos = Array.isArray(plan.planProduccion?.elementos) ? plan.planProduccion.elementos : [];
+  const resumenMarcadores = timelineEditorial?.resumen || {};
   return {
     totalElementosPlan: elementos.length,
     elementosAprobados: elementos.filter((item) => item.aprobado).length,
@@ -245,7 +253,7 @@ function crearResumenProduccion({ plan, edicion, salida, videoBase }) {
     esMultivideo: Boolean(videoBase?.multivideoActivo),
     videosFuente: videoBase?.videosFuente?.length || 1,
     videoMaestroUnido: videoBase?.unionVideos?.videoMaestro?.nombreSeguro || null,
-    duracionTotalSegundos: plan.resumen?.duracionTotalSegundos || plan.planProduccion?.duracionSegundos || null,
+    duracionTotalSegundos: plan.resumen?.duracionTotalSegundos || plan.planProduccion?.duracionSegundos || timelineEditorial?.duracionSegundos || null,
     videoMaestro: salida?.nombreExportado || null,
     urlPublica: salida?.urlPublica || null,
     pesoBytes: salida?.pesoBytes || null,
@@ -254,11 +262,33 @@ function crearResumenProduccion({ plan, edicion, salida, videoBase }) {
     filtroVideo: edicion?.render?.filtroVideo || null,
     antesDespues: Boolean(salida?.antesDespues?.ok),
     reporteFinal: salida?.reporteFinal?.nombreArchivo || null,
-    listoParaAdaptacion: Boolean(salida?.ok && salida?.rutaExportada)
+    listoParaAdaptacion: Boolean(salida?.ok && salida?.rutaExportada),
+    timelineEditorial: {
+      existe: Boolean(timelineEditorial?.ok),
+      totalMarcadores: resumenMarcadores.totalMarcadores || 0,
+      totalPistas: resumenMarcadores.totalPistas || 0,
+      duracionSegundos: resumenMarcadores.duracionSegundos || timelineEditorial?.duracionSegundos || 0
+    },
+    marcadores: {
+      total: resumenMarcadores.totalMarcadores || 0,
+      aplicados: resumenMarcadores.aplicados || 0,
+      planificados: resumenMarcadores.planificados || 0,
+      omitidos: resumenMarcadores.omitidos || 0,
+      globales: resumenMarcadores.globales || 0,
+      cortes: resumenMarcadores.cortes || 0,
+      subtitulos: resumenMarcadores.subtitulos || 0,
+      textos: resumenMarcadores.textos || 0,
+      zooms: resumenMarcadores.zooms || 0,
+      efectos: resumenMarcadores.efectos || 0,
+      animaciones: resumenMarcadores.animaciones || 0,
+      transiciones: resumenMarcadores.transiciones || 0,
+      audioSfx: resumenMarcadores.audioSfx || 0,
+      recursos: resumenMarcadores.recursos || 0
+    }
   };
 }
 
-function crearAuditoriaProduccion({ entrada, plan, edicion, salida, videoBase }) {
+function crearAuditoriaProduccion({ entrada, plan, edicion, salida, videoBase, timelineEditorial }) {
   return {
     tipo: videoBase?.multivideoActivo ? 'produccion-maestro-multivideo' : 'produccion-maestro',
     entrada: {
@@ -274,6 +304,14 @@ function crearAuditoriaProduccion({ entrada, plan, edicion, salida, videoBase })
       resumen: plan.resumen || null,
       multivideo: plan.multivideo || plan.planProduccion?.multivideo || null
     },
+    timelineEditorial: timelineEditorial ? {
+      ok: Boolean(timelineEditorial.ok),
+      version: timelineEditorial.version || null,
+      totalMarcadores: timelineEditorial.resumen?.totalMarcadores || 0,
+      totalPistas: timelineEditorial.resumen?.totalPistas || 0,
+      porTipo: timelineEditorial.resumen?.porTipo || {},
+      porPista: timelineEditorial.resumen?.porPista || {}
+    } : null,
     unionVideos: videoBase?.unionVideos ? {
       ok: videoBase.unionVideos.ok,
       metodo: videoBase.unionVideos.metodo,
@@ -331,8 +369,9 @@ export async function procesarProduccionMaestroProyectoEtapa({ proyectoId, opcio
 
     const edicion = await editarVideo({ entrada, entendimiento, audio: null, transcripcion, edicionDinamica, opciones: opcionesProduccion, progreso: null });
     const salida = await prepararSalida({ entrada, entendimiento, audio: null, transcripcion, edicionDinamica, edicion, opciones: opcionesProduccion, progreso: null });
-    const resumen = crearResumenProduccion({ plan, edicion, salida, videoBase });
-    const auditoria = crearAuditoriaProduccion({ entrada, plan, edicion, salida, videoBase });
+    const timelineEditorial = construirTimelineEditorialProduccion({ plan, edicion, salida, videoBase, edicionDinamica });
+    const resumen = crearResumenProduccion({ plan, edicion, salida, videoBase, timelineEditorial });
+    const auditoria = crearAuditoriaProduccion({ entrada, plan, edicion, salida, videoBase, timelineEditorial });
 
     const produccion = {
       ok: true,
@@ -360,6 +399,10 @@ export async function procesarProduccionMaestroProyectoEtapa({ proyectoId, opcio
         fuenteTemporal: videoBase.unionVideos?.videoMaestro || null
       },
       planProduccion: plan.planProduccion,
+      timelineEditorial,
+      pistasProduccion: timelineEditorial.pistas,
+      marcadoresProduccion: timelineEditorial.marcadores,
+      resumenMarcadores: timelineEditorial.resumen,
       edicion,
       salida,
       auditoria,
@@ -375,7 +418,8 @@ export async function procesarProduccionMaestroProyectoEtapa({ proyectoId, opcio
         bloque: 10,
         tipo: videoBase.multivideoActivo ? 'produccion-maestro-backend-multivideo' : 'produccion-maestro-backend',
         origen: 'POST /api/proyectos/:proyectoId/produccion/procesar',
-        multivideo: produccion.multivideo
+        multivideo: produccion.multivideo,
+        timelineEditorial: produccion.resumenMarcadores
       }
     });
 
