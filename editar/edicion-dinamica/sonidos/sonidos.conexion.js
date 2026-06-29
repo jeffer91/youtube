@@ -9,6 +9,8 @@ import { validarSonidosEdicion } from './validar-sonidos-edicion.js';
 import { mezclarSonidosEdicion } from './mezclar-sonidos-edicion.service.js';
 import { mejorarEventosSonidoPremium } from './premium/index.js';
 
+function texto(valor, respaldo = '') { const limpio = String(valor ?? '').trim(); return limpio || respaldo; }
+
 function crearOmitido({ mensaje, carpetaSonidos = null, config = null, premium = null, eventosPlan = 0 }) {
   return {
     ok: true,
@@ -28,6 +30,22 @@ function crearOmitido({ mensaje, carpetaSonidos = null, config = null, premium =
 
 function existeArchivo(ruta) {
   return Boolean(ruta && fs.existsSync(ruta));
+}
+
+function resolverCarpetaSonidos({ edicionDinamica = null, rutaVideoBase = null } = {}) {
+  const carpetaDirecta = texto(edicionDinamica?.carpetaEdicionDinamica, '');
+  if (carpetaDirecta) return path.join(carpetaDirecta, 'sonidos');
+  const carpetaProduccion = texto(edicionDinamica?.carpetaProduccion, '');
+  if (carpetaProduccion) return path.join(carpetaProduccion, 'edicion-dinamica', 'sonidos');
+  const rutaVideo = texto(rutaVideoBase, '');
+  if (rutaVideo) return path.join(path.dirname(rutaVideo), 'sonidos-edicion');
+  return null;
+}
+
+async function escribirJsonSiHayCarpeta(carpetaSonidos, nombre, datos) {
+  if (!carpetaSonidos) return null;
+  asegurarCarpeta(carpetaSonidos);
+  return await escribirJson(path.join(carpetaSonidos, nombre), datos);
 }
 
 function seleccionarAudioBase({ audio = null, rutaVideoBase = null, edicionDinamica = null }) {
@@ -57,8 +75,7 @@ function contarEventosPlanSonido({ edicionDinamica = null, opciones = {} } = {})
 
 export async function procesarSonidosEdicion({ rutaVideoBase, audio = null, visualDinamico = null, edicionDinamica = null, opciones = {}, progreso = null } = {}) {
   const config = obtenerConfigSonidosEdicion(opciones);
-  const carpetaBase = edicionDinamica?.carpetaEdicionDinamica || null;
-  const carpetaSonidos = carpetaBase ? path.join(carpetaBase, 'sonidos') : null;
+  const carpetaSonidos = resolverCarpetaSonidos({ edicionDinamica, rutaVideoBase });
   const totalPlanSonido = contarEventosPlanSonido({ edicionDinamica, opciones });
 
   await reportarModulo(progreso, {
@@ -82,8 +99,8 @@ export async function procesarSonidosEdicion({ rutaVideoBase, audio = null, visu
     return crearOmitido({ mensaje: 'No hay eventos visuales ni SFX del plan para convertir en sonidos.', carpetaSonidos, config, eventosPlan: totalPlanSonido });
   }
   if (!carpetaSonidos) {
-    await reportarModulo(progreso, { etapa: 'editar', porcentaje: 85, titulo: 'Sonidos omitidos', detalle: 'No hay carpeta de edición dinámica para guardar sonidos.', archivo: 'editar/edicion-dinamica/sonidos/sonidos.conexion.js' });
-    return crearOmitido({ mensaje: 'No hay carpeta de edición dinámica para guardar sonidos.', carpetaSonidos, config, eventosPlan: totalPlanSonido });
+    await reportarModulo(progreso, { etapa: 'editar', porcentaje: 85, titulo: 'Sonidos omitidos', detalle: 'No hay carpeta segura para guardar sonidos.', archivo: 'editar/edicion-dinamica/sonidos/sonidos.conexion.js' });
+    return crearOmitido({ mensaje: 'No hay carpeta segura para guardar sonidos.', carpetaSonidos, config, eventosPlan: totalPlanSonido });
   }
 
   asegurarCarpeta(carpetaSonidos);
@@ -100,7 +117,7 @@ export async function procesarSonidosEdicion({ rutaVideoBase, audio = null, visu
     });
 
     if (eventosBase.omitido || eventosBase.eventos.length === 0) {
-      await escribirJson(path.join(carpetaSonidos, 'eventos-sonido.json'), eventosBase);
+      await escribirJsonSiHayCarpeta(carpetaSonidos, 'eventos-sonido.json', eventosBase);
       return crearOmitido({ mensaje: eventosBase.mensaje, carpetaSonidos, config, eventosPlan: eventosBase.eventosPlan?.length || totalPlanSonido });
     }
 
@@ -114,11 +131,11 @@ export async function procesarSonidosEdicion({ rutaVideoBase, audio = null, visu
     const validacion = validarSonidosEdicion({ rutaVideoBase, eventos: eventos.eventos, sonidosBase });
     await reportarModulo(progreso, { etapa: 'editar', porcentaje: 88, titulo: 'Validando SFX premium', detalle: validacion.ok ? 'SFX premium/listo para mezclar.' : validacion.mensaje, datos: { ok: validacion.ok, errores: validacion.errores || [] }, archivo: 'editar/edicion-dinamica/sonidos/validar-sonidos-edicion.js' });
 
-    await escribirJson(path.join(carpetaSonidos, 'eventos-sonido-base.json'), eventosBase);
-    await escribirJson(path.join(carpetaSonidos, 'eventos-sonido.json'), eventos);
-    await escribirJson(path.join(carpetaSonidos, 'sfx-premium.json'), eventosPremium);
-    await escribirJson(path.join(carpetaSonidos, 'sonidos-base.json'), sonidosBase);
-    await escribirJson(path.join(carpetaSonidos, 'validacion-sonidos.json'), validacion);
+    await escribirJsonSiHayCarpeta(carpetaSonidos, 'eventos-sonido-base.json', eventosBase);
+    await escribirJsonSiHayCarpeta(carpetaSonidos, 'eventos-sonido.json', eventos);
+    await escribirJsonSiHayCarpeta(carpetaSonidos, 'sfx-premium.json', eventosPremium);
+    await escribirJsonSiHayCarpeta(carpetaSonidos, 'sonidos-base.json', sonidosBase);
+    await escribirJsonSiHayCarpeta(carpetaSonidos, 'validacion-sonidos.json', validacion);
 
     if (!validacion.ok) return crearOmitido({ mensaje: validacion.mensaje, carpetaSonidos, config, premium: eventos.sfxPremium, eventosPlan: eventos.eventosPlan?.length || totalPlanSonido });
 
@@ -156,14 +173,14 @@ export async function procesarSonidosEdicion({ rutaVideoBase, audio = null, visu
       creadoEn: new Date().toISOString()
     };
 
-    await escribirJson(path.join(carpetaSonidos, 'resultado-sonidos.json'), resultado);
+    await escribirJsonSiHayCarpeta(carpetaSonidos, 'resultado-sonidos.json', resultado);
     await reportarModulo(progreso, { etapa: 'editar', porcentaje: 90, titulo: 'Audio final con SFX premium', detalle: `${eventos.eventos.length} SFX mezclados con voz al frente · plan ${resumenPlanSonido.aplicados}/${resumenPlanSonido.total}.`, datos: { eventosSonido: eventos.eventos.length, resumenPlanSonido, audioConSonidos: mezcla.audioConSonidos, origenAudioBase: audioBase.origen, calidadSfx: eventos.sfxPremium?.calidadSfx || null }, archivo: 'editar/edicion-dinamica/sonidos/sonidos.conexion.js' });
 
     return resultado;
   } catch (error) {
     const resultado = crearOmitido({ mensaje: `No se aplicaron sonidos: ${error.message}`, carpetaSonidos, config, eventosPlan: totalPlanSonido });
     await reportarModulo(progreso, { etapa: 'editar', porcentaje: 88, titulo: 'SFX premium en modo seguro', detalle: resultado.mensaje, archivo: 'editar/edicion-dinamica/sonidos/sonidos.conexion.js' });
-    await escribirJson(path.join(carpetaSonidos, 'resultado-sonidos.json'), resultado);
+    await escribirJsonSiHayCarpeta(carpetaSonidos, 'resultado-sonidos.json', resultado);
     return resultado;
   }
 }
