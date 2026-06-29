@@ -1,4 +1,14 @@
-export const SONIDOS_EDICION = Object.freeze({ POP: 'pop', CLICK: 'click', WHOOSH: 'whoosh', HIT: 'hit', INTRO: 'intro', OUTRO: 'outro' });
+export const SONIDOS_EDICION = Object.freeze({
+  POP: 'pop',
+  CLICK: 'click',
+  WHOOSH: 'whoosh',
+  HIT: 'hit',
+  RISER: 'riser',
+  NOTIFICATION: 'notification',
+  BEEP: 'beep',
+  INTRO: 'intro',
+  OUTRO: 'outro'
+});
 
 export const CONFIG_SONIDOS_EDICION = Object.freeze({
   volumenPredeterminado: 0.11,
@@ -13,6 +23,9 @@ export const CONFIG_SONIDOS_EDICION = Object.freeze({
     click: { frecuencia: 1180, duracion: 0.035, volumen: 0.08 },
     whoosh: { frecuencia: 460, duracion: 0.14, volumen: 0.075 },
     hit: { frecuencia: 170, duracion: 0.08, volumen: 0.09 },
+    riser: { frecuencia: 680, duracion: 0.34, volumen: 0.072 },
+    notification: { frecuencia: 980, duracion: 0.10, volumen: 0.075 },
+    beep: { frecuencia: 760, duracion: 0.12, volumen: 0.07 },
     intro: { frecuencia: 620, duracion: 0.14, volumen: 0.075 },
     outro: { frecuencia: 380, duracion: 0.16, volumen: 0.075 }
   }
