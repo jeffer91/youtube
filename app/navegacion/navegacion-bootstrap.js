@@ -2,6 +2,7 @@ import { inicializarNavegacionAutoVideoJeff } from './navegacion.service.js';
 import { inicializarDiagnosticoFuerteUI } from '../diagnostico-fuerte-ui.js';
 import { inicializarAuditoriaIntegralUI } from '../auditoria-integral-ui.js';
 import { inicializarResultadoFinalUI } from '../resultado-final-ui.js';
+import { inicializarResultadoFinalWizardUI } from '../resultado-final-wizard-ui.js';
 import { inicializarEntendimientoUI } from '../etapas-ui/entendimiento-ui.js';
 import { inicializarEntendimientoWizardUI } from '../etapas-ui/entendimiento-wizard-ui.js';
 import { inicializarBibliotecaProyectoUI } from '../biblioteca-proyecto-ui.js';
@@ -41,6 +42,7 @@ function iniciarNavegacion() {
   inicializarDiagnosticoFuerteUI();
   inicializarAuditoriaIntegralUI();
   inicializarResultadoFinalUI();
+  inicializarResultadoFinalWizardUI();
   inicializarEntendimientoUI();
   inicializarEntendimientoWizardUI();
   inicializarBibliotecaProyectoUI();
