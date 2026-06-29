@@ -4,6 +4,11 @@
 */
 
 export const SUBMENUS = Object.freeze({
+  'laboratorio-efectos': [
+    { id: 'video-corto', titulo: 'Video corto' },
+    { id: 'catalogo', titulo: 'Catálogo' },
+    { id: 'comparacion', titulo: 'Antes/después' }
+  ],
   produccion: [
     { id: 'pendientes', titulo: 'Pendientes' },
     { id: 'aprobados', titulo: 'Aprobados' },
