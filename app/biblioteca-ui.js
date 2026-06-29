@@ -1,6 +1,17 @@
+import { aplicarProcesoVisual } from './procesos-ui/proceso-visual.service.js';
+
 const TIPOS = ['video', 'imagen', 'audio'];
 const FORMATOS = ['horizontal-16-9', 'vertical-9-16', 'cuadrado-1-1', 'audio', 'imagen', 'desconocido'];
 const STORAGE_BIBLIOTECA_AREA = 'autovideojeff.bibliotecaArea';
+const STORAGE_BIBLIOTECA_STEP = 'autovideojeff.bibliotecaGeneralPaso';
+const PASOS_BIBLIOTECA_GENERAL = ['archivo', 'categoria', 'datos', 'guardar', 'recursos'];
+const MAPA_PASO_PROCESO = Object.freeze({
+  archivo: 'subir-archivo',
+  categoria: 'categoria',
+  datos: 'datos-basicos',
+  guardar: 'guardar',
+  recursos: 'revisar'
+});
 
 let ultimoRecursoPendiente = null;
 
@@ -188,6 +199,74 @@ async function cargarOpcionesBase({ crearUrlApi }) {
   return { categorias, estilos };
 }
 
+function tieneArchivoSeleccionado() {
+  const doc = obtenerDocumento();
+  return Boolean(doc?.getElementById('libraryNewPath')?.value || doc?.getElementById('libraryNewOriginalName')?.value);
+}
+
+function cambiarTab(tabId) {
+  const doc = obtenerDocumento();
+  if (!doc) return;
+  doc.querySelectorAll('[data-library-tab]').forEach((boton) => boton.classList.toggle('is-active', boton.dataset.libraryTab === tabId));
+  doc.querySelectorAll('[data-library-panel]').forEach((panel) => {
+    const activo = panel.dataset.libraryPanel === tabId;
+    panel.classList.toggle('is-active', activo);
+    panel.hidden = !activo;
+  });
+}
+
+function actualizarRevisionGuardado() {
+  const doc = obtenerDocumento();
+  const titulo = doc?.getElementById('librarySaveReviewTitle');
+  const texto = doc?.getElementById('librarySaveReviewText');
+  if (!titulo || !texto) return;
+  const nombre = doc.getElementById('libraryNewName')?.value || 'Recurso sin nombre';
+  const categoriaSelect = doc.getElementById('libraryNewCategory');
+  const categoria = categoriaSelect?.selectedOptions?.[0]?.textContent || categoriaSelect?.value || 'sin categoría';
+  const tipo = doc.getElementById('libraryNewType')?.value || 'tipo no definido';
+  titulo.textContent = nombre;
+  texto.textContent = `${tipo} · ${categoria}. Al guardar, la app analizará el archivo y lo dejará disponible en recursos.`;
+}
+
+function activarPasoBibliotecaGeneral(paso = 'archivo', { guardar = true } = {}) {
+  const doc = obtenerDocumento();
+  if (!doc) return;
+  const pasoFinal = PASOS_BIBLIOTECA_GENERAL.includes(paso) ? paso : 'archivo';
+  if (pasoFinal === 'recursos') cambiarTab('recursos');
+  else cambiarTab('carga');
+
+  doc.querySelectorAll('[data-library-wizard-panel]').forEach((panel) => {
+    const activo = panel.dataset.libraryWizardPanel === pasoFinal;
+    panel.classList.toggle('is-active', activo);
+    panel.hidden = !activo;
+  });
+  const indiceActivo = PASOS_BIBLIOTECA_GENERAL.indexOf(pasoFinal);
+  doc.querySelectorAll('[data-library-wizard-go]').forEach((boton) => {
+    const indice = PASOS_BIBLIOTECA_GENERAL.indexOf(boton.dataset.libraryWizardGo);
+    boton.classList.toggle('is-active', boton.dataset.libraryWizardGo === pasoFinal);
+    boton.classList.toggle('is-complete', indice >= 0 && indice < indiceActivo);
+  });
+  const root = doc.querySelector('[data-library-general-root]');
+  if (root) {
+    root.dataset.procesoPasoActivo = MAPA_PASO_PROCESO[pasoFinal] || 'subir-archivo';
+    aplicarProcesoVisual({ contenedor: root, procesoId: 'biblioteca-general', pasoActivoId: root.dataset.procesoPasoActivo });
+  }
+  actualizarRevisionGuardado();
+  if (guardar) localStorage.setItem(STORAGE_BIBLIOTECA_STEP, pasoFinal);
+}
+
+async function irAPasoBibliotecaGeneral(paso = 'archivo', { crearUrlApi } = {}) {
+  const doc = obtenerDocumento();
+  const estado = doc?.getElementById('libraryStatus');
+  if (!['archivo', 'recursos'].includes(paso) && !tieneArchivoSeleccionado()) {
+    if (estado) estado.textContent = 'Primero selecciona un archivo para continuar.';
+    activarPasoBibliotecaGeneral('archivo');
+    return;
+  }
+  activarPasoBibliotecaGeneral(paso);
+  if (paso === 'recursos') await recargarBibliotecaUI({ crearUrlApi });
+}
+
 export async function recargarBibliotecaUI({ crearUrlApi } = {}) {
   const doc = obtenerDocumento(); if (!doc) return false; asegurarEstilosBiblioteca();
   const lista = doc.getElementById('libraryResourcesList'); const resumen = doc.getElementById('libraryResourcesSummary'); const estado = doc.getElementById('libraryStatus');
@@ -238,7 +317,8 @@ function aplicarArchivoSeleccionado(archivo = {}) {
   doc.getElementById('libraryNewOriginalName').value = nombre;
   doc.getElementById('libraryNewMime').value = archivo.type || archivo.mime || '';
   doc.getElementById('libraryNewSize').value = archivo.size || archivo.pesoBytes || 0;
-  doc.getElementById('libraryStatus').textContent = ruta ? 'Archivo cargado. Completa la clasificación y guarda para analizarlo.' : 'Archivo seleccionado, pero no se pudo leer la ruta local. Usa el selector de escritorio.';
+  doc.getElementById('libraryStatus').textContent = ruta ? 'Archivo cargado. Ahora elige la categoría.' : 'Archivo seleccionado, pero no se pudo leer la ruta local. Usa el selector de escritorio.';
+  activarPasoBibliotecaGeneral('categoria');
 }
 
 async function elegirArchivoBiblioteca() {
@@ -296,6 +376,7 @@ function limpiarFormularioNuevoRecurso() {
   const dup = doc?.getElementById('libraryDuplicateBox');
   if (dup) dup.hidden = true;
   ultimoRecursoPendiente = null;
+  activarPasoBibliotecaGeneral('archivo');
 }
 
 function mostrarDuplicado(resultado = {}) {
@@ -306,6 +387,7 @@ function mostrarDuplicado(resultado = {}) {
   const duplicado = resultado.duplicado || resultado.recurso?.duplicado || null;
   if (texto) texto.textContent = duplicado?.nombre ? `Parece repetido con: ${duplicado.nombre}` : 'Decide si quieres reemplazarlo o guardarlo como copia.';
   box.hidden = false;
+  activarPasoBibliotecaGeneral('guardar');
 }
 
 async function guardarRecurso({ crearUrlApi, accionDuplicado = 'preguntar' } = {}) {
@@ -325,17 +407,6 @@ async function guardarRecurso({ crearUrlApi, accionDuplicado = 'preguntar' } = {
   if (!respuesta.ok || resultado.ok === false) throw new Error(resultado.mensaje || 'No se pudo guardar recurso.');
   limpiarFormularioNuevoRecurso();
   return resultado.recurso;
-}
-
-function cambiarTab(tabId) {
-  const doc = obtenerDocumento();
-  if (!doc) return;
-  doc.querySelectorAll('[data-library-tab]').forEach((boton) => boton.classList.toggle('is-active', boton.dataset.libraryTab === tabId));
-  doc.querySelectorAll('[data-library-panel]').forEach((panel) => {
-    const activo = panel.dataset.libraryPanel === tabId;
-    panel.classList.toggle('is-active', activo);
-    panel.hidden = !activo;
-  });
 }
 
 function emitirAreaBiblioteca(area) {
@@ -363,6 +434,8 @@ function inicializarAreaBiblioteca() {
   if (!doc?.querySelector('[data-library-unified-root]')) return;
   const areaPendiente = localStorage.getItem(STORAGE_BIBLIOTECA_AREA) || 'general';
   cambiarAreaBiblioteca(areaPendiente, { guardar: false });
+  const pasoPendiente = localStorage.getItem(STORAGE_BIBLIOTECA_STEP) || 'archivo';
+  activarPasoBibliotecaGeneral(tieneArchivoSeleccionado() ? pasoPendiente : 'archivo', { guardar: false });
 }
 
 function inicializarDropZone() {
@@ -381,8 +454,15 @@ export function inicializarBibliotecaUI({ crearUrlApi } = {}) {
     const area = evento.target.closest('[data-biblioteca-area-tab]')?.dataset.bibliotecaAreaTab;
     if (area) { cambiarAreaBiblioteca(area); if (area === 'general') await recargarBibliotecaUI({ crearUrlApi }); return; }
 
+    const wizard = evento.target.closest('[data-library-wizard-go]')?.dataset.libraryWizardGo;
+    if (wizard) { await irAPasoBibliotecaGeneral(wizard, { crearUrlApi }); return; }
+
     const tab = evento.target.closest('[data-library-tab]')?.dataset.libraryTab;
-    if (tab) { cambiarTab(tab); if (tab === 'recursos') await recargarBibliotecaUI({ crearUrlApi }); return; }
+    if (tab) {
+      if (tab === 'recursos') await irAPasoBibliotecaGeneral('recursos', { crearUrlApi });
+      else activarPasoBibliotecaGeneral(tieneArchivoSeleccionado() ? (localStorage.getItem(STORAGE_BIBLIOTECA_STEP) || 'categoria') : 'archivo');
+      return;
+    }
 
     const accion = evento.target.closest('[data-library-action]')?.dataset.libraryAction;
     if (!accion) return;
@@ -391,12 +471,19 @@ export function inicializarBibliotecaUI({ crearUrlApi } = {}) {
       if (accion === 'choose-file') { await elegirArchivoBiblioteca(); return; }
       if (accion === 'clear-form') { limpiarFormularioNuevoRecurso(); if (estado) estado.textContent = 'Formulario limpio.'; return; }
       if (accion === 'reload') { await recargarBibliotecaUI({ crearUrlApi }); return; }
-      if (accion === 'duplicate-replace') { if (estado) estado.textContent = 'Reemplazando y analizando recurso...'; await guardarRecurso({ crearUrlApi, accionDuplicado: 'reemplazar' }); if (estado) estado.textContent = 'Recurso reemplazado y analizado.'; await recargarBibliotecaUI({ crearUrlApi }); return; }
-      if (accion === 'duplicate-copy') { if (estado) estado.textContent = 'Guardando y analizando copia...'; await guardarRecurso({ crearUrlApi, accionDuplicado: 'duplicar' }); if (estado) estado.textContent = 'Copia guardada y analizada.'; await recargarBibliotecaUI({ crearUrlApi }); return; }
-      if (accion === 'save') { if (estado) estado.textContent = 'Guardando y analizando recurso...'; await guardarRecurso({ crearUrlApi }); if (estado) estado.textContent = 'Recurso guardado y analizado.'; await recargarBibliotecaUI({ crearUrlApi }); }
+      if (accion === 'duplicate-replace') { if (estado) estado.textContent = 'Reemplazando y analizando recurso...'; await guardarRecurso({ crearUrlApi, accionDuplicado: 'reemplazar' }); if (estado) estado.textContent = 'Recurso reemplazado y analizado.'; await irAPasoBibliotecaGeneral('recursos', { crearUrlApi }); return; }
+      if (accion === 'duplicate-copy') { if (estado) estado.textContent = 'Guardando y analizando copia...'; await guardarRecurso({ crearUrlApi, accionDuplicado: 'duplicar' }); if (estado) estado.textContent = 'Copia guardada y analizada.'; await irAPasoBibliotecaGeneral('recursos', { crearUrlApi }); return; }
+      if (accion === 'save') { if (estado) estado.textContent = 'Guardando y analizando recurso...'; await guardarRecurso({ crearUrlApi }); if (estado) estado.textContent = 'Recurso guardado y analizado.'; await irAPasoBibliotecaGeneral('recursos', { crearUrlApi }); }
     } catch (error) { if (estado) estado.textContent = error.message; }
   });
-  doc.addEventListener('change', (evento) => { if (evento.target.closest('[data-library-filter]')) recargarBibliotecaUI({ crearUrlApi }); });
+  doc.addEventListener('change', (evento) => {
+    if (evento.target.closest('[data-library-filter]')) recargarBibliotecaUI({ crearUrlApi });
+    if (evento.target.id === 'libraryNewCategory') activarPasoBibliotecaGeneral('datos');
+    if (['libraryNewType', 'libraryNewFormat', 'libraryNewStyles'].includes(evento.target.id)) actualizarRevisionGuardado();
+  });
+  doc.addEventListener('input', (evento) => {
+    if (['libraryNewName', 'libraryNewTags', 'libraryNewCustomCategory'].includes(evento.target.id)) actualizarRevisionGuardado();
+  });
   doc.addEventListener('keydown', (evento) => { if (evento.key === 'Enter' && evento.target.id === 'librarySearchInput') recargarBibliotecaUI({ crearUrlApi }); });
   doc.addEventListener('autovideo:navegacion', async (evento) => {
     if (evento.detail?.pantallaId === 'biblioteca') {
