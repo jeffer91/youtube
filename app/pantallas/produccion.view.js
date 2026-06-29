@@ -27,6 +27,14 @@ export function renderProduccionView() {
         <article><span>Modo</span><strong id="produccionMaestroModo">—</strong></article>
         <article><span>Plataforma base</span><strong id="produccionMaestroPlataforma">—</strong></article>
         <article><span>Elementos plan</span><strong id="produccionMaestroElementos">—</strong></article>
+        <article><span>Marcadores</span><strong id="produccionMaestroMarcadores">—</strong></article>
+        <article><span>Globales</span><strong id="produccionMaestroGlobales">—</strong></article>
+        <article><span>Cortes</span><strong id="produccionMaestroCortes">—</strong></article>
+        <article><span>Zooms</span><strong id="produccionMaestroZooms">—</strong></article>
+        <article><span>Efectos</span><strong id="produccionMaestroEfectos">—</strong></article>
+        <article><span>Animaciones</span><strong id="produccionMaestroAnimaciones">—</strong></article>
+        <article><span>Transiciones</span><strong id="produccionMaestroTransiciones">—</strong></article>
+        <article><span>Audio / SFX</span><strong id="produccionMaestroAudioSfx">—</strong></article>
         <article><span>Listo adaptación</span><strong id="produccionMaestroListo">—</strong></article>
       </section>
 
@@ -49,8 +57,11 @@ export function renderProduccionView() {
         </article>
 
         <article class="produccion-maestro-panel produccion-maestro-panel--timeline">
-          <header><div><p class="eyebrow">Timeline</p><h3>Elementos usados del plan</h3></div><span id="produccionMaestroTimelineEstado">0</span></header>
+          <header><div><p class="eyebrow">Timeline editorial</p><h3>Marcadores aplicados y planificados</h3></div><span id="produccionMaestroTimelineEstado">0</span></header>
+          <div id="produccionMaestroTimelineResumen" class="produccion-maestro-timeline-summary"><div class="produccion-maestro-empty">Sin resumen de timeline.</div></div>
+          <div id="produccionMaestroTimelineLeyenda" class="produccion-maestro-timeline-legend"></div>
           <div id="produccionMaestroTimeline" class="produccion-maestro-timeline"><div class="produccion-maestro-empty">Sin timeline cargado.</div></div>
+          <div id="produccionMaestroMarcadorSeleccionado" class="produccion-maestro-marker-detail"><div class="produccion-maestro-empty">Selecciona un marcador para ver su detalle.</div></div>
         </article>
 
         <article class="produccion-maestro-panel produccion-maestro-panel--audit">
@@ -60,7 +71,7 @@ export function renderProduccionView() {
       </section>
 
       <section class="produccion-maestro-panel produccion-maestro-panel--details">
-        <header><div><p class="eyebrow">Detalle profesional</p><h3>Plan usado, edición y salida</h3></div><span id="produccionMaestroDetalleEstado">0</span></header>
+        <header><div><p class="eyebrow">Detalle profesional</p><h3>Plan usado, edición, marcadores y salida</h3></div><span id="produccionMaestroDetalleEstado">0</span></header>
         <div id="produccionMaestroDetalle" class="produccion-maestro-detail"><div class="produccion-maestro-empty">Carga una producción para ver el detalle.</div></div>
       </section>
 
