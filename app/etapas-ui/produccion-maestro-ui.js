@@ -1,6 +1,6 @@
 /*
   Bloque 11: Pantalla Producción maestro
-  Función: cargar, producir y revisar el video maestro con timeline editorial filtrable.
+  Función: cargar, producir y revisar el video maestro con timeline editorial filtrable y sincronizada con el preview.
 */
 
 const STORAGE_PROYECTO_ETAPAS = 'autovideojeff.proyectoEtapasId';
@@ -21,6 +21,8 @@ const PISTAS_FALLBACK = Object.freeze([
 ]);
 
 let produccionActual = null;
+let marcadorActivoId = '';
+let segmentoPreviewActivo = null;
 
 function $(id) { return document.getElementById(id); }
 function texto(valor, respaldo = '—') { const limpio = String(valor ?? '').trim(); return limpio || respaldo; }
@@ -145,6 +147,10 @@ function obtenerMarcadores(produccion = {}) {
       datos: item
     };
   });
+}
+
+function obtenerMarcadorPorId(marcadorId = '') {
+  return obtenerMarcadores(produccionActual || {}).find((item) => item.id === marcadorId) || null;
 }
 
 function obtenerPistas(produccion = {}) {
@@ -333,8 +339,16 @@ function renderTimelineItem(marcador = {}, duracion = 30) {
   const width = duracion ? Math.max(3, Math.min(100 - left, ((fin - inicio) / duracion) * 100)) : 8;
   const estado = claseEstadoMarcador(marcador);
   const global = marcador.global || marcador.pista === 'global';
+  const activo = marcadorActivoId === marcador.id ? ' is-active' : '';
   const title = `${etiquetaTipo(marcador.tipo)} · ${marcador.nombre || marcador.id} · ${inicio.toFixed(1)}s-${fin.toFixed(1)}s`;
-  return `<button class="produccion-maestro-timeline-item is-${escapar(estado)} is-${escapar(marcador.pista || 'otros')}" data-marcador-id="${escapar(marcador.id)}" style="left:${left}%;width:${width}%" type="button" title="${escapar(title)}"><span>${global ? 'GLOBAL' : escapar(etiquetaTipo(marcador.tipo))}</span><strong>${escapar(marcador.nombre || marcador.id || 'Marcador')}</strong><small>${inicio.toFixed(1)}s</small></button>`;
+  return `<button class="produccion-maestro-timeline-item is-${escapar(estado)} is-${escapar(marcador.pista || 'otros')}${activo}" data-marcador-id="${escapar(marcador.id)}" data-inicio="${inicio}" data-fin="${fin}" style="left:${left}%;width:${width}%" type="button" title="${escapar(title)}"><span>${global ? 'GLOBAL' : escapar(etiquetaTipo(marcador.tipo))}</span><strong>${escapar(marcador.nombre || marcador.id || 'Marcador')}</strong><small>${inicio.toFixed(1)}s</small></button>`;
+}
+
+function marcarTimelineActivo(marcadorId = '') {
+  document.querySelectorAll('.produccion-maestro-timeline-item.is-active').forEach((item) => item.classList.remove('is-active'));
+  if (!marcadorId) return;
+  const boton = document.querySelector(`[data-marcador-id="${CSS.escape(marcadorId)}"]`);
+  if (boton) boton.classList.add('is-active');
 }
 
 function renderTimeline(produccion = {}) {
@@ -348,7 +362,8 @@ function renderTimeline(produccion = {}) {
   renderFiltroResumen(todos.length, marcadores.length);
   renderTimelineResumen(produccion, marcadores, todos.length);
   renderTimelineLeyenda(filtrosActivos() ? pistas : obtenerPistas(produccion), leerFiltrosTimeline().pista);
-  renderMarcadorSeleccionado(null);
+  const activoVisible = marcadores.find((item) => item.id === marcadorActivoId) || null;
+  renderMarcadorSeleccionado(activoVisible);
   if (!contenedor) return;
   if (!todos.length) {
     contenedor.innerHTML = '<div class="produccion-maestro-empty">No hay marcadores editoriales en esta producción. Vuelve a producir para generar la timeline editorial.</div>';
@@ -362,6 +377,7 @@ function renderTimeline(produccion = {}) {
     const items = arr(pista.marcadores).length ? pista.marcadores : marcadores.filter((item) => item.pista === pista.id);
     return `<section class="produccion-maestro-track is-${escapar(pista.id)}"><strong>${escapar(pista.nombre || etiquetaPista(pista.id))}<small>${items.length}</small></strong><div class="produccion-maestro-lane">${items.map((item) => renderTimelineItem(item, duracion)).join('')}</div></section>`;
   }).join('');
+  marcarTimelineActivo(marcadorActivoId);
 }
 
 function renderMarcadorSeleccionado(marcador = null) {
@@ -372,12 +388,19 @@ function renderMarcadorSeleccionado(marcador = null) {
     return;
   }
   const estado = claseEstadoMarcador(marcador);
+  const inicio = numero(marcador.inicio, 0) ?? 0;
+  const fin = numero(marcador.fin, inicio + 1) ?? inicio + 1;
   contenedor.innerHTML = `
     <article class="produccion-maestro-marker-card is-${escapar(estado)}">
       <header><div><span>${escapar(etiquetaPista(marcador.pista))}</span><strong>${escapar(marcador.nombre || marcador.id)}</strong></div><b>${marcador.global ? 'GLOBAL' : escapar(etiquetaTipo(marcador.tipo))}</b></header>
       <p>${escapar(marcador.descripcion || marcador.datos?.motivo || marcador.datos?.descripcion || 'Sin descripción adicional.')}</p>
+      <div class="produccion-maestro-marker-actions">
+        <button type="button" class="secondary-button" data-marcador-action="seek" data-marcador-id="${escapar(marcador.id)}">Ir al segundo ${inicio.toFixed(1)}</button>
+        <button type="button" class="primary-button" data-marcador-action="play" data-marcador-id="${escapar(marcador.id)}">Reproducir desde aquí</button>
+        <button type="button" class="secondary-button" data-marcador-action="segment" data-marcador-id="${escapar(marcador.id)}">Reproducir segmento</button>
+      </div>
       <dl>
-        <div><dt>Tiempo</dt><dd>${escapar(marcador.inicio)}s - ${escapar(marcador.fin)}s</dd></div>
+        <div><dt>Tiempo</dt><dd>${escapar(inicio)}s - ${escapar(fin)}s</dd></div>
         <div><dt>Estado</dt><dd>${escapar(marcador.estado || estado)}</dd></div>
         <div><dt>Aplicado</dt><dd>${marcador.aplicado ? 'Sí' : 'No / planificado'}</dd></div>
         <div><dt>Origen</dt><dd>${escapar(marcador.origen || 'producción')}</dd></div>
@@ -388,9 +411,78 @@ function renderMarcadorSeleccionado(marcador = null) {
   `;
 }
 
-function seleccionarMarcador(marcadorId = '') {
-  const marcador = obtenerMarcadores(produccionActual || {}).find((item) => item.id === marcadorId);
+function obtenerVideoPreview() {
+  return $('produccionMaestroVideo');
+}
+
+function enfocarPreview() {
+  const panel = document.querySelector('.produccion-maestro-panel--preview');
+  if (!panel) return;
+  panel.classList.add('is-synced');
+  window.setTimeout(() => panel.classList.remove('is-synced'), 900);
+}
+
+function sincronizarPreviewConMarcador(marcador = null, { reproducir = false, segmento = false } = {}) {
+  if (!marcador) return;
+  const video = obtenerVideoPreview();
+  const inicio = Math.max(0, numero(marcador.inicio, 0) ?? 0);
+  const fin = Math.max(inicio + 0.25, numero(marcador.fin, inicio + 2) ?? inicio + 2);
+  marcadorActivoId = marcador.id;
+  marcarTimelineActivo(marcador.id);
+  enfocarPreview();
+  if (!video || !video.src) {
+    setMensaje('El marcador fue seleccionado, pero todavía no hay video maestro cargado para sincronizar.', 'warn');
+    return;
+  }
+  segmentoPreviewActivo = segmento ? { id: marcador.id, fin } : null;
+  try {
+    video.currentTime = inicio;
+    if (reproducir || segmento) {
+      const promesa = video.play?.();
+      if (promesa?.catch) promesa.catch(() => setMensaje('El navegador bloqueó la reproducción automática. Presiona play en el video.', 'warn'));
+    } else {
+      video.pause?.();
+    }
+  } catch (error) {
+    setMensaje(`No se pudo mover el preview al marcador: ${error.message}`, 'error');
+  }
+}
+
+function seleccionarMarcador(marcadorId = '', opcionesPreview = { reproducir: false, segmento: false }) {
+  const marcador = obtenerMarcadorPorId(marcadorId);
+  marcadorActivoId = marcador?.id || '';
   renderMarcadorSeleccionado(marcador || null);
+  marcarTimelineActivo(marcadorActivoId);
+  if (marcador) sincronizarPreviewConMarcador(marcador, opcionesPreview);
+}
+
+function manejarAccionMarcador(accion = '', marcadorId = '') {
+  const marcador = obtenerMarcadorPorId(marcadorId);
+  if (!marcador) return;
+  if (accion === 'seek') sincronizarPreviewConMarcador(marcador, { reproducir: false, segmento: false });
+  if (accion === 'play') sincronizarPreviewConMarcador(marcador, { reproducir: true, segmento: false });
+  if (accion === 'segment') sincronizarPreviewConMarcador(marcador, { reproducir: true, segmento: true });
+}
+
+function actualizarMarcadorActivoPorTiempo() {
+  const video = obtenerVideoPreview();
+  if (!video || !produccionActual) return;
+  const tiempo = Number(video.currentTime || 0);
+  if (segmentoPreviewActivo && tiempo >= segmentoPreviewActivo.fin) {
+    video.pause?.();
+    segmentoPreviewActivo = null;
+  }
+  const marcadorActual = obtenerMarcadores(produccionActual)
+    .filter((item) => {
+      const inicio = numero(item.inicio, 0) ?? 0;
+      const fin = numero(item.fin, inicio + 1) ?? inicio + 1;
+      return tiempo >= inicio && tiempo <= fin;
+    })
+    .sort((a, b) => Number(a.duracion || 99) - Number(b.duracion || 99))[0];
+  if (marcadorActual && marcadorActual.id !== marcadorActivoId) {
+    marcadorActivoId = marcadorActual.id;
+    marcarTimelineActivo(marcadorActivoId);
+  }
 }
 
 function renderAuditoria(produccion = {}) {
@@ -442,6 +534,8 @@ function renderDetalle(produccion = {}) {
 async function renderResultado(datos = {}) {
   const produccion = extraerProduccion(datos);
   produccionActual = produccion;
+  marcadorActivoId = '';
+  segmentoPreviewActivo = null;
   await renderKpis(produccion);
   await renderPreview(produccion);
   await renderComparacion(produccion);
@@ -528,8 +622,15 @@ function enlazarEventos() {
   $('produccionMaestroTimeline')?.addEventListener('click', (evento) => {
     const boton = evento.target?.closest?.('[data-marcador-id]');
     if (!boton) return;
-    seleccionarMarcador(boton.dataset.marcadorId || '');
+    seleccionarMarcador(boton.dataset.marcadorId || '', { reproducir: false, segmento: false });
   });
+  $('produccionMaestroMarcadorSeleccionado')?.addEventListener('click', (evento) => {
+    const boton = evento.target?.closest?.('[data-marcador-action]');
+    if (!boton) return;
+    manejarAccionMarcador(boton.dataset.marcadorAction || '', boton.dataset.marcadorId || '');
+  });
+  $('produccionMaestroVideo')?.addEventListener('timeupdate', actualizarMarcadorActivoPorTiempo);
+  $('produccionMaestroVideo')?.addEventListener('pause', () => { segmentoPreviewActivo = null; });
 }
 
 export function inicializarProduccionMaestroUI() {
