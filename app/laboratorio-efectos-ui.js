@@ -1,16 +1,19 @@
 /*
-  Laboratorio de efectos - Bloque 4
-  Función: cargar catálogo, seleccionar un efecto y enviar video corto al backend del laboratorio.
+  Laboratorio de efectos - Bloque 5
+  Función: cargar catálogo, seleccionar un efecto, previsualizar original y comparar antes/después.
 */
 
 let catalogoLab = null;
 let efectoSeleccionado = null;
 let inicializado = false;
+let urlObjetoEntrada = '';
+let duracionEntrada = null;
 
 function $(id) { return document.getElementById(id); }
 function texto(valor, respaldo = '') { const limpio = String(valor ?? '').replace(/\s+/g, ' ').trim(); return limpio || respaldo; }
 function escapar(valor) { return texto(valor, '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;'); }
 function normalizar(valor = '') { return String(valor || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase(); }
+function segundos(valor) { const n = Number(valor); return Number.isFinite(n) ? n : 0; }
 
 function asegurarCssLaboratorio() {
   if (document.querySelector('link[data-lab-efectos-css]')) return;
@@ -77,11 +80,83 @@ function ocultarMensaje() {
   box.textContent = '';
 }
 
+function liberarUrlEntrada() {
+  if (!urlObjetoEntrada) return;
+  try { URL.revokeObjectURL(urlObjetoEntrada); } catch (_error) {}
+  urlObjetoEntrada = '';
+}
+
+function formatearDuracion(valor) {
+  const total = Math.max(0, segundos(valor));
+  const min = Math.floor(total / 60);
+  const sec = Math.round(total % 60).toString().padStart(2, '0');
+  return `${min}:${sec}`;
+}
+
+function evaluarDuracionEntrada(duracion) {
+  const aviso = $('labEfectosAvisoDuracion');
+  const etiqueta = $('labEfectosDuracionEntrada');
+  const dur = segundos(duracion);
+  duracionEntrada = dur;
+  if (etiqueta) etiqueta.textContent = `Duración: ${formatearDuracion(dur)}`;
+  if (!aviso) return;
+  aviso.className = 'lab-effects-duration-hint';
+  if (dur >= 9 && dur <= 14) {
+    aviso.textContent = 'Duración ideal para probar efectos rápidos.';
+    aviso.classList.add('is-ok');
+  } else if (dur > 0 && dur < 9) {
+    aviso.textContent = 'El clip es muy corto; el efecto puede verse demasiado rápido.';
+    aviso.classList.add('is-warn');
+  } else if (dur > 14 && dur <= 25) {
+    aviso.textContent = 'El clip sirve, pero para pruebas rápidas es mejor 10 a 12 segundos.';
+    aviso.classList.add('is-warn');
+  } else if (dur > 25) {
+    aviso.textContent = 'El clip es largo para laboratorio; se recomienda cortar a 10 o 12 segundos.';
+    aviso.classList.add('is-warn');
+  } else {
+    aviso.textContent = 'El clip ideal para esta prueba es de 10 a 12 segundos.';
+  }
+}
+
+function asignarPreviewOriginal(url) {
+  const panelEntrada = $('labEfectosPreviewEntradaPanel');
+  const preview = $('labEfectosPreviewEntradaVideo');
+  const comparacion = $('labEfectosComparacionOriginal');
+  if (panelEntrada) panelEntrada.hidden = !url;
+  for (const video of [preview, comparacion]) {
+    if (!video || !url) continue;
+    video.src = url;
+    video.load?.();
+  }
+}
+
+function ocultarResultadoAnterior() {
+  const panel = $('labEfectosResultadoPanel');
+  const video = $('labEfectosResultadoVideo');
+  const descarga = $('labEfectosDescarga');
+  const resumen = $('labEfectosResultadoResumen');
+  if (panel) panel.hidden = true;
+  if (video) video.removeAttribute('src');
+  if (descarga) { descarga.hidden = true; descarga.removeAttribute('href'); }
+  if (resumen) resumen.textContent = '';
+}
+
 function actualizarArchivoSeleccionado() {
   const input = $('labEfectosVideoInput');
   const fileName = $('labEfectosFileName');
   const archivo = input?.files?.[0] || null;
-  if (fileName) fileName.textContent = archivo ? `${archivo.name} · ${(archivo.size / (1024 * 1024)).toFixed(1)} MB` : 'Ningún video seleccionado.';
+  liberarUrlEntrada();
+  duracionEntrada = null;
+  ocultarResultadoAnterior();
+  if (!archivo) {
+    asignarPreviewOriginal('');
+    if (fileName) fileName.textContent = 'Ningún video seleccionado.';
+    actualizarBotonProbar();
+    return;
+  }
+  urlObjetoEntrada = URL.createObjectURL(archivo);
+  if (fileName) fileName.textContent = `${archivo.name} · ${(archivo.size / (1024 * 1024)).toFixed(1)} MB`;
+  asignarPreviewOriginal(urlObjetoEntrada);
   actualizarBotonProbar();
 }
 
@@ -149,6 +224,23 @@ function renderCatalogo() {
   contenedor.innerHTML = html || '<div class="lab-effects-empty">No hay efectos que coincidan con la búsqueda.</div>';
 }
 
+function crearChecklistEfecto() {
+  if (!efectoSeleccionado) {
+    return ['Selecciona un efecto.', 'Sube un clip corto.', 'Compara original contra resultado.'];
+  }
+  return [
+    `Debe verse: ${efectoSeleccionado.queDebeSalir}`,
+    efectoSeleccionado.requiereTexto ? 'Este efecto usa texto; puedes cambiarlo en el campo opcional.' : 'Este efecto no necesita texto.',
+    'Después de producir, compara el original con el resultado lado a lado.'
+  ];
+}
+
+function renderChecklist() {
+  const lista = $('labEfectosChecklist');
+  if (!lista) return;
+  lista.innerHTML = crearChecklistEfecto().map((item) => `<li>${escapar(item)}</li>`).join('');
+}
+
 function renderSeleccion() {
   const resumen = $('labEfectosResumenSeleccion');
   const esperado = $('labEfectosQueDebeSalir');
@@ -157,6 +249,7 @@ function renderSeleccion() {
   if (!efectoSeleccionado) {
     if (resumen) resumen.innerHTML = '<strong>Sin efecto seleccionado</strong><span>Elige un efecto del catálogo.</span>';
     if (esperado) esperado.textContent = 'Selecciona un efecto para ver la explicación esperada.';
+    renderChecklist();
     actualizarBotonProbar();
     return;
   }
@@ -168,6 +261,7 @@ function renderSeleccion() {
     `;
   }
   if (esperado) esperado.textContent = efectoSeleccionado.queDebeSalir || 'Debe verse el efecto seleccionado en el clip.';
+  renderChecklist();
   actualizarBotonProbar();
 }
 
@@ -219,10 +313,15 @@ async function enviarPrueba(evento) {
     const resultado = datos.resultado || {};
     const panel = $('labEfectosResultadoPanel');
     const video = $('labEfectosResultadoVideo');
+    const original = $('labEfectosComparacionOriginal');
     const descarga = $('labEfectosDescarga');
     const resumen = $('labEfectosResultadoResumen');
     const url = await urlPublica(resultado.urlPublica || resultado.rutaRelativa || '');
     if (panel) panel.hidden = false;
+    if (original && urlObjetoEntrada) {
+      original.src = urlObjetoEntrada;
+      original.load?.();
+    }
     if (video && url) {
       video.src = url;
       video.load?.();
@@ -232,9 +331,12 @@ async function enviarPrueba(evento) {
       descarga.href = url;
       descarga.download = resultado.nombreSalida || 'laboratorio-efecto.mp4';
     }
-    if (resumen) resumen.textContent = `${datos.mensaje || 'Efecto generado.'} Debe salir: ${datos.queDebeSalir || efectoSeleccionado.queDebeSalir}`;
+    if (resumen) {
+      const duracion = duracionEntrada ? ` Duración original: ${formatearDuracion(duracionEntrada)}.` : '';
+      resumen.textContent = `${datos.mensaje || 'Efecto generado.'}${duracion} Debe salir: ${datos.queDebeSalir || efectoSeleccionado.queDebeSalir}`;
+    }
     setEstado('Prueba lista', 'ok');
-    setMensaje('Video generado correctamente. Revisa el preview del resultado.', 'ok');
+    setMensaje('Video generado correctamente. Compara el antes/después.', 'ok');
   } catch (error) {
     setEstado('Error', 'error');
     setMensaje(error.message || 'No se pudo probar el efecto.', 'error');
@@ -248,6 +350,10 @@ function enlazarEventos() {
   if (!root || root.dataset.labInicializado === '1') return;
   root.dataset.labInicializado = '1';
   $('labEfectosVideoInput')?.addEventListener('change', actualizarArchivoSeleccionado);
+  $('labEfectosPreviewEntradaVideo')?.addEventListener('loadedmetadata', (evento) => evaluarDuracionEntrada(evento.target.duration));
+  $('labEfectosComparacionOriginal')?.addEventListener('loadedmetadata', (evento) => {
+    if (!duracionEntrada) evaluarDuracionEntrada(evento.target.duration);
+  });
   $('labEfectosBuscar')?.addEventListener('input', renderCatalogo);
   $('labEfectosRecargarBtn')?.addEventListener('click', () => cargarCatalogo().catch((error) => setMensaje(error.message, 'error')));
   $('labEfectosAcordeones')?.addEventListener('click', (evento) => {
@@ -256,6 +362,7 @@ function enlazarEventos() {
     seleccionarEfecto(boton.dataset.efectoId || '');
   });
   $('labEfectosForm')?.addEventListener('submit', enviarPrueba);
+  renderChecklist();
   cargarCatalogo().catch((error) => {
     setEstado('Error catálogo', 'error');
     setMensaje(error.message, 'error');
@@ -268,6 +375,7 @@ export function inicializarLaboratorioEfectosUI() {
   enlazarEventos();
   if (!inicializado) {
     inicializado = true;
+    window.addEventListener('beforeunload', liberarUrlEntrada);
     document.addEventListener('autovideo:navegacion', (evento) => {
       if (evento.detail?.pantallaId === 'laboratorio-efectos') setTimeout(enlazarEventos, 0);
     });
