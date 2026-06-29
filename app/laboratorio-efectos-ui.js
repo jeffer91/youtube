@@ -6,11 +6,12 @@
 import { aplicarProcesoVisual } from './procesos-ui/proceso-visual.service.js';
 
 const STORAGE_LAB_STEP = 'autovideojeff.laboratorioEfectosPaso';
-const PASOS_LAB = ['video', 'catalogo', 'efecto', 'probar', 'comparar'];
+const PASOS_LAB = ['video', 'catalogo', 'efecto', 'esperado', 'probar', 'comparar'];
 const MAPA_PASO_PROCESO = Object.freeze({
   video: 'video-corto',
   catalogo: 'categoria-efecto',
   efecto: 'efecto',
+  esperado: 'esperado',
   probar: 'probar',
   comparar: 'comparar'
 });
@@ -109,6 +110,7 @@ function estadoPaso(paso, activo) {
   if (paso === 'video') return activo === paso ? 'active' : video ? 'done' : 'active';
   if (paso === 'catalogo') return !video ? 'locked' : activo === paso ? 'active' : efecto ? 'done' : 'active';
   if (paso === 'efecto') return !efecto ? 'locked' : activo === paso ? 'active' : 'done';
+  if (paso === 'esperado') return !efecto ? 'locked' : activo === paso ? 'active' : 'done';
   if (paso === 'probar') return !video || !efecto ? 'locked' : activo === paso ? 'active' : resultado ? 'done' : 'active';
   if (paso === 'comparar') return !resultado ? 'locked' : activo === paso ? 'active' : 'done';
   return 'locked';
@@ -148,7 +150,7 @@ async function irAPasoLaboratorioEfectos(paso = 'video') {
     activarPasoLaboratorioEfectos('video');
     return;
   }
-  if (['efecto', 'probar'].includes(paso) && !efectoSeleccionado) {
+  if (['efecto', 'esperado', 'probar'].includes(paso) && !efectoSeleccionado) {
     setMensaje('Primero selecciona un efecto del catálogo.', 'warn');
     activarPasoLaboratorioEfectos('catalogo');
     return;
