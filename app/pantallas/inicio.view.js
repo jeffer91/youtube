@@ -5,7 +5,7 @@ export function renderInicioView() {
         <div>
           <p class="eyebrow">Panel principal</p>
           <h2>AutoVideoJeff</h2>
-          <p>Editor automático modular para subir, procesar y revisar videos.</p>
+          <p>Editor automático modular para subir, procesar, probar efectos y revisar videos.</p>
         </div>
         <span class="aj-status-chip">Sistema listo</span>
       </div>
@@ -18,6 +18,10 @@ export function renderInicioView() {
         <button type="button" data-pantalla-destino="nuevo-proyecto">
           <strong>Procesar video</strong>
           <span>Iniciar edición automática.</span>
+        </button>
+        <button type="button" data-pantalla-destino="laboratorio-efectos">
+          <strong>Laboratorio de efectos</strong>
+          <span>Probar un solo efecto en un clip corto.</span>
         </button>
         <button type="button" data-pantalla-destino="biblioteca">
           <strong>Biblioteca</strong>
@@ -32,6 +36,8 @@ export function renderInicioView() {
       <div class="aj-home-status">
         <span>Servidor local</span>
         <strong>Activo al procesar</strong>
+        <span>Laboratorio</span>
+        <strong>Prueba rápida disponible</strong>
         <span>Diagnóstico</span>
         <strong>Disponible</strong>
       </div>
