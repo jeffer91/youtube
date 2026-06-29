@@ -13,6 +13,7 @@ export const MENU_PRINCIPAL = Object.freeze([
   { id: 'entendimiento', titulo: 'Entendimiento', descripcion: 'Transcripción, fotogramas y análisis global', vista: 'entendimiento' },
   { id: 'biblioteca', titulo: 'Biblioteca', descripcion: 'Recursos generales y temporales del proyecto', vista: 'biblioteca' },
   { id: 'plan-edicion', titulo: 'Plan de edición', descripcion: 'Subtítulos, textos, recursos, efectos y timeline', vista: 'plan-edicion' },
+  { id: 'laboratorio-efectos', titulo: 'Laboratorio', descripcion: 'Probar un solo efecto en un video corto', vista: 'laboratorio-efectos' },
   { id: 'produccion', titulo: 'Producción maestro', descripcion: 'Render maestro, auditoría, preview y antes/después', vista: 'produccion' },
   { id: 'adaptacion', titulo: 'Adaptación', descripcion: 'Versiones finales para TikTok, Reels, Shorts y YouTube', vista: 'adaptacion' },
   { id: 'resultado', titulo: 'Resultado final', descripcion: 'Paquete final, checklist y entregables de publicación', vista: 'resultado' },
@@ -27,6 +28,7 @@ export const FLUJO_PROYECTO = Object.freeze([
   { id: 'entendimiento', titulo: 'Entendimiento' },
   { id: 'biblioteca', titulo: 'Biblioteca' },
   { id: 'plan-edicion', titulo: 'Plan de edición' },
+  { id: 'laboratorio-efectos', titulo: 'Laboratorio' },
   { id: 'produccion', titulo: 'Producción maestro' },
   { id: 'adaptacion', titulo: 'Adaptación' },
   { id: 'resultado', titulo: 'Resultado final' }
