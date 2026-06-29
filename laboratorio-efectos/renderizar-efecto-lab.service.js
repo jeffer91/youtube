@@ -1,6 +1,6 @@
 /*
   Laboratorio de efectos - Bloque 2
-  Función: renderizar un video corto aplicando un solo efecto elegido.
+  Función: renderizar un video corto aplicando un solo efecto elegido y normalizar el original para comparación segura en Electron.
 */
 
 import fs from 'fs';
@@ -10,7 +10,7 @@ import ffmpegStatic from 'ffmpeg-static';
 import { obtenerEfectoLabPorId } from './catalogo-efectos-lab.js';
 import { construirFiltroFfmpegLaboratorio } from './filtros-ffmpeg-lab.service.js';
 
-export const VERSION_RENDER_LABORATORIO_EFECTOS = '1.0.0';
+export const VERSION_RENDER_LABORATORIO_EFECTOS = '1.1.0';
 
 function texto(valor, respaldo = '') {
   const limpio = String(valor ?? '').replace(/\s+/g, ' ').trim();
@@ -57,6 +57,13 @@ function crearRutaSalida({ carpetaSalida, efectoId, marcaEjecucion = crearMarcaE
   return path.join(carpeta, nombre);
 }
 
+function crearRutaOriginalNormalizado({ carpetaSalida, nombreOriginal = '', marcaEjecucion = crearMarcaEjecucion() }) {
+  const carpeta = asegurarCarpeta(carpetaSalida);
+  const base = nombreSeguro(path.basename(texto(nombreOriginal, 'video-original'), path.extname(texto(nombreOriginal, 'video-original'))));
+  const marca = nombreSeguro(marcaEjecucion);
+  return path.join(carpeta, `original-normalizado-${base}-${marca}.mp4`);
+}
+
 export function construirComandoFfmpegLaboratorio({ rutaVideo, rutaSalida, filtroVideo } = {}) {
   const entrada = texto(rutaVideo, '');
   const salida = texto(rutaSalida, '');
@@ -83,7 +90,31 @@ export function construirComandoFfmpegLaboratorio({ rutaVideo, rutaSalida, filtr
   ];
 }
 
-function ejecutarFfmpeg(args) {
+export function construirComandoOriginalNormalizadoLaboratorio({ rutaVideo, rutaSalida } = {}) {
+  const entrada = texto(rutaVideo, '');
+  const salida = texto(rutaSalida, '');
+  if (!entrada) throw new Error('Falta rutaVideo para normalizar original.');
+  if (!salida) throw new Error('Falta rutaSalida para normalizar original.');
+  return [
+    '-y',
+    '-hide_banner',
+    '-i', entrada,
+    '-vf', 'scale=trunc(iw/2)*2:trunc(ih/2)*2,setsar=1,format=yuv420p',
+    '-map', '0:v:0',
+    '-map', '0:a:0?',
+    '-c:v', 'libx264',
+    '-preset', 'veryfast',
+    '-crf', '20',
+    '-pix_fmt', 'yuv420p',
+    '-c:a', 'aac',
+    '-b:a', '128k',
+    '-movflags', '+faststart',
+    '-shortest',
+    salida
+  ];
+}
+
+function ejecutarFfmpeg(args, contexto = 'laboratorio') {
   return new Promise((resolve, reject) => {
     const ffmpeg = resolverFfmpeg();
     if (!ffmpeg || !fs.existsSync(ffmpeg)) return reject(new Error('No se encontró FFmpeg para el laboratorio de efectos.'));
@@ -95,7 +126,7 @@ function ejecutarFfmpeg(args) {
     proceso.on('error', (error) => reject(error));
     proceso.on('close', (code) => {
       if (code === 0) resolve({ ok: true, code, stdout, stderr });
-      else reject(new Error(`FFmpeg no pudo renderizar el efecto de laboratorio. Código ${code}. ${stderr || stdout}`));
+      else reject(new Error(`FFmpeg no pudo procesar ${contexto}. Código ${code}. ${stderr || stdout}`));
     });
   });
 }
@@ -120,11 +151,32 @@ export function prepararPruebaEfectoLaboratorio({ rutaVideo, carpetaSalida, efec
   };
 }
 
+export async function normalizarOriginalLaboratorio({ rutaVideo, carpetaSalida, nombreOriginal = '', marcaEjecucion = crearMarcaEjecucion() } = {}) {
+  const entrada = validarVideoEntrada(rutaVideo);
+  const rutaSalida = crearRutaOriginalNormalizado({ carpetaSalida, nombreOriginal, marcaEjecucion });
+  const comando = construirComandoOriginalNormalizadoLaboratorio({ rutaVideo: entrada, rutaSalida });
+  const inicio = Date.now();
+  const ffmpeg = await ejecutarFfmpeg(comando, 'el original del laboratorio');
+  const stats = await fs.promises.stat(rutaSalida);
+  if (!stats.isFile() || stats.size <= 0) throw new Error(`No se generó un original normalizado válido: ${rutaSalida}`);
+  return {
+    ok: true,
+    tipo: 'original-normalizado-laboratorio-efectos',
+    version: VERSION_RENDER_LABORATORIO_EFECTOS,
+    rutaEntrada: entrada,
+    rutaSalida,
+    nombreSalida: path.basename(rutaSalida),
+    pesoBytes: stats.size,
+    ffmpeg: { ...ffmpeg, duracionMs: Date.now() - inicio },
+    mensaje: 'Original normalizado para comparación.'
+  };
+}
+
 export async function renderizarEfectoLaboratorio({ rutaVideo, carpetaSalida, efectoId, textoPersonalizado = '', intensidad = null, marcaEjecucion = crearMarcaEjecucion() } = {}) {
   const entrada = validarVideoEntrada(rutaVideo);
   const preparacion = prepararPruebaEfectoLaboratorio({ rutaVideo: entrada, carpetaSalida, efectoId, textoPersonalizado, intensidad, marcaEjecucion });
   const inicio = Date.now();
-  const ffmpeg = await ejecutarFfmpeg(preparacion.comando);
+  const ffmpeg = await ejecutarFfmpeg(preparacion.comando, 'el efecto de laboratorio');
   const stats = await fs.promises.stat(preparacion.rutaSalida);
   if (!stats.isFile() || stats.size <= 0) throw new Error(`El laboratorio no generó un video válido: ${preparacion.rutaSalida}`);
   return {
