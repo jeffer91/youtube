@@ -24,6 +24,12 @@ function leer(ruta) {
   return fs.readFileSync(ruta, 'utf-8');
 }
 
+function contiene(ruta, claves) {
+  const contenido = leer(ruta);
+  for (const clave of claves) exigir(contenido.includes(clave), `${ruta} no contiene ${clave}`);
+  return contenido;
+}
+
 function verificarCategoria(categoria) {
   exigir(categoria.id, 'Hay una categoría sin id.');
   exigir(categoria.nombre, `La categoría ${categoria.id} no tiene nombre.`);
@@ -134,6 +140,38 @@ function verificarRutasApi() {
   exigir(modulares.includes('laboratorio-efectos'), 'El módulo laboratorio-efectos no aparece registrado.');
 }
 
+function verificarUiLaboratorio() {
+  contiene('app/pantallas/laboratorio-efectos.view.js', [
+    'renderLaboratorioEfectosView',
+    'data-lab-efectos-root',
+    'labEfectosVideoInput',
+    'labEfectosAcordeones',
+    'labEfectosQueDebeSalir',
+    'labEfectosProbarBtn',
+    'labEfectosResultadoVideo'
+  ]);
+  contiene('app/laboratorio-efectos-ui.js', [
+    'inicializarLaboratorioEfectosUI',
+    '/api/laboratorio-efectos/catalogo',
+    '/api/laboratorio-efectos/probar',
+    'FormData',
+    "formData.append('video'",
+    'seleccionarEfecto',
+    'renderCatalogo',
+    'urlPublica'
+  ]);
+  contiene('app/laboratorio-efectos.css', [
+    '.lab-effects-screen',
+    '.lab-effects-layout',
+    '.lab-effects-accordion',
+    '.lab-effects-effect-card',
+    '.lab-effects-video'
+  ]);
+  contiene('app/pantallas/pantallas.conexion.js', ['renderLaboratorioEfectosView']);
+  contiene('app/navegacion/menu.config.js', ['laboratorio-efectos', 'Laboratorio']);
+  contiene('app/navegacion/navegacion.service.js', ['renderLaboratorioEfectosView', 'inicializarLaboratorioEfectosUI', "'laboratorio-efectos': renderLaboratorioEfectosView"]);
+}
+
 function main() {
   exigir(VERSION_CATALOGO_EFECTOS_LAB, 'Falta versión de catálogo.');
   exigir(CATEGORIAS_LABORATORIO_EFECTOS.length >= 7, 'Faltan categorías base del laboratorio.');
@@ -148,8 +186,9 @@ function main() {
   verificarFiltrosFfmpeg();
   verificarMotorRender();
   verificarRutasApi();
+  verificarUiLaboratorio();
 
-  console.log(`OK Laboratorio de efectos: ${CATEGORIAS_LABORATORIO_EFECTOS.length} categorías, ${EFECTOS_LABORATORIO.length} efectos, filtros FFmpeg, motor render y rutas API listos.`);
+  console.log(`OK Laboratorio de efectos: ${CATEGORIAS_LABORATORIO_EFECTOS.length} categorías, ${EFECTOS_LABORATORIO.length} efectos, filtros FFmpeg, motor render, rutas API y pantalla UI listos.`);
 }
 
 main();
