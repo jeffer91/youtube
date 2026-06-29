@@ -217,8 +217,8 @@ function mostrarPrimerFrameVideo(video) {
   const ponerPrimerFrame = () => {
     try {
       const duracion = Number(video.duration);
-      if (Number.isFinite(duracion) && duracion > 0.2) {
-        video.currentTime = Math.min(0.08, Math.max(0, duracion - 0.15));
+      if (Number.isFinite(duracion) && duracion > 0.35) {
+        video.currentTime = Math.min(0.35, Math.max(0, duracion - 0.2));
       } else {
         video.currentTime = 0;
       }
@@ -228,6 +228,7 @@ function mostrarPrimerFrameVideo(video) {
 
   video.addEventListener('loadedmetadata', ponerPrimerFrame, { once: true });
   video.addEventListener('loadeddata', ponerPrimerFrame, { once: true });
+  video.addEventListener('canplay', ponerPrimerFrame, { once: true });
 }
 
 function asignarFuenteVideo(video, url, { muted = false, resetearFrame = true } = {}) {
@@ -239,7 +240,7 @@ function asignarFuenteVideo(video, url, { muted = false, resetearFrame = true } 
   }
 
   try {
-    video.preload = 'metadata';
+    video.preload = 'auto';
     video.muted = Boolean(muted);
     video.playsInline = true;
 
@@ -470,9 +471,18 @@ async function enviarPrueba(evento) {
     const descarga = $('labEfectosDescarga');
     const resumen = $('labEfectosResultadoResumen');
     const url = await urlPublica(resultado.urlPublica || resultado.rutaRelativa || '');
+    const urlOriginalPublica = await urlPublica(
+      resultado.original?.urlPublica ||
+      resultado.original?.rutaRelativa ||
+      resultado.videoEntrada?.urlPublica ||
+      resultado.videoEntrada?.rutaRelativa ||
+      ''
+    );
+    const urlOriginal = urlOriginalPublica || urlObjetoEntrada;
+
     if (panel) panel.hidden = false;
 
-    asignarFuenteVideo(original, urlObjetoEntrada, { muted: true, resetearFrame: true });
+    asignarFuenteVideo(original, urlOriginal, { muted: true, resetearFrame: true });
     asignarFuenteVideo(video, url, { muted: false, resetearFrame: true });
 
     if (descarga && url) {
