@@ -29,11 +29,15 @@ function asegurarCarpeta(rutaCarpeta) {
   return rutaCarpeta;
 }
 
+function crearMarcaEjecucion() {
+  return `${new Date().toISOString().replace(/[:.]/g, '-').replace('T', '-').replace('Z', '')}-${process.pid || 'app'}`;
+}
+
 function limpiarArchivo(rutaArchivo) {
   try {
     if (rutaArchivo && fs.existsSync(rutaArchivo)) fs.unlinkSync(rutaArchivo);
   } catch (error) {
-    throw new Error(`No se pudo reemplazar el archivo: ${rutaArchivo}. Cierra el video si está abierto. Detalle: ${error.message}`);
+    throw new Error(`No se pudo preparar el archivo de salida: ${rutaArchivo}. El archivo está ocupado o bloqueado por Windows. Detalle: ${error.message}`);
   }
 }
 
@@ -41,9 +45,10 @@ function normalizarRutaFfconcat(rutaArchivo) {
   return String(rutaArchivo || '').replace(/\\/g, '/').replace(/'/g, "'\\''");
 }
 
-function nombreSeguroVideoMaestro(proyectoId = 'proyecto') {
+function nombreSeguroVideoMaestro(proyectoId = 'proyecto', marcaEjecucion = crearMarcaEjecucion()) {
   const base = texto(proyectoId, 'proyecto').replace(/[^a-zA-Z0-9-_]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '').toLowerCase();
-  return `${base || 'proyecto'}-maestro-multivideo.mp4`;
+  const marca = texto(marcaEjecucion, crearMarcaEjecucion()).replace(/[^a-zA-Z0-9-_]/g, '-');
+  return `${base || 'proyecto'}-maestro-multivideo-${marca}.mp4`;
 }
 
 function crearListaConcat(videos = []) {
@@ -154,14 +159,15 @@ function ejecutarEstandarizacionClip({ video, rutaSalida, objetivo }) {
   });
 }
 
-async function estandarizarVideosParaConcat({ videos = [], carpetaSalida, lineaTiempoGlobal = null } = {}) {
+async function estandarizarVideosParaConcat({ videos = [], carpetaSalida, lineaTiempoGlobal = null, marcaEjecucion = crearMarcaEjecucion() } = {}) {
   const objetivo = obtenerObjetivoVideo(lineaTiempoGlobal);
-  const carpetaClips = asegurarCarpeta(path.join(carpetaSalida, 'clips-estandarizados'));
+  const carpetaClips = asegurarCarpeta(path.join(carpetaSalida, 'clips-estandarizados', marcaEjecucion));
   const clips = [];
 
   for (const video of videos) {
     const videoId = video.videoId || video.id || `video-${clips.length + 1}`;
-    const rutaSalida = path.join(carpetaClips, `${String(clips.length + 1).padStart(2, '0')}-${videoId}.mp4`);
+    const nombreSeguro = `${String(clips.length + 1).padStart(2, '0')}-${String(videoId).replace(/[^a-zA-Z0-9-_]/g, '-')}.mp4`;
+    const rutaSalida = path.join(carpetaClips, nombreSeguro);
     const resultado = await ejecutarEstandarizacionClip({ video, rutaSalida, objetivo });
     clips.push({
       ...video,
@@ -176,15 +182,15 @@ async function estandarizarVideosParaConcat({ videos = [], carpetaSalida, lineaT
     });
   }
 
-  return { clips, objetivo, carpetaClips };
+  return { clips, objetivo, carpetaClips, marcaEjecucion };
 }
 
-async function ejecutarUnionConFallback({ videosValidos = [], rutaLista, rutaSalida, carpetaSalida, lineaTiempoGlobal = null } = {}) {
+async function ejecutarUnionConFallback({ videosValidos = [], rutaLista, rutaSalida, carpetaSalida, lineaTiempoGlobal = null, marcaEjecucion = crearMarcaEjecucion() } = {}) {
   try {
     return await ejecutarConcatDemuxer({ rutaLista, rutaSalida, metodo: 'concat-demuxer-reencode' });
   } catch (errorPrimario) {
-    const estandarizado = await estandarizarVideosParaConcat({ videos: videosValidos, carpetaSalida, lineaTiempoGlobal });
-    const rutaListaEstandarizada = path.join(carpetaSalida, 'videos-concat-estandarizados.txt');
+    const estandarizado = await estandarizarVideosParaConcat({ videos: videosValidos, carpetaSalida, lineaTiempoGlobal, marcaEjecucion });
+    const rutaListaEstandarizada = path.join(carpetaSalida, `videos-concat-estandarizados-${marcaEjecucion}.txt`);
     await fs.promises.writeFile(rutaListaEstandarizada, crearListaConcat(estandarizado.clips), 'utf8');
     const resultadoFallback = await ejecutarConcatDemuxer({
       rutaLista: rutaListaEstandarizada,
@@ -195,6 +201,7 @@ async function ejecutarUnionConFallback({ videosValidos = [], rutaLista, rutaSal
       ...resultadoFallback,
       errorPrimario: errorPrimario.message,
       rutaListaEstandarizada,
+      carpetaClipsEstandarizados: estandarizado.carpetaClips,
       clipsEstandarizados: estandarizado.clips.map((clip) => ({
         videoId: clip.videoId,
         rutaOriginalFuente: clip.rutaOriginalFuente,
@@ -206,7 +213,7 @@ async function ejecutarUnionConFallback({ videosValidos = [], rutaLista, rutaSal
   }
 }
 
-function crearVideoMaestroDesdeSalida({ proyectoId, rutaSalida, carpetaSalida, videos, resultadoFfmpeg }) {
+function crearVideoMaestroDesdeSalida({ proyectoId, rutaSalida, carpetaSalida, videos, resultadoFfmpeg, marcaEjecucion }) {
   return {
     id: 'video-maestro-multivideo',
     videoId: 'video-maestro',
@@ -224,6 +231,7 @@ function crearVideoMaestroDesdeSalida({ proyectoId, rutaSalida, carpetaSalida, v
     existe: existeArchivo(rutaSalida),
     estado: existeArchivo(rutaSalida) ? 'listo' : 'faltante',
     carpetaSalida,
+    marcaEjecucion,
     videosFuente: videos.map((video) => ({
       videoId: video.videoId || video.id || null,
       nombreOriginal: video.nombreOriginal || video.nombreSeguro || null,
@@ -240,23 +248,25 @@ export async function unirVideosMaestroMultivideo({ proyectoId, carpetaProyecto,
   const videosValidos = (Array.isArray(videos) ? videos : []).filter((video) => existeArchivo(video.rutaProyecto || video.rutaOriginal));
   if (!videosValidos.length) throw new Error('No hay videos válidos para crear el video maestro multivideo.');
 
+  const marcaEjecucion = crearMarcaEjecucion();
   const carpetaSalida = asegurarCarpeta(path.join(carpetaProyecto, 'produccion', 'maestro-multivideo'));
-  const rutaSalida = path.join(carpetaSalida, nombreSeguroVideoMaestro(proyectoId));
-  const rutaLista = path.join(carpetaSalida, 'videos-concat.txt');
+  const rutaSalida = path.join(carpetaSalida, nombreSeguroVideoMaestro(proyectoId, marcaEjecucion));
+  const rutaLista = path.join(carpetaSalida, `videos-concat-${marcaEjecucion}.txt`);
   await fs.promises.writeFile(rutaLista, crearListaConcat(videosValidos), 'utf8');
 
   let resultadoFfmpeg;
   if (videosValidos.length === 1) {
     resultadoFfmpeg = copiarVideoUnico({ video: videosValidos[0], rutaSalida });
   } else {
-    resultadoFfmpeg = await ejecutarUnionConFallback({ videosValidos, rutaLista, rutaSalida, carpetaSalida, lineaTiempoGlobal });
+    resultadoFfmpeg = await ejecutarUnionConFallback({ videosValidos, rutaLista, rutaSalida, carpetaSalida, lineaTiempoGlobal, marcaEjecucion });
   }
 
-  const videoMaestro = crearVideoMaestroDesdeSalida({ proyectoId, rutaSalida, carpetaSalida, videos: videosValidos, resultadoFfmpeg });
+  const videoMaestro = crearVideoMaestroDesdeSalida({ proyectoId, rutaSalida, carpetaSalida, videos: videosValidos, resultadoFfmpeg, marcaEjecucion });
   const resultado = {
     ok: videoMaestro.existe,
     tipo: 'union-videos-maestro-multivideo',
     proyectoId,
+    marcaEjecucion,
     totalVideosFuente: videosValidos.length,
     videoMaestro,
     lineaTiempoGlobal,
