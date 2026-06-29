@@ -145,10 +145,15 @@ function verificarUiLaboratorio() {
     'renderLaboratorioEfectosView',
     'data-lab-efectos-root',
     'labEfectosVideoInput',
+    'labEfectosPreviewEntradaVideo',
+    'labEfectosDuracionEntrada',
     'labEfectosAcordeones',
     'labEfectosQueDebeSalir',
+    'labEfectosChecklist',
     'labEfectosProbarBtn',
-    'labEfectosResultadoVideo'
+    'labEfectosComparacionOriginal',
+    'labEfectosResultadoVideo',
+    'Comparación antes/después'
   ]);
   contiene('app/laboratorio-efectos-ui.js', [
     'inicializarLaboratorioEfectosUI',
@@ -158,14 +163,26 @@ function verificarUiLaboratorio() {
     "formData.append('video'",
     'seleccionarEfecto',
     'renderCatalogo',
-    'urlPublica'
+    'urlPublica',
+    'urlObjetoEntrada',
+    'actualizarArchivoSeleccionado',
+    'evaluarDuracionEntrada',
+    'formatearDuracion',
+    'labEfectosComparacionOriginal',
+    'crearChecklistEfecto',
+    'liberarUrlEntrada'
   ]);
   contiene('app/laboratorio-efectos.css', [
     '.lab-effects-screen',
     '.lab-effects-layout',
     '.lab-effects-accordion',
     '.lab-effects-effect-card',
-    '.lab-effects-video'
+    '.lab-effects-video',
+    '.lab-effects-mini-preview',
+    '.lab-effects-duration-hint',
+    '.lab-effects-checklist',
+    '.lab-effects-compare',
+    '.lab-effects-compare-item'
   ]);
   contiene('app/pantallas/pantallas.conexion.js', ['renderLaboratorioEfectosView']);
   contiene('app/navegacion/menu.config.js', ['laboratorio-efectos', 'Laboratorio']);
@@ -188,7 +205,7 @@ function main() {
   verificarRutasApi();
   verificarUiLaboratorio();
 
-  console.log(`OK Laboratorio de efectos: ${CATEGORIAS_LABORATORIO_EFECTOS.length} categorías, ${EFECTOS_LABORATORIO.length} efectos, filtros FFmpeg, motor render, rutas API y pantalla UI listos.`);
+  console.log(`OK Laboratorio de efectos: ${CATEGORIAS_LABORATORIO_EFECTOS.length} categorías, ${EFECTOS_LABORATORIO.length} efectos, filtros FFmpeg, motor render, rutas API, pantalla UI y comparación antes/después listos.`);
 }
 
 main();
