@@ -48,6 +48,33 @@ function existeArchivo(rutaArchivo) {
   }
 }
 
+function rutaVideoSeguro(video = {}) {
+  const ruta = texto(video.rutaProyecto || video.rutaOriginal || video.ruta, '');
+  if (!ruta) throw new Error(`No se puede preparar Producción: el video ${video.videoId || video.id || 'sin-id'} no tiene ruta válida.`);
+  if (!existeArchivo(ruta)) throw new Error(`No se puede preparar Producción: no existe el archivo de video ${ruta}`);
+  return ruta;
+}
+
+function nombreArchivoSeguro(video = {}, rutaVideo = '', respaldo = 'video.mp4') {
+  const nombre = texto(video.nombreSeguro || video.nombreOriginal || video.nombreTemporal, '');
+  if (nombre) return nombre;
+  if (rutaVideo) return path.basename(rutaVideo);
+  return respaldo;
+}
+
+function extensionSegura(rutaVideo = '', respaldo = '.mp4') {
+  const ext = rutaVideo ? path.extname(rutaVideo).toLowerCase() : '';
+  return ext || respaldo;
+}
+
+function enriquecerErrorProduccion(error, contexto = {}) {
+  const mensaje = String(error?.message || error || 'Error desconocido en Producción.');
+  if (mensaje.includes('The "path" argument must be of type string') || mensaje.includes('Received null')) {
+    return new Error(`Producción recibió una ruta de archivo vacía o nula. Proyecto: ${contexto.proyectoId || 'sin proyecto'}. Etapa: ${contexto.etapa || 'producción'}. Se protegió el flujo para exigir rutas válidas antes de renderizar. Detalle original: ${mensaje}`);
+  }
+  return error;
+}
+
 function seleccionarVideoPrincipal(videos = []) {
   const lista = Array.isArray(videos) ? videos : [];
   const seleccionado = lista.find((item) => item?.rutaProyecto && existeArchivo(item.rutaProyecto)) || lista.find((item) => item?.rutaOriginal && existeArchivo(item.rutaOriginal)) || null;
@@ -64,8 +91,8 @@ function obtenerVideosValidos(videosGuardados = {}) {
       videoId: video.videoId || video.id || `video-${String(index + 1).padStart(2, '0')}`,
       indice: video.indice ?? index,
       orden: video.orden ?? index + 1,
-      rutaProyecto: video.rutaProyecto || video.rutaOriginal || video.ruta || '',
-      rutaOriginal: video.rutaOriginal || video.rutaProyecto || video.ruta || ''
+      rutaProyecto: texto(video.rutaProyecto || video.rutaOriginal || video.ruta, ''),
+      rutaOriginal: texto(video.rutaOriginal || video.rutaProyecto || video.ruta, '')
     }))
     .filter((video) => existeArchivo(video.rutaProyecto || video.rutaOriginal));
 }
@@ -103,16 +130,21 @@ async function prepararVideoBaseProduccion({ proyectoId, carpetaProyecto, videos
   const multivideoActivo = esMultivideoProduccion({ videosValidos, entendimiento, plan });
   if (!multivideoActivo) {
     const video = seleccionarVideoPrincipal(videosValidos);
+    rutaVideoSeguro(video);
     return { ok: true, multivideoActivo: false, video, unionVideos: null, videosFuente: [video], lineaTiempoGlobal };
   }
 
   const unionVideos = await unirVideosMaestroMultivideo({ proyectoId, carpetaProyecto, videos: videosValidos, lineaTiempoGlobal });
+  rutaVideoSeguro(unionVideos.videoMaestro);
   return { ok: true, multivideoActivo: true, video: unionVideos.videoMaestro, unionVideos, videosFuente: videosValidos, lineaTiempoGlobal };
 }
 
 function crearEntradaProduccion({ proyectoId, estado, video, carpetaProyecto, plan, videoBase }) {
+  if (!carpetaProyecto) throw new Error('No se puede preparar Producción: falta carpeta del proyecto.');
   const proyectoPlan = plan.proyecto || {};
   const multivideoActivo = Boolean(videoBase?.multivideoActivo);
+  const rutaVideo = rutaVideoSeguro(video);
+  const nombreSeguro = nombreArchivoSeguro(video, rutaVideo);
   return {
     ok: true,
     etapa: ETAPAS_AUTOVIDEO.PRODUCCION,
@@ -128,11 +160,11 @@ function crearEntradaProduccion({ proyectoId, estado, video, carpetaProyecto, pl
     video: {
       id: video.videoId || video.id || null,
       videoId: video.videoId || video.id || null,
-      nombreOriginal: video.nombreOriginal || video.nombreTemporal || path.basename(video.rutaProyecto || video.rutaOriginal),
-      nombreSeguro: video.nombreSeguro || path.basename(video.rutaProyecto || video.rutaOriginal),
-      rutaOriginal: video.rutaProyecto || video.rutaOriginal,
-      rutaProyecto: video.rutaProyecto || video.rutaOriginal,
-      extension: path.extname(video.rutaProyecto || video.rutaOriginal).toLowerCase(),
+      nombreOriginal: video.nombreOriginal || video.nombreTemporal || nombreSeguro,
+      nombreSeguro,
+      rutaOriginal: rutaVideo,
+      rutaProyecto: rutaVideo,
+      extension: extensionSegura(rutaVideo),
       origen: multivideoActivo ? 'api-etapas-produccion-maestro-multivideo' : 'api-etapas-produccion'
     },
     videos: videoBase?.videosFuente || [video],
@@ -147,7 +179,7 @@ function crearEntradaProduccion({ proyectoId, estado, video, carpetaProyecto, pl
     },
     rutas: {
       carpetaProyecto,
-      rutaVideoOriginal: video.rutaProyecto || video.rutaOriginal,
+      rutaVideoOriginal: rutaVideo,
       carpetaProduccion: path.join(carpetaProyecto, 'produccion')
     }
   };
@@ -456,7 +488,8 @@ export async function procesarProduccionMaestroProyectoEtapa({ proyectoId, opcio
       mensaje: videoBase.multivideoActivo ? 'Video maestro multivideo producido correctamente.' : 'Video maestro producido correctamente.'
     };
   } catch (error) {
-    await marcarErrorEstadoProyectoEtapas({ proyectoId, etapa: ETAPAS_AUTOVIDEO.PRODUCCION, error, mensaje: 'Error en producción maestro.' }).catch(() => null);
-    throw error;
+    const errorSeguro = enriquecerErrorProduccion(error, { proyectoId, etapa: ETAPAS_AUTOVIDEO.PRODUCCION });
+    await marcarErrorEstadoProyectoEtapas({ proyectoId, etapa: ETAPAS_AUTOVIDEO.PRODUCCION, error: errorSeguro, mensaje: 'Error en producción maestro.' }).catch(() => null);
+    throw errorSeguro;
   }
 }
