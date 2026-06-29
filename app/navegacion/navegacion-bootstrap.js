@@ -8,6 +8,7 @@ import { inicializarBibliotecaProyectoUI } from '../biblioteca-proyecto-ui.js';
 import { inicializarPlanEdicionUI } from '../etapas-ui/plan-edicion-ui.js';
 import { inicializarPlanEdicionWizardUI } from '../etapas-ui/plan-edicion-wizard-ui.js';
 import { inicializarProduccionMaestroUI } from '../etapas-ui/produccion-maestro-ui.js';
+import { inicializarProduccionMaestroWizardUI } from '../etapas-ui/produccion-maestro-wizard-ui.js';
 import { inicializarAdaptacionUI } from '../etapas-ui/adaptacion-ui.js';
 
 function asegurarCss(id, href) {
@@ -45,6 +46,7 @@ function iniciarNavegacion() {
   inicializarPlanEdicionUI();
   inicializarPlanEdicionWizardUI();
   inicializarProduccionMaestroUI();
+  inicializarProduccionMaestroWizardUI();
   inicializarAdaptacionUI();
 }
 
