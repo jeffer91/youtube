@@ -1,11 +1,11 @@
 /*
-  Laboratorio de efectos - Bloque 2
-  Función: convertir un efecto del catálogo en una cadena FFmpeg visible y segura.
+  Laboratorio de efectos - Bloque 8 correcciones
+  Función: convertir un efecto del catálogo en una cadena FFmpeg visible, segura y validada.
 */
 
 import { obtenerEfectoLabPorId, validarEfectoLab } from './catalogo-efectos-lab.js';
 
-export const VERSION_FILTROS_FFMPEG_LAB = '1.0.0';
+export const VERSION_FILTROS_FFMPEG_LAB = '1.0.1';
 
 function numero(valor, respaldo = 0) {
   const n = Number(valor);
@@ -18,7 +18,12 @@ function texto(valor, respaldo = '') {
 }
 
 function limpiarTextoDrawtext(valor = '') {
-  return texto(valor, 'EFECTO').replace(/[\\']/g, '').replace(/:/g, ' ').slice(0, 42);
+  return texto(valor, 'EFECTO')
+    .replace(/[\\'":%{}[\]]/g, '')
+    .replace(/,/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .slice(0, 42) || 'EFECTO';
 }
 
 function intensidadFactor(intensidad = 'normal') {
@@ -31,7 +36,7 @@ function intensidadFactor(intensidad = 'normal') {
 function enableEntre(inicio = 0, duracion = 1) {
   const desde = Math.max(0, numero(inicio, 0));
   const hasta = Math.max(desde + 0.2, desde + numero(duracion, 1));
-  return `between(t\,${desde.toFixed(3)}\,${hasta.toFixed(3)})`;
+  return `between(t,${desde.toFixed(3)},${hasta.toFixed(3)})`;
 }
 
 function filtroBase() {
@@ -97,13 +102,14 @@ function filtroWipe({ inicio = 1, duracion = 0.7, color = 'white@0.62' } = {}) {
   const desde = Math.max(0, numero(inicio, 0));
   const dur = Math.max(0.2, numero(duracion, 0.7));
   const hasta = desde + dur;
-  return `drawbox=x='-w+(2*w*((t-${desde.toFixed(3)})/${dur.toFixed(3)}))':y=0:w=iw:h=ih:color=${color}:t=fill:enable='between(t\,${desde.toFixed(3)}\,${hasta.toFixed(3)})'`;
+  return `drawbox=x='-w+(2*w*((t-${desde.toFixed(3)})/${dur.toFixed(3)}))':y=0:w=iw:h=ih:color=${color}:t=fill:enable='between(t,${desde.toFixed(3)},${hasta.toFixed(3)})'`;
 }
 
 function filtroRebote({ inicio = 2, duracion = 0.8, amplitud = 14 } = {}) {
   const e = enableEntre(inicio, duracion);
-  const a = Math.max(4, Math.min(40, numero(amplitud, 14)));
-  return `crop=w=iw-${a * 2}:h=ih-${a * 2}:x='${a}+${a}*sin(80*t)':y='${a}+${Math.round(a * 0.7)}*cos(70*t)':enable='${e}',scale=trunc(iw/2)*2:trunc(ih/2)*2`;
+  const a = Math.round(Math.max(4, Math.min(40, numero(amplitud, 14))));
+  const ay = Math.round(a * 0.7);
+  return `crop=w=iw-${a * 2}:h=ih-${a * 2}:x='if(${e},${a}+${a}*sin(80*t),${a})':y='if(${e},${a}+${ay}*cos(70*t),${a})',scale=trunc((iw+${a * 2})/2)*2:trunc((ih+${a * 2})/2)*2`;
 }
 
 function filtroColorPorEfecto(efectoId, factor = 1) {
@@ -163,22 +169,37 @@ function construirFiltrosPorId({ efecto, textoPersonalizado = '', intensidad = n
   }
 }
 
+function validarFiltroVideoSeguro(filtroVideo = '') {
+  const errores = [];
+  const filtro = texto(filtroVideo, '');
+  if (!filtro) errores.push('filtro vacío');
+  if (/undefined|null/gi.test(filtro)) errores.push('contiene undefined/null');
+  if (filtro.includes('\n') || filtro.includes('\r')) errores.push('contiene saltos de línea');
+  if (!filtro.includes('format=yuv420p')) errores.push('no normaliza formato yuv420p');
+  return { ok: errores.length === 0, errores };
+}
+
 export function construirFiltroFfmpegLaboratorio({ efectoId, textoPersonalizado = '', intensidad = null } = {}) {
   const efecto = obtenerEfectoLabPorId(efectoId);
   const validacion = validarEfectoLab(efecto);
   if (!validacion.ok) throw new Error(validacion.mensaje);
-  const filtros = [filtroBase(), ...construirFiltrosPorId({ efecto, textoPersonalizado, intensidad }), 'format=yuv420p'].filter(Boolean);
+  const textoUsado = limpiarTextoDrawtext(textoPersonalizado || efecto.textoPrueba || '');
+  const filtros = [filtroBase(), ...construirFiltrosPorId({ efecto, textoPersonalizado: textoUsado, intensidad }), 'format=yuv420p'].filter(Boolean);
+  const filtroVideo = filtros.join(',');
+  const seguridad = validarFiltroVideoSeguro(filtroVideo);
+  if (!seguridad.ok) throw new Error(`Filtro inseguro para ${efecto.id}: ${seguridad.errores.join(', ')}`);
   return {
     ok: true,
     tipo: 'filtro-ffmpeg-laboratorio-efectos',
     version: VERSION_FILTROS_FFMPEG_LAB,
     efecto,
-    filtroVideo: filtros.join(','),
+    filtroVideo,
     filtros,
+    seguridad,
     queDebeSalir: efecto.queDebeSalir,
     compatibleFfmpeg: efecto.compatibleFfmpeg,
     requiereTexto: efecto.requiereTexto,
-    textoUsado: textoPersonalizado || efecto.textoPrueba || '',
+    textoUsado,
     intensidadUsada: intensidad || efecto.intensidadBase,
     mensaje: `Filtro listo para probar: ${efecto.nombre}.`
   };
