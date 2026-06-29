@@ -1,7 +1,19 @@
 /*
-  Laboratorio de efectos - Bloque 5
+  Laboratorio de efectos - Bloque 5 + guia visual
   Función: cargar catálogo, seleccionar un efecto, previsualizar original y comparar antes/después.
 */
+
+import { aplicarProcesoVisual } from './procesos-ui/proceso-visual.service.js';
+
+const STORAGE_LAB_STEP = 'autovideojeff.laboratorioEfectosPaso';
+const PASOS_LAB = ['video', 'catalogo', 'efecto', 'probar', 'comparar'];
+const MAPA_PASO_PROCESO = Object.freeze({
+  video: 'video-corto',
+  catalogo: 'categoria-efecto',
+  efecto: 'efecto',
+  probar: 'probar',
+  comparar: 'comparar'
+});
 
 let catalogoLab = null;
 let efectoSeleccionado = null;
@@ -14,14 +26,24 @@ function texto(valor, respaldo = '') { const limpio = String(valor ?? '').replac
 function escapar(valor) { return texto(valor, '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;'); }
 function normalizar(valor = '') { return String(valor || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase(); }
 function segundos(valor) { const n = Number(valor); return Number.isFinite(n) ? n : 0; }
+function tieneVideoEntrada() { return Boolean($('labEfectosVideoInput')?.files?.[0]); }
+function tieneResultado() { return Boolean($('labEfectosResultadoVideo')?.src || ($('labEfectosResultadoPanel') && !$('labEfectosResultadoPanel').hidden)); }
 
 function asegurarCssLaboratorio() {
-  if (document.querySelector('link[data-lab-efectos-css]')) return;
-  const link = document.createElement('link');
-  link.rel = 'stylesheet';
-  link.href = './laboratorio-efectos.css';
-  link.dataset.labEfectosCss = '1';
-  document.head.appendChild(link);
+  if (!document.querySelector('link[data-lab-efectos-css]')) {
+    const link = document.createElement('link');
+    link.rel = 'stylesheet';
+    link.href = './laboratorio-efectos.css';
+    link.dataset.labEfectosCss = '1';
+    document.head.appendChild(link);
+  }
+  if (!document.querySelector('link[data-lab-efectos-guiado-css]')) {
+    const link = document.createElement('link');
+    link.rel = 'stylesheet';
+    link.href = './laboratorio-efectos-guiado.css';
+    link.dataset.labEfectosGuiadoCss = '1';
+    document.head.appendChild(link);
+  }
 }
 
 async function obtenerBaseApi() {
@@ -78,6 +100,66 @@ function ocultarMensaje() {
   if (!box) return;
   box.hidden = true;
   box.textContent = '';
+}
+
+function estadoPaso(paso, activo) {
+  const video = tieneVideoEntrada();
+  const efecto = Boolean(efectoSeleccionado);
+  const resultado = tieneResultado();
+  if (paso === 'video') return activo === paso ? 'active' : video ? 'done' : 'active';
+  if (paso === 'catalogo') return !video ? 'locked' : activo === paso ? 'active' : efecto ? 'done' : 'active';
+  if (paso === 'efecto') return !efecto ? 'locked' : activo === paso ? 'active' : 'done';
+  if (paso === 'probar') return !video || !efecto ? 'locked' : activo === paso ? 'active' : resultado ? 'done' : 'active';
+  if (paso === 'comparar') return !resultado ? 'locked' : activo === paso ? 'active' : 'done';
+  return 'locked';
+}
+
+export function activarPasoLaboratorioEfectos(paso = 'video', { guardar = true } = {}) {
+  const root = document.querySelector('[data-lab-efectos-root]');
+  if (!root) return false;
+  const pasoFinal = PASOS_LAB.includes(paso) ? paso : 'video';
+  root.dataset.procesoPasoActivo = MAPA_PASO_PROCESO[pasoFinal] || 'video-corto';
+
+  root.querySelectorAll('[data-lab-wizard-panel]').forEach((panel) => {
+    const activo = panel.dataset.labWizardPanel === pasoFinal;
+    panel.classList.toggle('is-active', activo);
+    panel.hidden = !activo;
+  });
+
+  root.querySelectorAll('[data-lab-wizard-go]').forEach((boton) => {
+    const id = boton.dataset.labWizardGo;
+    const estado = estadoPaso(id, pasoFinal);
+    boton.classList.toggle('is-active', estado === 'active');
+    boton.classList.toggle('is-done', estado === 'done');
+    boton.classList.toggle('is-locked', estado === 'locked');
+  });
+
+  const pendiente = $('labEfectosResultadoPendiente');
+  if (pendiente) pendiente.hidden = tieneResultado();
+
+  aplicarProcesoVisual({ contenedor: root, procesoId: 'laboratorio-efectos', pasoActivoId: root.dataset.procesoPasoActivo });
+  if (guardar) localStorage.setItem(STORAGE_LAB_STEP, pasoFinal);
+  return true;
+}
+
+async function irAPasoLaboratorioEfectos(paso = 'video') {
+  if (paso !== 'video' && !tieneVideoEntrada()) {
+    setMensaje('Primero sube un video corto.', 'warn');
+    activarPasoLaboratorioEfectos('video');
+    return;
+  }
+  if (['efecto', 'probar'].includes(paso) && !efectoSeleccionado) {
+    setMensaje('Primero selecciona un efecto del catálogo.', 'warn');
+    activarPasoLaboratorioEfectos('catalogo');
+    return;
+  }
+  if (paso === 'comparar' && !tieneResultado()) {
+    setMensaje('Primero ejecuta la prueba para comparar.', 'warn');
+    activarPasoLaboratorioEfectos('probar');
+    return;
+  }
+  ocultarMensaje();
+  activarPasoLaboratorioEfectos(paso);
 }
 
 function liberarUrlEntrada() {
@@ -139,6 +221,7 @@ function ocultarResultadoAnterior() {
   if (video) video.removeAttribute('src');
   if (descarga) { descarga.hidden = true; descarga.removeAttribute('href'); }
   if (resumen) resumen.textContent = '';
+  activarPasoLaboratorioEfectos(localStorage.getItem(STORAGE_LAB_STEP) || 'video', { guardar: false });
 }
 
 function actualizarArchivoSeleccionado() {
@@ -152,12 +235,14 @@ function actualizarArchivoSeleccionado() {
     asignarPreviewOriginal('');
     if (fileName) fileName.textContent = 'Ningún video seleccionado.';
     actualizarBotonProbar();
+    activarPasoLaboratorioEfectos('video');
     return;
   }
   urlObjetoEntrada = URL.createObjectURL(archivo);
   if (fileName) fileName.textContent = `${archivo.name} · ${(archivo.size / (1024 * 1024)).toFixed(1)} MB`;
   asignarPreviewOriginal(urlObjetoEntrada);
   actualizarBotonProbar();
+  activarPasoLaboratorioEfectos('catalogo');
 }
 
 function actualizarBotonProbar() {
@@ -272,6 +357,7 @@ function seleccionarEfecto(efectoId) {
   renderSeleccion();
   renderCatalogo();
   ocultarMensaje();
+  activarPasoLaboratorioEfectos('efecto');
 }
 
 async function cargarCatalogo() {
@@ -295,8 +381,8 @@ function bloquearFormulario(bloqueado) {
 async function enviarPrueba(evento) {
   evento.preventDefault();
   const archivo = $('labEfectosVideoInput')?.files?.[0] || null;
-  if (!archivo) { setMensaje('Sube un video corto para probar.', 'warn'); return; }
-  if (!efectoSeleccionado) { setMensaje('Selecciona un efecto del catálogo.', 'warn'); return; }
+  if (!archivo) { setMensaje('Sube un video corto para probar.', 'warn'); activarPasoLaboratorioEfectos('video'); return; }
+  if (!efectoSeleccionado) { setMensaje('Selecciona un efecto del catálogo.', 'warn'); activarPasoLaboratorioEfectos('catalogo'); return; }
 
   const formData = new FormData();
   formData.append('video', archivo);
@@ -306,6 +392,7 @@ async function enviarPrueba(evento) {
 
   try {
     ocultarMensaje();
+    activarPasoLaboratorioEfectos('probar');
     bloquearFormulario(true);
     setEstado('Renderizando...', 'normal');
     setMensaje(`Aplicando ${efectoSeleccionado.nombre}.`, 'normal');
@@ -337,9 +424,11 @@ async function enviarPrueba(evento) {
     }
     setEstado('Prueba lista', 'ok');
     setMensaje('Video generado correctamente. Compara el antes/después.', 'ok');
+    activarPasoLaboratorioEfectos('comparar');
   } catch (error) {
     setEstado('Error', 'error');
     setMensaje(error.message || 'No se pudo probar el efecto.', 'error');
+    activarPasoLaboratorioEfectos('probar');
   } finally {
     bloquearFormulario(false);
   }
@@ -349,6 +438,12 @@ function enlazarEventos() {
   const root = document.querySelector('[data-lab-efectos-root]');
   if (!root || root.dataset.labInicializado === '1') return;
   root.dataset.labInicializado = '1';
+  root.addEventListener('click', async (evento) => {
+    const paso = evento.target.closest('[data-lab-wizard-go]')?.dataset.labWizardGo;
+    if (paso) {
+      await irAPasoLaboratorioEfectos(paso);
+    }
+  });
   $('labEfectosVideoInput')?.addEventListener('change', actualizarArchivoSeleccionado);
   $('labEfectosPreviewEntradaVideo')?.addEventListener('loadedmetadata', (evento) => evaluarDuracionEntrada(evento.target.duration));
   $('labEfectosComparacionOriginal')?.addEventListener('loadedmetadata', (evento) => {
@@ -363,6 +458,7 @@ function enlazarEventos() {
   });
   $('labEfectosForm')?.addEventListener('submit', enviarPrueba);
   renderChecklist();
+  activarPasoLaboratorioEfectos(localStorage.getItem(STORAGE_LAB_STEP) || 'video', { guardar: false });
   cargarCatalogo().catch((error) => {
     setEstado('Error catálogo', 'error');
     setMensaje(error.message, 'error');
