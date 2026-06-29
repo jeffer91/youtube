@@ -17,7 +17,7 @@
     <section id="mainNavigation" class="aj-navigation-shell" aria-label="Navegación principal"></section>
     <section id="pantallaDinamica" class="aj-dynamic-screen" aria-live="polite"></section>
 
-    <section id="nuevoProyectoProcessor" class="hero-card processor-card clean-project-screen aj-screen-panel" data-screen-panel="nuevo-proyecto">
+    <section id="nuevoProyectoProcessor" class="hero-card processor-card clean-project-screen aj-screen-panel" data-screen-panel="nuevo-proyecto" data-nuevo-proyecto-root data-proceso-root="nuevo-proyecto" data-proceso-paso-activo="nombre">
       <div class="hero-top processor-top clean-project-header">
         <div>
           <p class="eyebrow">Nuevo proyecto</p>
@@ -27,23 +27,39 @@
         <div id="serverStatus" class="server-status server-status--checking">Verificando servidor</div>
       </div>
 
+      <div data-proceso-resumen="nuevo-proyecto"></div>
+
+      <section class="clean-project-flow" aria-label="Flujo guiado de nuevo proyecto">
+        <button class="clean-project-step is-active" type="button" data-nuevo-wizard-go="nombre" data-proceso-step="nombre"><b>1</b><span><strong>Nombre</strong><small>Identificar proyecto</small></span></button>
+        <button class="clean-project-step is-locked" type="button" data-nuevo-wizard-go="subir-video" data-proceso-step="subir-video"><b>2</b><span><strong>Video</strong><small>Subir archivo</small></span></button>
+        <button class="clean-project-step is-locked" type="button" data-nuevo-wizard-go="procesar" data-proceso-step="procesar-entendimiento"><b>3</b><span><strong>Procesar</strong><small>Crear entendimiento</small></span></button>
+        <button class="clean-project-step is-advanced" type="button" data-nuevo-wizard-go="tecnico" data-proceso-step="opciones-tecnicas"><b>+</b><span><strong>Técnico</strong><small>Opciones ocultas</small></span></button>
+      </section>
+
+      <section id="nuevoProyectoMensaje" class="clean-project-message" hidden></section>
+
       <form id="videoForm" class="video-form video-form--compact clean-project-form">
         <div class="clean-project-grid">
           <section class="form-section clean-project-main-card">
-            <label class="clean-project-name" for="projectNameInput">
+            <label class="clean-project-name" for="projectNameInput" data-nuevo-project-zone="nombre">
               <span>Nombre del proyecto</span>
               <input id="projectNameInput" name="nombreProyecto" type="text" maxlength="120" placeholder="Ejemplo: Análisis Ecuador vs Brasil" autocomplete="off" />
               <small>Este nombre se usará para identificar el video durante todas las etapas.</small>
             </label>
 
-            <label class="file-picker clean-file-picker" for="videoInput">
-              <span class="file-picker__title">Subir video o varios videos</span>
-              <span class="file-picker__hint">MP4, MOV, WEBM, MKV o AVI. En los siguientes bloques se conectará el proceso por etapas.</span>
-            </label>
-            <input id="videoInput" class="file-input" name="video" type="file" accept="video/*,.mp4,.mov,.m4v,.avi,.mkv,.webm" multiple required />
-            <p id="fileName" class="file-name">Ningún video seleccionado.</p>
+            <div class="clean-project-upload-zone" data-nuevo-project-zone="subir-video">
+              <label class="file-picker clean-file-picker" for="videoInput">
+                <span class="file-picker__title">Subir video o varios videos</span>
+                <span class="file-picker__hint">MP4, MOV, WEBM, MKV o AVI. En los siguientes bloques se conectará el proceso por etapas.</span>
+              </label>
+              <input id="videoInput" class="file-input" name="video" type="file" accept="video/*,.mp4,.mov,.m4v,.avi,.mkv,.webm" multiple required />
+              <p id="fileName" class="file-name">Ningún video seleccionado.</p>
+            </div>
 
-            <button id="processButton" class="primary-button primary-button--compact clean-process-button" type="submit">Procesar entendimiento</button>
+            <div class="clean-project-process-zone" data-nuevo-project-zone="procesar">
+              <button id="processButton" class="primary-button primary-button--compact clean-process-button" type="submit">Procesar entendimiento</button>
+              <small>Al procesar, la app pasa al entendimiento del video y mantiene el flujo por etapas.</small>
+            </div>
           </section>
 
           <aside class="clean-project-side-card" aria-label="Flujo por etapas">
@@ -51,10 +67,11 @@
             <h2>Flujo por etapas</h2>
             <ol class="clean-stage-list">
               <li class="is-active"><strong>1. Entendimiento</strong><span>Transcripción, fotogramas y análisis global.</span></li>
-              <li><strong>2. Plan de edición</strong><span>Qué se va a cortar, agregar y reforzar.</span></li>
-              <li><strong>3. Producción</strong><span>Render maestro, antes/después y línea de producción.</span></li>
-              <li><strong>4. Adaptación</strong><span>Encuadres, textos y recursos por plataforma.</span></li>
-              <li><strong>5. Resultado</strong><span>Versiones finales y descargas.</span></li>
+              <li><strong>2. Biblioteca</strong><span>Recursos generales o temporales del proyecto.</span></li>
+              <li><strong>3. Plan de edición</strong><span>Qué se va a cortar, agregar y reforzar.</span></li>
+              <li><strong>4. Producción</strong><span>Render maestro, antes/después y línea de producción.</span></li>
+              <li><strong>5. Adaptación</strong><span>Encuadres, textos y recursos por plataforma.</span></li>
+              <li><strong>6. Resultado</strong><span>Versiones finales y descargas.</span></li>
             </ol>
             <div class="clean-project-note">
               <strong>Plataformas al final</strong>
@@ -63,7 +80,7 @@
           </aside>
         </div>
 
-        <section class="legacy-options-hidden" aria-hidden="true">
+        <section class="legacy-options-hidden" aria-hidden="true" data-nuevo-project-zone="tecnico" data-proceso-avanzado>
           <div class="project-config-grid">
             <label for="profileSelect"><span>Perfil</span><select id="profileSelect" name="perfil"><option value="general" selected>General</option><option value="11-contra-11">11 contra 11</option><option value="jeff-isekai">Jeff Isekai</option><option value="creciaula">Creciaula</option><option value="institucional">Institucional</option><option value="el-don-historia">El Don Historia</option><option value="jeff-verso">Jeff Verso</option></select></label>
             <label for="editModeSelect"><span>Modo</span><select id="editModeSelect" name="modoEdicion"><option value="revision_completa" selected>Revisión completa</option><option value="automatico_rapido">Automático rápido</option></select></label>
