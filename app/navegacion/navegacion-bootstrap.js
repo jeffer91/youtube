@@ -1,5 +1,6 @@
 import { inicializarNavegacionAutoVideoJeff } from './navegacion.service.js';
 import { inicializarInicioUI } from '../inicio-ui.js';
+import { inicializarNuevoProyectoUI } from '../nuevo-proyecto-ui.js';
 import { inicializarDiagnosticoFuerteUI } from '../diagnostico-fuerte-ui.js';
 import { inicializarDiagnosticoWizardUI } from '../diagnostico-wizard-ui.js';
 import { inicializarAuditoriaIntegralUI } from '../auditoria-integral-ui.js';
@@ -49,6 +50,7 @@ function iniciarNavegacion() {
     contenedorVista: document.getElementById('pantallaDinamica')
   });
   inicializarInicioUI();
+  inicializarNuevoProyectoUI();
   inicializarDiagnosticoFuerteUI();
   inicializarDiagnosticoWizardUI();
   inicializarAuditoriaIntegralUI();
