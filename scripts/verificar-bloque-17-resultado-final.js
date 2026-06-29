@@ -42,6 +42,18 @@ function verificarRutasEtapas() {
 function verificarPantalla() {
   contiene('app/pantallas/resultado.view.js', [
     'data-resultado-final-root',
+    'data-proceso-root="resultado-final"',
+    'data-proceso-resumen="resultado-final"',
+    'data-resultado-wizard-go="cargar"',
+    'data-resultado-wizard-go="maestro"',
+    'data-resultado-wizard-go="versiones"',
+    'data-resultado-wizard-go="checklist"',
+    'data-resultado-wizard-go="reporte"',
+    'data-resultado-wizard-panel="cargar"',
+    'data-resultado-wizard-panel="maestro"',
+    'data-resultado-wizard-panel="versiones"',
+    'data-resultado-wizard-panel="checklist"',
+    'data-resultado-wizard-panel="reporte"',
     'resultadoFinalProyectoId',
     'resultadoFinalCargarBtn',
     'resultadoFinalGenerarBtn',
@@ -60,11 +72,28 @@ function verificarPantalla() {
     'renderVersiones',
     'renderReporte'
   ]);
+  contiene('app/resultado-final-wizard-ui.js', [
+    'inicializarResultadoFinalWizardUI',
+    'activarPasoResultadoFinal',
+    'irAPasoResultadoFinal',
+    'MAPA_PASO_PROCESO',
+    'PASOS_RESULTADO',
+    'hayResultadoVisible',
+    'tieneVideoMaestro',
+    './procesos-ui/proceso-visual.service.js',
+    'data-resultado-wizard-panel',
+    'data-resultado-wizard-go',
+    'resultadoFinalCargarBtn',
+    'resultadoFinalGenerarBtn'
+  ]);
   contiene('app/resultado-final.css', [
     'result-final-page',
+    'result-final-flow',
+    'result-final-step',
+    'result-final-wizard',
+    'result-final-wizard-panel',
     'result-final-toolbar',
     'result-final-kpis',
-    'result-final-layout',
     'result-final-checklist',
     'result-final-platforms',
     'result-final-report-card'
@@ -73,7 +102,18 @@ function verificarPantalla() {
 
 function verificarMenuBootstrap() {
   contiene('app/navegacion/menu.config.js', ['Resultado final', 'Paquete final, checklist y entregables de publicación']);
-  contiene('app/navegacion/navegacion-bootstrap.js', ['resultado-final.css', 'resultadoFinalStyles', 'inicializarResultadoFinalUI']);
+  contiene('app/navegacion/navegacion-bootstrap.js', ['resultado-final.css', 'resultadoFinalStyles', 'inicializarResultadoFinalUI', 'inicializarResultadoFinalWizardUI']);
+}
+
+function verificarProcesosUi() {
+  contiene('app/procesos-ui/procesos.config.js', [
+    'resultado-final',
+    'cargar-generar',
+    'maestro',
+    'versiones',
+    'checklist',
+    'reporte'
+  ]);
 }
 
 function verificarDocumentacion() {
@@ -91,6 +131,9 @@ async function verificarImportacionReal() {
   exigir(typeof modulo.procesarResultadoFinalProyectoEtapa === 'function', 'procesarResultadoFinalProyectoEtapa no se exporta como función.');
   const ui = await import('../app/resultado-final-ui.js');
   exigir(typeof ui.renderizarResultadoFinalUI === 'function', 'renderizarResultadoFinalUI no se exporta como función.');
+  const wizard = await import('../app/resultado-final-wizard-ui.js');
+  exigir(typeof wizard.inicializarResultadoFinalWizardUI === 'function', 'inicializarResultadoFinalWizardUI no se exporta como función.');
+  exigir(typeof wizard.activarPasoResultadoFinal === 'function', 'activarPasoResultadoFinal no se exporta como función.');
 }
 
 async function main() {
@@ -98,12 +141,13 @@ async function main() {
   verificarRutasEtapas();
   verificarPantalla();
   verificarMenuBootstrap();
+  verificarProcesosUi();
   verificarDocumentacion();
   await verificarImportacionReal();
-  console.log('OK Bloque 17: resultado final conectado.');
+  console.log('OK Resultado final guiado: vista por pasos, controlador, wizard visual, navegación y CSS conectados.');
 }
 
 main().catch((error) => {
-  console.error('ERROR Bloque 17:', error.message);
+  console.error('ERROR Resultado final guiado:', error.message);
   process.exit(1);
 });
