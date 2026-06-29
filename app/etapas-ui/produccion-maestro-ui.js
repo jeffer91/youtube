@@ -5,11 +5,30 @@
 
 const STORAGE_PROYECTO_ETAPAS = 'autovideojeff.proyectoEtapasId';
 
+const PISTAS_FALLBACK = Object.freeze([
+  { id: 'global', nombre: 'Global' },
+  { id: 'cortes', nombre: 'Cortes' },
+  { id: 'subtitulos', nombre: 'Subtítulos' },
+  { id: 'textos', nombre: 'Textos' },
+  { id: 'zooms', nombre: 'Zooms' },
+  { id: 'efectos', nombre: 'Efectos' },
+  { id: 'animaciones', nombre: 'Animaciones' },
+  { id: 'transiciones', nombre: 'Transiciones' },
+  { id: 'audio-sfx', nombre: 'Audio / SFX' },
+  { id: 'recursos', nombre: 'Recursos' },
+  { id: 'diagnostico', nombre: 'Diagnóstico' },
+  { id: 'otros', nombre: 'Otros' }
+]);
+
+let produccionActual = null;
+
 function $(id) { return document.getElementById(id); }
 function texto(valor, respaldo = '—') { const limpio = String(valor ?? '').trim(); return limpio || respaldo; }
 function escapar(valor) { return texto(valor, '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;'); }
-function numero(valor) { const n = Number(valor); return Number.isFinite(n) ? n : null; }
+function numero(valor, respaldo = null) { const n = Number(valor); return Number.isFinite(n) ? n : respaldo; }
+function arr(valor) { return Array.isArray(valor) ? valor : []; }
 function peso(bytes) { const n = numero(bytes, 0); if (!n) return '—'; if (n < 1024 * 1024) return `${Math.round(n / 1024)} KB`; return `${(n / (1024 * 1024)).toFixed(1)} MB`; }
+function setTexto(id, valor) { const el = $(id); if (el) el.textContent = String(valor ?? '—'); }
 
 async function obtenerBaseApi() {
   const apiElectron = window.AutoVideoJeff?.servidor?.obtenerEstado;
@@ -97,16 +116,103 @@ function obtenerResumen(produccion = {}) {
   return produccion.resumen || {};
 }
 
+function obtenerResumenMarcadores(produccion = {}) {
+  return produccion.resumenMarcadores || produccion.timelineEditorial?.resumen || produccion.resumen?.marcadores || {};
+}
+
+function obtenerMarcadores(produccion = {}) {
+  const marcadores = produccion.marcadoresProduccion || produccion.timelineEditorial?.marcadores || [];
+  if (Array.isArray(marcadores) && marcadores.length) return marcadores;
+  return elementosPlan(produccion).map((item, index) => {
+    const inicio = numero(item.inicio ?? item.datos?.inicio, 0) ?? 0;
+    const finBase = numero(item.fin ?? item.datos?.fin, inicio + 2) ?? inicio + 2;
+    return {
+      id: `legacy-${index + 1}`,
+      orden: index + 1,
+      tipo: item.tipo || 'elemento',
+      pista: ['subtitulo', 'texto', 'recurso', 'efecto', 'zoom', 'animacion', 'audio'].includes(item.tipo) ? `${item.tipo}s` : 'otros',
+      nombre: item.nombre || item.titulo || item.id || 'Elemento del plan',
+      descripcion: item.descripcion || item.motivo || item.datos?.motivo || '',
+      inicio,
+      fin: finBase <= inicio ? inicio + 2 : finBase,
+      duracion: Math.max(0.5, finBase - inicio),
+      estado: item.aprobado ? 'aprobado' : item.rechazado ? 'rechazado' : 'revision',
+      aplicado: false,
+      global: false,
+      origen: 'plan-produccion-legacy',
+      fuente: 'planProduccion.elementos',
+      datos: item
+    };
+  });
+}
+
+function obtenerPistas(produccion = {}) {
+  const pistas = produccion.pistasProduccion || produccion.timelineEditorial?.pistas || [];
+  if (Array.isArray(pistas) && pistas.length) return pistas;
+  const marcadores = obtenerMarcadores(produccion);
+  return PISTAS_FALLBACK.map((pista) => ({
+    ...pista,
+    total: marcadores.filter((item) => item.pista === pista.id || item.tipo === pista.id).length,
+    marcadores: marcadores.filter((item) => item.pista === pista.id || item.tipo === pista.id)
+  })).filter((pista) => pista.total > 0);
+}
+
+function obtenerDuracionTimeline(produccion = {}, marcadores = []) {
+  const resumen = obtenerResumenMarcadores(produccion);
+  const resumenProduccion = obtenerResumen(produccion);
+  const maxMarcador = Math.max(0, ...marcadores.map((item) => numero(item.fin, numero(item.inicio, 0) + 2) || 0));
+  return Math.max(30, numero(resumen.duracionSegundos, 0) || 0, numero(produccion.timelineEditorial?.duracionSegundos, 0) || 0, numero(resumenProduccion.duracionTotalSegundos, 0) || 0, maxMarcador);
+}
+
+function etiquetaPista(pistaId = '') {
+  return PISTAS_FALLBACK.find((item) => item.id === pistaId)?.nombre || texto(pistaId, 'Pista');
+}
+
+function etiquetaTipo(tipo = '') {
+  const mapa = {
+    corte: 'Corte',
+    subtitulo: 'Subtítulo',
+    texto: 'Texto',
+    zoom: 'Zoom',
+    efecto: 'Efecto',
+    animacion: 'Animación',
+    transicion: 'Transición',
+    'audio-sfx': 'Audio / SFX',
+    recurso: 'Recurso',
+    diagnostico: 'Diagnóstico',
+    otro: 'Otro'
+  };
+  return mapa[tipo] || texto(tipo, 'Marcador');
+}
+
+function claseEstadoMarcador(marcador = {}) {
+  const estado = String(marcador.estado || '').toLowerCase();
+  if (marcador.aplicado || estado.includes('aplicado') || estado.includes('ok')) return 'aplicado';
+  if (estado.includes('omitido') || estado.includes('rechazado')) return 'omitido';
+  if (estado.includes('fallback')) return 'fallback';
+  if (estado.includes('revision') || estado.includes('revisión')) return 'revision';
+  return 'planificado';
+}
+
 async function renderKpis(produccion = {}) {
   const resumen = obtenerResumen(produccion);
+  const resumenMarcadores = obtenerResumenMarcadores(produccion);
   const video = produccion.videoMaestro || {};
   const elementos = elementosPlan(produccion);
-  $('produccionMaestroNombre').textContent = texto(video.nombre || resumen.videoMaestro, '—');
-  $('produccionMaestroPeso').textContent = peso(video.pesoBytes || resumen.pesoBytes);
-  $('produccionMaestroModo').textContent = texto(resumen.modo || produccion.salida?.modo || produccion.edicion?.modo);
-  $('produccionMaestroPlataforma').textContent = texto(resumen.plataformaBase || produccion.salida?.plataforma || produccion.edicion?.plataforma);
-  $('produccionMaestroElementos').textContent = String(resumen.totalElementosPlan ?? elementos.length ?? 0);
-  $('produccionMaestroListo').textContent = resumen.listoParaAdaptacion ? 'Sí' : 'Revisar';
+  setTexto('produccionMaestroNombre', texto(video.nombre || resumen.videoMaestro, '—'));
+  setTexto('produccionMaestroPeso', peso(video.pesoBytes || resumen.pesoBytes));
+  setTexto('produccionMaestroModo', texto(resumen.modo || produccion.salida?.modo || produccion.edicion?.modo));
+  setTexto('produccionMaestroPlataforma', texto(resumen.plataformaBase || produccion.salida?.plataforma || produccion.edicion?.plataforma));
+  setTexto('produccionMaestroElementos', String(resumen.totalElementosPlan ?? elementos.length ?? 0));
+  setTexto('produccionMaestroMarcadores', String(resumenMarcadores.totalMarcadores ?? resumen.marcadores?.total ?? obtenerMarcadores(produccion).length ?? 0));
+  setTexto('produccionMaestroGlobales', String(resumenMarcadores.globales ?? resumen.marcadores?.globales ?? 0));
+  setTexto('produccionMaestroCortes', String(resumenMarcadores.cortes ?? resumen.marcadores?.cortes ?? 0));
+  setTexto('produccionMaestroZooms', String(resumenMarcadores.zooms ?? resumen.marcadores?.zooms ?? 0));
+  setTexto('produccionMaestroEfectos', String(resumenMarcadores.efectos ?? resumen.marcadores?.efectos ?? 0));
+  setTexto('produccionMaestroAnimaciones', String(resumenMarcadores.animaciones ?? resumen.marcadores?.animaciones ?? 0));
+  setTexto('produccionMaestroTransiciones', String(resumenMarcadores.transiciones ?? resumen.marcadores?.transiciones ?? 0));
+  setTexto('produccionMaestroAudioSfx', String(resumenMarcadores.audioSfx ?? resumen.marcadores?.audioSfx ?? 0));
+  setTexto('produccionMaestroListo', resumen.listoParaAdaptacion ? 'Sí' : 'Revisar');
 }
 
 async function renderPreview(produccion = {}) {
@@ -140,43 +246,99 @@ async function renderComparacion(produccion = {}) {
   if (estado) estado.textContent = antesUrl || despuesUrl ? 'Disponible' : 'Pendiente';
 }
 
-function obtenerDuracionElementos(elementos = []) {
-  return Math.max(30, ...elementos.map((item) => numero(item.fin ?? item.datos?.fin, 0)).filter((item) => item >= 0));
+function renderTimelineResumen(produccion = {}, marcadores = []) {
+  const contenedor = $('produccionMaestroTimelineResumen');
+  const resumen = obtenerResumenMarcadores(produccion);
+  if (!contenedor) return;
+  if (!marcadores.length) {
+    contenedor.innerHTML = '<div class="produccion-maestro-empty">Sin resumen de timeline.</div>';
+    return;
+  }
+  const items = [
+    ['Aplicados', resumen.aplicados ?? marcadores.filter((item) => item.aplicado).length],
+    ['Planificados', resumen.planificados ?? marcadores.filter((item) => !item.aplicado).length],
+    ['Globales', resumen.globales ?? marcadores.filter((item) => item.global).length],
+    ['Omitidos', resumen.omitidos ?? 0],
+    ['Duración', `${Number(obtenerDuracionTimeline(produccion, marcadores)).toFixed(1)}s`]
+  ];
+  contenedor.innerHTML = `<div class="produccion-maestro-timeline-metrics">${items.map(([label, value]) => `<article><span>${escapar(label)}</span><strong>${escapar(value)}</strong></article>`).join('')}</div>`;
 }
 
-function renderTimelineItem(item = {}, duracion = 30) {
-  const inicio = Math.max(0, numero(item.inicio ?? item.datos?.inicio, 0));
-  const finBase = numero(item.fin ?? item.datos?.fin, inicio + 2);
-  const fin = finBase <= inicio ? inicio + 2 : finBase;
-  const left = duracion ? Math.max(0, Math.min(96, (inicio / duracion) * 100)) : 0;
-  const width = duracion ? Math.max(4, Math.min(100 - left, ((fin - inicio) / duracion) * 100)) : 8;
-  const estado = item.aprobado ? 'aprobado' : item.rechazado ? 'rechazado' : 'revision';
-  return `<button class="produccion-maestro-timeline-item is-${estado}" style="left:${left}%;width:${width}%" type="button" title="${escapar(item.nombre || item.tipo)}"><span>${escapar(item.tipo || 'item')}</span><strong>${escapar(item.nombre || item.titulo || item.id || 'Elemento')}</strong><small>${inicio.toFixed(1)}s</small></button>`;
+function renderTimelineLeyenda(pistas = []) {
+  const contenedor = $('produccionMaestroTimelineLeyenda');
+  if (!contenedor) return;
+  const visibles = pistas.length ? pistas : PISTAS_FALLBACK.slice(0, 8).map((pista) => ({ ...pista, total: 0 }));
+  contenedor.innerHTML = visibles.map((pista) => `<span class="produccion-maestro-legend-chip is-${escapar(pista.id)}"><b></b>${escapar(pista.nombre || pista.id)} <small>${escapar(pista.total ?? 0)}</small></span>`).join('');
+}
+
+function renderTimelineItem(marcador = {}, duracion = 30) {
+  const inicio = Math.max(0, numero(marcador.inicio, 0) ?? 0);
+  const finBase = numero(marcador.fin, inicio + 2) ?? inicio + 2;
+  const fin = finBase <= inicio ? inicio + 0.5 : finBase;
+  const left = duracion ? Math.max(0, Math.min(97, (inicio / duracion) * 100)) : 0;
+  const width = duracion ? Math.max(3, Math.min(100 - left, ((fin - inicio) / duracion) * 100)) : 8;
+  const estado = claseEstadoMarcador(marcador);
+  const global = marcador.global || marcador.pista === 'global';
+  const title = `${etiquetaTipo(marcador.tipo)} · ${marcador.nombre || marcador.id} · ${inicio.toFixed(1)}s-${fin.toFixed(1)}s`;
+  return `<button class="produccion-maestro-timeline-item is-${escapar(estado)} is-${escapar(marcador.pista || 'otros')}" data-marcador-id="${escapar(marcador.id)}" style="left:${left}%;width:${width}%" type="button" title="${escapar(title)}"><span>${global ? 'GLOBAL' : escapar(etiquetaTipo(marcador.tipo))}</span><strong>${escapar(marcador.nombre || marcador.id || 'Marcador')}</strong><small>${inicio.toFixed(1)}s</small></button>`;
 }
 
 function renderTimeline(produccion = {}) {
   const contenedor = $('produccionMaestroTimeline');
   const estado = $('produccionMaestroTimelineEstado');
-  const elementos = elementosPlan(produccion);
-  const duracion = obtenerDuracionElementos(elementos);
-  if (estado) estado.textContent = String(elementos.length);
+  const marcadores = obtenerMarcadores(produccion);
+  const pistas = obtenerPistas(produccion);
+  const duracion = obtenerDuracionTimeline(produccion, marcadores);
+  if (estado) estado.textContent = `${marcadores.length} marcador(es)`;
+  renderTimelineResumen(produccion, marcadores);
+  renderTimelineLeyenda(pistas);
+  renderMarcadorSeleccionado(null);
   if (!contenedor) return;
-  if (!elementos.length) {
-    contenedor.innerHTML = '<div class="produccion-maestro-empty">No hay elementos de plan usados en esta producción.</div>';
+  if (!marcadores.length) {
+    contenedor.innerHTML = '<div class="produccion-maestro-empty">No hay marcadores editoriales en esta producción. Vuelve a producir para generar la timeline editorial.</div>';
     return;
   }
-  const pistas = ['subtitulo', 'texto', 'recurso', 'efecto', 'zoom', 'animacion', 'audio', 'otros'].map((tipo) => ({ tipo, items: [] }));
-  elementos.forEach((item) => {
-    const tipo = ['subtitulo', 'texto', 'recurso', 'efecto', 'zoom', 'animacion', 'audio'].includes(item.tipo) ? item.tipo : 'otros';
-    pistas.find((pista) => pista.tipo === tipo).items.push(item);
-  });
-  contenedor.innerHTML = pistas.filter((pista) => pista.items.length).map((pista) => `<section class="produccion-maestro-track"><strong>${escapar(pista.tipo)}</strong><div class="produccion-maestro-lane">${pista.items.map((item) => renderTimelineItem(item, duracion)).join('')}</div></section>`).join('');
+  contenedor.innerHTML = pistas.map((pista) => {
+    const items = arr(pista.marcadores).length ? pista.marcadores : marcadores.filter((item) => item.pista === pista.id);
+    return `<section class="produccion-maestro-track is-${escapar(pista.id)}"><strong>${escapar(pista.nombre || etiquetaPista(pista.id))}<small>${items.length}</small></strong><div class="produccion-maestro-lane">${items.map((item) => renderTimelineItem(item, duracion)).join('')}</div></section>`;
+  }).join('');
+}
+
+function renderMarcadorSeleccionado(marcador = null) {
+  const contenedor = $('produccionMaestroMarcadorSeleccionado');
+  if (!contenedor) return;
+  if (!marcador) {
+    contenedor.innerHTML = '<div class="produccion-maestro-empty">Selecciona un marcador para ver su detalle.</div>';
+    return;
+  }
+  const estado = claseEstadoMarcador(marcador);
+  contenedor.innerHTML = `
+    <article class="produccion-maestro-marker-card is-${escapar(estado)}">
+      <header><div><span>${escapar(etiquetaPista(marcador.pista))}</span><strong>${escapar(marcador.nombre || marcador.id)}</strong></div><b>${marcador.global ? 'GLOBAL' : escapar(etiquetaTipo(marcador.tipo))}</b></header>
+      <p>${escapar(marcador.descripcion || marcador.datos?.motivo || marcador.datos?.descripcion || 'Sin descripción adicional.')}</p>
+      <dl>
+        <div><dt>Tiempo</dt><dd>${escapar(marcador.inicio)}s - ${escapar(marcador.fin)}s</dd></div>
+        <div><dt>Estado</dt><dd>${escapar(marcador.estado || estado)}</dd></div>
+        <div><dt>Aplicado</dt><dd>${marcador.aplicado ? 'Sí' : 'No / planificado'}</dd></div>
+        <div><dt>Origen</dt><dd>${escapar(marcador.origen || 'producción')}</dd></div>
+        <div><dt>Fuente</dt><dd>${escapar(marcador.fuente || 'timeline')}</dd></div>
+        <div><dt>Video</dt><dd>${escapar(marcador.videoId || 'global / único')}</dd></div>
+      </dl>
+    </article>
+  `;
+}
+
+function seleccionarMarcador(marcadorId = '') {
+  const marcador = obtenerMarcadores(produccionActual || {}).find((item) => item.id === marcadorId);
+  renderMarcadorSeleccionado(marcador || null);
 }
 
 function renderAuditoria(produccion = {}) {
   const auditoria = produccion.auditoria || {};
   const edicion = auditoria.edicion || {};
   const salida = auditoria.salida || {};
+  const timeline = auditoria.timelineEditorial || produccion.timelineEditorial || {};
+  const resumenMarcadores = obtenerResumenMarcadores(produccion);
   const contenedor = $('produccionMaestroAuditoria');
   const estado = $('produccionMaestroAuditoriaEstado');
   if (estado) estado.textContent = auditoria.tipo ? 'Generada' : 'Sin datos';
@@ -185,6 +347,8 @@ function renderAuditoria(produccion = {}) {
     <article><span>Edición</span><strong>${edicion.ok ? 'OK' : 'Pendiente'}</strong><small>${escapar(edicion.tipo || 'sin tipo')}</small></article>
     <article><span>Sonidos</span><strong>${edicion.sonidosAplicados ? 'Sí' : 'No'}</strong><small>Audio de edición</small></article>
     <article><span>Animaciones</span><strong>${edicion.animacionesAplicadas ? 'Sí' : 'No'}</strong><small>Render visual</small></article>
+    <article><span>Timeline</span><strong>${timeline.ok || produccion.timelineEditorial?.ok ? 'OK' : 'Pendiente'}</strong><small>${escapar(resumenMarcadores.totalMarcadores || 0)} marcador(es)</small></article>
+    <article><span>Globales</span><strong>${escapar(resumenMarcadores.globales || 0)}</strong><small>Indicadores globales</small></article>
     <article><span>Salida</span><strong>${salida.ok ? 'OK' : 'Pendiente'}</strong><small>${escapar(salida.nombreExportado || 'sin archivo')}</small></article>
   `;
 }
@@ -192,21 +356,27 @@ function renderAuditoria(produccion = {}) {
 function renderDetalle(produccion = {}) {
   const detalle = $('produccionMaestroDetalle');
   const estado = $('produccionMaestroDetalleEstado');
+  const marcadores = obtenerMarcadores(produccion);
   const elementos = elementosPlan(produccion);
-  if (estado) estado.textContent = String(elementos.length);
+  if (estado) estado.textContent = String(marcadores.length || elementos.length);
   if (!detalle) return;
-  if (!elementos.length) {
-    detalle.innerHTML = '<div class="produccion-maestro-empty">Sin elementos de plan para revisar.</div>';
+  if (!marcadores.length && !elementos.length) {
+    detalle.innerHTML = '<div class="produccion-maestro-empty">Sin marcadores ni elementos de plan para revisar.</div>';
     return;
   }
-  detalle.innerHTML = `<div class="produccion-maestro-table-wrap"><table class="produccion-maestro-table"><thead><tr><th>Elemento</th><th>Tipo</th><th>Tiempo</th><th>Estado</th><th>Motivo</th></tr></thead><tbody>${elementos.slice(0, 120).map((item) => {
-    const estadoItem = item.aprobado ? 'aprobado' : item.rechazado ? 'rechazado' : 'revisión';
-    return `<tr><td><strong>${escapar(item.nombre || item.titulo || item.id)}</strong><small>${escapar(item.descripcion || '')}</small></td><td>${escapar(item.tipo)}</td><td>${escapar(item.inicio ?? '—')} - ${escapar(item.fin ?? '—')}</td><td><span class="produccion-maestro-pill is-${escapar(estadoItem)}">${escapar(estadoItem)}</span></td><td>${escapar(item.motivo || item.datos?.motivo || 'Elemento usado en producción.')}</td></tr>`;
+  const rows = marcadores.length ? marcadores : elementos;
+  detalle.innerHTML = `<div class="produccion-maestro-table-wrap"><table class="produccion-maestro-table"><thead><tr><th>Marcador</th><th>Pista</th><th>Tipo</th><th>Tiempo</th><th>Estado</th><th>Origen / motivo</th></tr></thead><tbody>${rows.slice(0, 160).map((item) => {
+    const estadoItem = item.estado || (item.aprobado ? 'aprobado' : item.rechazado ? 'rechazado' : 'revisión');
+    const inicio = item.inicio ?? item.datos?.inicio ?? '—';
+    const fin = item.fin ?? item.datos?.fin ?? '—';
+    const pista = item.pista ? etiquetaPista(item.pista) : etiquetaTipo(item.tipo);
+    return `<tr><td><strong>${escapar(item.nombre || item.titulo || item.id)}</strong><small>${item.global ? 'GLOBAL · ' : ''}${escapar(item.descripcion || item.datos?.descripcion || '')}</small></td><td>${escapar(pista)}</td><td>${escapar(etiquetaTipo(item.tipo))}</td><td>${escapar(inicio)} - ${escapar(fin)}</td><td><span class="produccion-maestro-pill is-${escapar(claseEstadoMarcador(item))}">${escapar(estadoItem)}</span></td><td>${escapar(item.origen || 'plan')}<small>${escapar(item.motivo || item.datos?.motivo || 'Elemento usado en producción.')}</small></td></tr>`;
   }).join('')}</tbody></table></div>`;
 }
 
 async function renderResultado(datos = {}) {
   const produccion = extraerProduccion(datos);
+  produccionActual = produccion;
   await renderKpis(produccion);
   await renderPreview(produccion);
   await renderComparacion(produccion);
@@ -243,7 +413,8 @@ async function procesarProduccion() {
   setChip('Produciendo...', 'normal');
   const datos = await api(`/api/proyectos/${encodeURIComponent(proyectoId)}/produccion/procesar`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ origen: 'pantalla-produccion-maestro' }) });
   await renderResultado(datos);
-  setMensaje(datos.mensaje || 'Video maestro producido correctamente.', 'ok');
+  const resumenMarcadores = obtenerResumenMarcadores(extraerProduccion(datos));
+  setMensaje(datos.mensaje || `Video maestro producido correctamente. Timeline editorial: ${resumenMarcadores.totalMarcadores || 0} marcador(es), ${resumenMarcadores.globales || 0} global(es).`, 'ok');
 }
 
 async function solicitarAdaptacion() {
@@ -262,6 +433,11 @@ function enlazarEventos() {
   $('produccionMaestroCargarBtn')?.addEventListener('click', () => cargarProduccion().catch((error) => setMensaje(error.message, 'error')));
   $('produccionMaestroProcesarBtn')?.addEventListener('click', () => procesarProduccion().catch((error) => setMensaje(error.message, 'error')));
   $('produccionMaestroAdaptarBtn')?.addEventListener('click', () => solicitarAdaptacion().catch((error) => setMensaje(error.message, 'error')));
+  $('produccionMaestroTimeline')?.addEventListener('click', (evento) => {
+    const boton = evento.target?.closest?.('[data-marcador-id]');
+    if (!boton) return;
+    seleccionarMarcador(boton.dataset.marcadorId || '');
+  });
 }
 
 export function inicializarProduccionMaestroUI() {
