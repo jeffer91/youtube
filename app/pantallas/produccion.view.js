@@ -59,6 +59,13 @@ export function renderProduccionView() {
         <article class="produccion-maestro-panel produccion-maestro-panel--timeline">
           <header><div><p class="eyebrow">Timeline editorial</p><h3>Marcadores aplicados y planificados</h3></div><span id="produccionMaestroTimelineEstado">0</span></header>
           <div id="produccionMaestroTimelineResumen" class="produccion-maestro-timeline-summary"><div class="produccion-maestro-empty">Sin resumen de timeline.</div></div>
+          <div class="produccion-maestro-timeline-controls" aria-label="Filtros de timeline editorial">
+            <label for="produccionMaestroFiltroPista"><span>Pista</span><select id="produccionMaestroFiltroPista"><option value="todas">Todas</option><option value="global">Global</option><option value="cortes">Cortes</option><option value="subtitulos">Subtítulos</option><option value="textos">Textos</option><option value="zooms">Zooms</option><option value="efectos">Efectos</option><option value="animaciones">Animaciones</option><option value="transiciones">Transiciones</option><option value="audio-sfx">Audio / SFX</option><option value="recursos">Recursos</option><option value="diagnostico">Diagnóstico</option></select></label>
+            <label for="produccionMaestroFiltroEstado"><span>Estado</span><select id="produccionMaestroFiltroEstado"><option value="todos">Todos</option><option value="aplicado">Aplicados</option><option value="planificado">Planificados</option><option value="omitido">Omitidos</option><option value="fallback">Fallback</option><option value="revision">Revisión</option></select></label>
+            <label for="produccionMaestroBuscarMarcador"><span>Buscar</span><input id="produccionMaestroBuscarMarcador" type="search" placeholder="zoom, hit, global, Gemini..." autocomplete="off" /></label>
+            <button id="produccionMaestroLimpiarFiltrosBtn" class="secondary-button" type="button">Limpiar filtros</button>
+          </div>
+          <p id="produccionMaestroFiltroResumen" class="produccion-maestro-filter-summary">Sin filtros aplicados.</p>
           <div id="produccionMaestroTimelineLeyenda" class="produccion-maestro-timeline-legend"></div>
           <div id="produccionMaestroTimeline" class="produccion-maestro-timeline"><div class="produccion-maestro-empty">Sin timeline cargado.</div></div>
           <div id="produccionMaestroMarcadorSeleccionado" class="produccion-maestro-marker-detail"><div class="produccion-maestro-empty">Selecciona un marcador para ver su detalle.</div></div>
