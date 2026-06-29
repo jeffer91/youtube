@@ -7,6 +7,7 @@ import { MENU_PRINCIPAL, obtenerItemMenu } from './menu.config.js';
 import { guardarPantallaActiva, obtenerPantallaActiva } from './estado-pantalla.service.js';
 import { renderizarSubmenu } from './submenus.service.js';
 import { inicializarLaboratorioEfectosUI } from '../laboratorio-efectos-ui.js';
+import { aplicarProcesoVisual, conectarProcesosConNavegacion } from '../procesos-ui/proceso-visual.service.js';
 import {
   renderInicioView,
   renderNuevoProyectoView,
@@ -89,6 +90,7 @@ export function renderizarPantalla(contenedor, pantallaId = 'inicio') {
   const render = VISTAS[item.id] || VISTAS.inicio;
   marcarPantallaActiva(item);
   contenedor.innerHTML = `${render()}${renderizarSubmenu(item.id)}`;
+  aplicarProcesoVisual({ pantallaId: item.id, contenedor });
   guardarPantallaActiva(item.id);
   emitirEventoNavegacion(item);
   inicializarPantallaEspecial(item);
@@ -102,6 +104,7 @@ export function cambiarPantalla({ pantallaId, contenedorMenu, contenedorVista })
 
 export function inicializarNavegacionAutoVideoJeff({ contenedorMenu, contenedorVista } = {}) {
   if (!contenedorMenu || !contenedorVista) return false;
+  conectarProcesosConNavegacion(contenedorVista);
   const pantallaInicial = obtenerPantallaActiva('inicio');
   cambiarPantalla({ pantallaId: pantallaInicial, contenedorMenu, contenedorVista });
   contenedorMenu.addEventListener('click', (evento) => {
