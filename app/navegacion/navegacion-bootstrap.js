@@ -3,6 +3,7 @@ import { inicializarDiagnosticoFuerteUI } from '../diagnostico-fuerte-ui.js';
 import { inicializarAuditoriaIntegralUI } from '../auditoria-integral-ui.js';
 import { inicializarResultadoFinalUI } from '../resultado-final-ui.js';
 import { inicializarResultadoFinalWizardUI } from '../resultado-final-wizard-ui.js';
+import { inicializarPerfilesUI } from '../perfiles-ui.js';
 import { inicializarEntendimientoUI } from '../etapas-ui/entendimiento-ui.js';
 import { inicializarEntendimientoWizardUI } from '../etapas-ui/entendimiento-wizard-ui.js';
 import { inicializarBibliotecaProyectoUI } from '../biblioteca-proyecto-ui.js';
@@ -31,6 +32,7 @@ function asegurarEstilosBloques() {
   asegurarCss('produccionMaestroStyles', './produccion-maestro.css');
   asegurarCss('adaptacionStyles', './adaptacion.css');
   asegurarCss('resultadoFinalStyles', './resultado-final.css');
+  asegurarCss('perfilesStyles', './perfiles.css');
 }
 
 function iniciarNavegacion() {
@@ -43,6 +45,7 @@ function iniciarNavegacion() {
   inicializarAuditoriaIntegralUI();
   inicializarResultadoFinalUI();
   inicializarResultadoFinalWizardUI();
+  inicializarPerfilesUI();
   inicializarEntendimientoUI();
   inicializarEntendimientoWizardUI();
   inicializarBibliotecaProyectoUI();
