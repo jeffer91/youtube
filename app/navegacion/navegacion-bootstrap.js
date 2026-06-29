@@ -4,6 +4,8 @@ import { inicializarAuditoriaIntegralUI } from '../auditoria-integral-ui.js';
 import { inicializarResultadoFinalUI } from '../resultado-final-ui.js';
 import { inicializarResultadoFinalWizardUI } from '../resultado-final-wizard-ui.js';
 import { inicializarPerfilesUI } from '../perfiles-ui.js';
+import { inicializarAjustesGeminiUI } from '../ajustes-gemini-ui.js';
+import { inicializarAjustesWizardUI } from '../ajustes-wizard-ui.js';
 import { inicializarEntendimientoUI } from '../etapas-ui/entendimiento-ui.js';
 import { inicializarEntendimientoWizardUI } from '../etapas-ui/entendimiento-wizard-ui.js';
 import { inicializarBibliotecaProyectoUI } from '../biblioteca-proyecto-ui.js';
@@ -33,6 +35,7 @@ function asegurarEstilosBloques() {
   asegurarCss('adaptacionStyles', './adaptacion.css');
   asegurarCss('resultadoFinalStyles', './resultado-final.css');
   asegurarCss('perfilesStyles', './perfiles.css');
+  asegurarCss('ajustesStyles', './ajustes.css');
 }
 
 function iniciarNavegacion() {
@@ -46,6 +49,8 @@ function iniciarNavegacion() {
   inicializarResultadoFinalUI();
   inicializarResultadoFinalWizardUI();
   inicializarPerfilesUI();
+  inicializarAjustesGeminiUI();
+  inicializarAjustesWizardUI();
   inicializarEntendimientoUI();
   inicializarEntendimientoWizardUI();
   inicializarBibliotecaProyectoUI();
