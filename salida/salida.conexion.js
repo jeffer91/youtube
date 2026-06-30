@@ -13,11 +13,29 @@ function validarParaSalida({ entrada, edicion, audio }) {
   if (audio && typeof audio !== 'object') throw new Error('No se puede exportar porque el resultado de audio no es válido.');
 }
 
+function seleccionarEdicionDinamicaParaSalida(edicionDinamica, edicion) {
+  return edicion?.edicionDinamicaUsada || edicionDinamica || null;
+}
+
 export async function prepararSalida({ entrada, entendimiento, audio = null, transcripcion = null, edicionDinamica = null, edicion, opciones = {}, progreso = null }) {
   await reportarModulo(progreso, { etapa: 'salida', porcentaje: 90, titulo: 'Validando salida', detalle: 'Revisando video, filtro, audio y nombre final antes de exportar.', archivo: 'salida/salida.conexion.js' });
   validarParaSalida({ entrada, edicion, audio });
 
-  await reportarModulo(progreso, { etapa: 'salida', porcentaje: 91, titulo: 'Salida validada', detalle: `Archivo final: ${edicion.salida?.nombreExportado || 'video.mp4'}.`, datos: { nombreExportado: edicion.salida?.nombreExportado || null }, archivo: 'salida/salida.conexion.js' });
+  const edicionDinamicaFinal = seleccionarEdicionDinamicaParaSalida(edicionDinamica, edicion);
 
-  return await exportarVideoSimple({ entrada, entendimiento, audio, transcripcion, edicionDinamica, edicion, opciones, progreso });
+  await reportarModulo(progreso, {
+    etapa: 'salida',
+    porcentaje: 91,
+    titulo: 'Salida validada',
+    detalle: `Archivo final: ${edicion.salida?.nombreExportado || 'video.mp4'}.`,
+    datos: {
+      nombreExportado: edicion.salida?.nombreExportado || null,
+      videoDinamico: Boolean(edicionDinamicaFinal?.videoDinamico),
+      efectosPlan: edicionDinamicaFinal?.eventosVisualesPlan?.length || 0,
+      sonidosPlan: edicionDinamicaFinal?.eventosSonidoPlan?.length || 0
+    },
+    archivo: 'salida/salida.conexion.js'
+  });
+
+  return await exportarVideoSimple({ entrada, entendimiento, audio, transcripcion, edicionDinamica: edicionDinamicaFinal, edicion, opciones, progreso });
 }
