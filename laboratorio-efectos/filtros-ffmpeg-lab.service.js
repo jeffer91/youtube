@@ -5,7 +5,7 @@
 
 import { obtenerEfectoLabPorId, validarEfectoLab } from './catalogo-efectos-lab.js';
 
-export const VERSION_FILTROS_FFMPEG_LAB = '1.1.3';
+export const VERSION_FILTROS_FFMPEG_LAB = '1.1.4';
 
 function numero(valor, respaldo = 0) {
   const n = Number(valor);
@@ -186,6 +186,24 @@ function filtroTexto({ textoEfecto = 'EFECTO', posicion = 'centro', inicio = 0.5
   return partes.join(':');
 }
 
+function filtroTextoBoomComic({ textoEfecto = 'BOOM', inicio = 1.0, duracion = 0.9 } = {}) {
+  const t = limpiarTextoDrawtext(textoEfecto || 'BOOM').toUpperCase();
+  const i = inicioVisible(inicio, 2.0);
+  const d = duracionVisible(duracion, 0.35, 1.3);
+  const e = enableEntre(i, d);
+
+  return [
+    `drawbox=x=w*0.23:y=h*0.42:w=w*0.54:h=h*0.17:color=white@0.86:t=fill:enable='${e}'`,
+    `drawbox=x=w*0.26:y=h*0.45:w=w*0.48:h=h*0.11:color=yellow@0.95:t=fill:enable='${e}'`,
+    `drawbox=x=w*0.19:y=h*0.49:w=w*0.10:h=8:color=white@0.95:t=fill:enable='${e}'`,
+    `drawbox=x=w*0.71:y=h*0.49:w=w*0.10:h=8:color=white@0.95:t=fill:enable='${e}'`,
+    `drawbox=x=w*0.49:y=h*0.34:w=8:h=h*0.10:color=yellow@0.95:t=fill:enable='${e}'`,
+    `drawbox=x=w*0.49:y=h*0.56:w=8:h=h*0.10:color=yellow@0.95:t=fill:enable='${e}'`,
+    `drawtext=text='${t}':x=(w-text_w)/2:y=(h-text_h)/2:fontsize=98:fontcolor=white:borderw=12:bordercolor=black@0.98:shadowcolor=black@0.70:shadowx=4:shadowy=4:enable='${e}'`,
+    `drawtext=text='${t}':x=(w-text_w)/2:y=(h-text_h)/2:fontsize=82:fontcolor=yellow:borderw=5:bordercolor=0xFF7A00@0.98:shadowcolor=black@0.35:shadowx=2:shadowy=2:enable='${e}'`
+  ].join(',');
+}
+
 function filtroWipe({ inicio = 1, duracion = 0.7, color = 'white@0.62' } = {}) {
   const desde = inicioVisible(inicio, 2.0);
   const dur = duracionVisible(duracion, 0.25, 1.2);
@@ -243,7 +261,7 @@ function construirFiltrosPorId({ efecto, textoPersonalizado = '', intensidad = n
     case 'shake-suave': return [filtroRebote({ inicio, duracion: p.duracion || 0.55, amplitud: 10 * factor })];
     case 'flash-blanco-impacto': return [filtroFlash({ color: p.color || 'white@0.55', inicio, duracion: p.duracion || 0.45 })];
     case 'golpe-rojo': return [filtroFlash({ color: p.color || 'red@0.38', inicio, duracion: p.duracion || 0.5 })];
-    case 'explosion-texto-boom': return [filtroPunchInProgresivo({ inicio, duracion: 0.8, factor: 1.22 }), filtroFlash({ color: 'red@0.20', inicio, duracion: 0.9 }), filtroTexto({ textoEfecto: textoFinal, posicion: 'centro', inicio, duracion: p.duracion || 0.9, tamano: p.fuenteTamano || 82, colorCaja: 'red@0.28' })];
+    case 'explosion-texto-boom': return [filtroPunchInProgresivo({ inicio, duracion: 0.70, factor: 1.24 }), filtroFlash({ color: 'white@0.18', inicio, duracion: 0.16 }), filtroFlash({ color: 'red@0.10', inicio: inicio + 0.06, duracion: 0.45 }), filtroTextoBoomComic({ textoEfecto: textoFinal || 'BOOM', inicio: inicio + 0.02, duracion: p.duracion || 0.85 })];
     case 'flash-barras-cine': return [filtroFlash({ color: 'white@0.34', inicio, duracion: p.duracion || 0.55 }), filtroBarras({ inicio, duracion: p.duracion || 0.55 })];
     case 'transicion-flash-blanco': return [filtroFlash({ color: p.color || 'white@0.60', inicio, duracion: p.duracion || 0.5 })];
     case 'transicion-fundido-negro': return [filtroFlash({ color: p.color || 'black@0.62', inicio, duracion: p.duracion || 0.65 })];
