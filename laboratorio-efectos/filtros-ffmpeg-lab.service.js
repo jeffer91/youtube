@@ -5,7 +5,7 @@
 
 import { obtenerEfectoLabPorId, validarEfectoLab } from './catalogo-efectos-lab.js';
 
-export const VERSION_FILTROS_FFMPEG_LAB = '1.1.2';
+export const VERSION_FILTROS_FFMPEG_LAB = '1.1.3';
 
 function numero(valor, respaldo = 0) {
   const n = Number(valor);
@@ -238,7 +238,7 @@ function construirFiltrosPorId({ efecto, textoPersonalizado = '', intensidad = n
       return [filtroPunchInProgresivo({ inicio, duracion: p.duracion || 0.75, factor: 1.28 * factor })];
 
     case 'zoom-dramatico-final':
-      return [filtroZoomFinalProgresivo({ inicio: 1.0, factor: 1.36 * factor }), filtroTexto({ textoEfecto: 'FINAL', posicion: 'centro', inicio: 1.1, duracion: 1.2, tamano: 54 })];
+      return [filtroZoomFinalProgresivo({ inicio: 1.0, factor: 1.36 * factor })];
 
     case 'shake-suave': return [filtroRebote({ inicio, duracion: p.duracion || 0.55, amplitud: 10 * factor })];
     case 'flash-blanco-impacto': return [filtroFlash({ color: p.color || 'white@0.55', inicio, duracion: p.duracion || 0.45 })];
