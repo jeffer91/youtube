@@ -5,7 +5,7 @@
 
 import { obtenerEfectoLabPorId, validarEfectoLab } from './catalogo-efectos-lab.js';
 
-export const VERSION_FILTROS_FFMPEG_LAB = '1.1.0';
+export const VERSION_FILTROS_FFMPEG_LAB = '1.1.1';
 
 function numero(valor, respaldo = 0) {
   const n = Number(valor);
@@ -37,14 +37,30 @@ function inicioVisible(valor = 0.8, maximo = 1.8) {
   return Math.max(0.2, Math.min(numero(valor, 0.8), maximo));
 }
 
+function duracionVisible(valor = 0.7, minimo = 0.25, maximo = 2.4) {
+  return Math.max(minimo, Math.min(numero(valor, 0.7), maximo));
+}
+
 function enableEntre(inicio = 0, duracion = 1) {
   const desde = Math.max(0, numero(inicio, 0));
-  const hasta = Math.max(desde + 0.2, desde + numero(duracion, 1));
+  const hasta = Math.max(desde + 0.2, desde + duracionVisible(duracion, 0.2, 3.0));
   return `between(t,${desde.toFixed(3)},${hasta.toFixed(3)})`;
 }
 
 function cuadroDesdeSegundo(segundo = 0) {
   return Math.round(Math.max(0, numero(segundo, 0)) * 30);
+}
+
+function compuertaFrames(inicioFrame = 0, finFrame = 1) {
+  const desde = Math.max(0, Math.round(numero(inicioFrame, 0)));
+  const hasta = Math.max(desde + 1, Math.round(numero(finFrame, desde + 1)));
+  return `(gte(on\,${desde})*lte(on\,${hasta}))`;
+}
+
+function compuertaTiempo(inicio = 0, duracion = 1) {
+  const desde = Math.max(0, numero(inicio, 0));
+  const hasta = desde + duracionVisible(duracion, 0.2, 3.0);
+  return `(gte(t\,${desde.toFixed(3)})*lte(t\,${hasta.toFixed(3)}))`;
 }
 
 function filtroBase() {
@@ -64,35 +80,37 @@ function filtroZoompanCentro({ expresionZoom = '1.000', expresionX = null, expre
 function filtroZoomInCentroProgresivo(factor = 1.38) {
   const z = Math.max(1.18, Math.min(1.58, numero(factor, 1.38)));
   const incrementoPorFrame = Math.max(0.0024, Math.min(0.0048, (z - 1) / 120));
-  return filtroZoompanCentro({ expresionZoom: `min(1+on*${incrementoPorFrame.toFixed(5)},${z.toFixed(3)})` });
+  return filtroZoompanCentro({ expresionZoom: `min(1+on*${incrementoPorFrame.toFixed(5)}\,${z.toFixed(3)})` });
 }
 
 function filtroZoomOutCentroProgresivo(factor = 1.32) {
   const zInicio = Math.max(1.16, Math.min(1.55, numero(factor, 1.32)));
   const decrementoPorFrame = Math.max(0.0018, Math.min(0.0042, (zInicio - 1) / 120));
-  return filtroZoompanCentro({ expresionZoom: `max(${zInicio.toFixed(3)}-on*${decrementoPorFrame.toFixed(5)},1.000)` });
+  return filtroZoompanCentro({ expresionZoom: `max(${zInicio.toFixed(3)}-on*${decrementoPorFrame.toFixed(5)}\,1.000)` });
 }
 
 function filtroZoomPulsoProgresivo({ amplitud = 0.055, base = 1.06, velocidad = 0.18 } = {}) {
   const a = Math.max(0.018, Math.min(0.12, numero(amplitud, 0.055)));
   const b = Math.max(1.02, Math.min(1.16, numero(base, 1.06)));
   const v = Math.max(0.08, Math.min(0.35, numero(velocidad, 0.18)));
-  return filtroZoompanCentro({ expresionZoom: `max(1.000,${b.toFixed(3)}+${a.toFixed(3)}*sin(on*${v.toFixed(3)}))` });
+  return filtroZoompanCentro({ expresionZoom: `max(1.000\,${b.toFixed(3)}+${a.toFixed(3)}*sin(on*${v.toFixed(3)}))` });
 }
 
 function filtroPunchInProgresivo({ inicio = 1.0, duracion = 0.75, factor = 1.26 } = {}) {
   const desde = cuadroDesdeSegundo(inicioVisible(inicio, 2.2));
-  const frames = Math.max(12, Math.round(numero(duracion, 0.75) * 30));
+  const frames = Math.max(12, Math.round(duracionVisible(duracion, 0.35, 1.2) * 30));
   const hasta = desde + frames;
+  const gate = compuertaFrames(desde, hasta);
   const amp = Math.max(0.12, Math.min(0.36, numero(factor, 1.26) - 1));
-  return filtroZoompanCentro({ expresionZoom: `if(between(on,${desde},${hasta}),1+${amp.toFixed(3)}*sin((on-${desde})*PI/${frames}),1)` });
+  return filtroZoompanCentro({ expresionZoom: `1+${gate}*${amp.toFixed(3)}*sin((on-${desde})*PI/${frames})` });
 }
 
 function filtroZoomFinalProgresivo({ inicio = 1.2, factor = 1.42 } = {}) {
   const desde = cuadroDesdeSegundo(inicioVisible(inicio, 1.4));
   const z = Math.max(1.20, Math.min(1.58, numero(factor, 1.42)));
   const incremento = Math.max(0.0026, Math.min(0.0050, (z - 1) / 110));
-  return filtroZoompanCentro({ expresionZoom: `if(gte(on,${desde}),min(1+(on-${desde})*${incremento.toFixed(5)},${z.toFixed(3)}),1)` });
+  const gate = `(gte(on\,${desde}))`;
+  return filtroZoompanCentro({ expresionZoom: `min(1+${gate}*(on-${desde})*${incremento.toFixed(5)}\,${z.toFixed(3)})` });
 }
 
 function filtroPaneoHorizontalProgresivo({ factor = 1.12, velocidad = 0.018 } = {}) {
@@ -109,7 +127,7 @@ function filtroCamaraEnergia({ amplitud = 0.075, velocidad = 0.23 } = {}) {
   const a = Math.max(0.035, Math.min(0.13, numero(amplitud, 0.075)));
   const v = Math.max(0.12, Math.min(0.36, numero(velocidad, 0.23)));
   return filtroZoompanCentro({
-    expresionZoom: `max(1.000,1.075+${a.toFixed(3)}*sin(on*${v.toFixed(3)}))`,
+    expresionZoom: `max(1.000\,1.075+${a.toFixed(3)}*sin(on*${v.toFixed(3)}))`,
     expresionX: `(iw-iw/zoom)*(0.5+0.32*sin(on*${(v * 0.72).toFixed(3)}))`,
     expresionY: `(ih-ih/zoom)*(0.5+0.22*cos(on*${(v * 0.84).toFixed(3)}))`
   });
@@ -122,10 +140,6 @@ function filtroZoomCentroVisible(factor = 1.18) {
     `crop=trunc(iw/${z.toFixed(3)}/2)*2:trunc(ih/${z.toFixed(3)}/2)*2:(iw-ow)/2:(ih-oh)/2`,
     'setsar=1'
   ].join(',');
-}
-
-function filtroZoomEstatico(factor = 1.1) {
-  return filtroZoomCentroVisible(factor);
 }
 
 function filtroFlash({ color = 'white@0.45', inicio = 1, duracion = 0.5 } = {}) {
@@ -175,22 +189,23 @@ function filtroTexto({ textoEfecto = 'EFECTO', posicion = 'centro', inicio = 0.5
 
 function filtroWipe({ inicio = 1, duracion = 0.7, color = 'white@0.62' } = {}) {
   const desde = inicioVisible(inicio, 2.0);
-  const dur = Math.max(0.2, numero(duracion, 0.7));
+  const dur = duracionVisible(duracion, 0.25, 1.2);
   const hasta = desde + dur;
   return `drawbox=x='-w+(2*w*((t-${desde.toFixed(3)})/${dur.toFixed(3)}))':y=0:w=iw:h=ih:color=${color}:t=fill:enable='between(t,${desde.toFixed(3)},${hasta.toFixed(3)})'`;
 }
 
 function filtroRebote({ inicio = 1.2, duracion = 0.8, amplitud = 14 } = {}) {
   const i = inicioVisible(inicio, 2.2);
-  const e = enableEntre(i, duracion);
+  const d = duracionVisible(duracion, 0.35, 1.2);
+  const gate = compuertaTiempo(i, d);
   const a = Math.round(Math.max(4, Math.min(42, numero(amplitud, 14))));
   const ay = Math.round(a * 0.7);
-  return `crop=w=iw-${a * 2}:h=ih-${a * 2}:x='if(${e},${a}+${a}*sin(80*t),${a})':y='if(${e},${a}+${ay}*cos(70*t),${a})',scale=trunc((iw+${a * 2})/2)*2:trunc((ih+${a * 2})/2)*2`;
+  return `crop=w=iw-${a * 2}:h=ih-${a * 2}:x='${a}+${gate}*${a}*sin(80*t)':y='${a}+${gate}*${ay}*cos(70*t)',scale=trunc((iw+${a * 2})/2)*2:trunc((ih+${a * 2})/2)*2`;
 }
 
 function filtroGlitchRgb({ inicio = 1.2, duracion = 0.55 } = {}) {
   const e = enableEntre(inicioVisible(inicio, 2.0), duracion);
-  return `eq=saturation='if(${e},1.65,1.12)':contrast='if(${e},1.22,1.06)',drawbox=x=0:y=0:w=iw:h=ih:color=magenta@0.20:t=fill:enable='${e}',drawbox=x=0:y=h*0.48:w=iw:h=8:color=cyan@0.38:t=fill:enable='${e}'`;
+  return `eq=saturation=1.24:contrast=1.08,drawbox=x=0:y=0:w=iw:h=ih:color=magenta@0.20:t=fill:enable='${e}',drawbox=x=0:y=h*0.48:w=iw:h=8:color=cyan@0.38:t=fill:enable='${e}',drawbox=x=0:y=h*0.56:w=iw:h=5:color=red@0.22:t=fill:enable='${e}'`;
 }
 
 function filtroColorPorEfecto(efectoId, factor = 1) {
