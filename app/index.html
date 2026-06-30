@@ -18,23 +18,7 @@
     <section id="pantallaDinamica" class="aj-dynamic-screen" aria-live="polite"></section>
 
     <section id="nuevoProyectoProcessor" class="hero-card processor-card clean-project-screen aj-screen-panel" data-screen-panel="nuevo-proyecto" data-nuevo-proyecto-root data-proceso-root="nuevo-proyecto" data-proceso-paso-activo="nombre">
-      <div class="hero-top processor-top clean-project-header">
-        <div>
-          <p class="eyebrow">Nuevo proyecto</p>
-          <h1>Subir video para entendimiento</h1>
-          <p class="hero-description">Primero solo se crea el proyecto y se prepara el video. Las plataformas, formatos y adaptación se elegirán al final.</p>
-        </div>
-        <div id="serverStatus" class="server-status server-status--checking">Verificando servidor</div>
-      </div>
-
-      <div data-proceso-resumen="nuevo-proyecto"></div>
-
-      <section class="clean-project-flow" aria-label="Flujo guiado de nuevo proyecto">
-        <button class="clean-project-step is-active" type="button" data-nuevo-wizard-go="nombre" data-proceso-step="nombre"><b>1</b><span><strong>Nombre</strong><small>Identificar proyecto</small></span></button>
-        <button class="clean-project-step is-locked" type="button" data-nuevo-wizard-go="subir-video" data-proceso-step="subir-video"><b>2</b><span><strong>Video</strong><small>Subir archivo</small></span></button>
-        <button class="clean-project-step is-locked" type="button" data-nuevo-wizard-go="procesar" data-proceso-step="procesar-entendimiento"><b>3</b><span><strong>Procesar</strong><small>Crear entendimiento</small></span></button>
-        <button class="clean-project-step is-advanced" type="button" data-nuevo-wizard-go="tecnico" data-proceso-step="opciones-tecnicas"><b>+</b><span><strong>Técnico</strong><small>Opciones ocultas</small></span></button>
-      </section>
+      <div id="serverStatus" class="server-status server-status--checking" hidden aria-hidden="true">Verificando servidor</div>
 
       <section id="nuevoProyectoMensaje" class="clean-project-message" hidden></section>
 
