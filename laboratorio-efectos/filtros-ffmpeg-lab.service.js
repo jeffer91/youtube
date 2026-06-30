@@ -1,11 +1,11 @@
 /*
-  Laboratorio de efectos - Bloque 8 correcciones
+  Laboratorio de efectos - filtros FFmpeg
   Función: convertir un efecto del catálogo en una cadena FFmpeg visible, segura y validada.
 */
 
 import { obtenerEfectoLabPorId, validarEfectoLab } from './catalogo-efectos-lab.js';
 
-export const VERSION_FILTROS_FFMPEG_LAB = '1.0.4';
+export const VERSION_FILTROS_FFMPEG_LAB = '1.1.0';
 
 function numero(valor, respaldo = 0) {
   const n = Number(valor);
@@ -33,51 +33,90 @@ function intensidadFactor(intensidad = 'normal') {
   return 1;
 }
 
+function inicioVisible(valor = 0.8, maximo = 1.8) {
+  return Math.max(0.2, Math.min(numero(valor, 0.8), maximo));
+}
+
 function enableEntre(inicio = 0, duracion = 1) {
   const desde = Math.max(0, numero(inicio, 0));
   const hasta = Math.max(desde + 0.2, desde + numero(duracion, 1));
   return `between(t,${desde.toFixed(3)},${hasta.toFixed(3)})`;
 }
 
+function cuadroDesdeSegundo(segundo = 0) {
+  return Math.round(Math.max(0, numero(segundo, 0)) * 30);
+}
+
 function filtroBase() {
   return 'scale=trunc(iw/2)*2:trunc(ih/2)*2,setsar=1';
 }
 
-function filtroZoomInCentroProgresivo(factor = 1.36) {
-  const z = Math.max(1.18, Math.min(1.55, numero(factor, 1.36)));
-  const incrementoPorFrame = Math.max(0.0022, Math.min(0.0045, (z - 1) / 130));
-
+function filtroZoompanCentro({ expresionZoom = '1.000', expresionX = null, expresionY = null } = {}) {
+  const x = expresionX || 'iw/2-(iw/zoom/2)';
+  const y = expresionY || 'ih/2-(ih/zoom/2)';
   return [
     'fps=30',
-    `zoompan=z='min(1+on*${incrementoPorFrame.toFixed(5)},${z.toFixed(3)})':d=1:x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':s=720x1280:fps=30`,
+    `zoompan=z='${expresionZoom}':d=1:x='${x}':y='${y}':s=720x1280:fps=30`,
     'setsar=1'
   ].join(',');
+}
+
+function filtroZoomInCentroProgresivo(factor = 1.38) {
+  const z = Math.max(1.18, Math.min(1.58, numero(factor, 1.38)));
+  const incrementoPorFrame = Math.max(0.0024, Math.min(0.0048, (z - 1) / 120));
+  return filtroZoompanCentro({ expresionZoom: `min(1+on*${incrementoPorFrame.toFixed(5)},${z.toFixed(3)})` });
 }
 
 function filtroZoomOutCentroProgresivo(factor = 1.32) {
   const zInicio = Math.max(1.16, Math.min(1.55, numero(factor, 1.32)));
-  const decrementoPorFrame = Math.max(0.0018, Math.min(0.0042, (zInicio - 1) / 130));
+  const decrementoPorFrame = Math.max(0.0018, Math.min(0.0042, (zInicio - 1) / 120));
+  return filtroZoompanCentro({ expresionZoom: `max(${zInicio.toFixed(3)}-on*${decrementoPorFrame.toFixed(5)},1.000)` });
+}
 
-  return [
-    'fps=30',
-    `zoompan=z='max(${zInicio.toFixed(3)}-on*${decrementoPorFrame.toFixed(5)},1.000)':d=1:x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':s=720x1280:fps=30`,
-    'setsar=1'
-  ].join(',');
+function filtroZoomPulsoProgresivo({ amplitud = 0.055, base = 1.06, velocidad = 0.18 } = {}) {
+  const a = Math.max(0.018, Math.min(0.12, numero(amplitud, 0.055)));
+  const b = Math.max(1.02, Math.min(1.16, numero(base, 1.06)));
+  const v = Math.max(0.08, Math.min(0.35, numero(velocidad, 0.18)));
+  return filtroZoompanCentro({ expresionZoom: `max(1.000,${b.toFixed(3)}+${a.toFixed(3)}*sin(on*${v.toFixed(3)}))` });
+}
+
+function filtroPunchInProgresivo({ inicio = 1.0, duracion = 0.75, factor = 1.26 } = {}) {
+  const desde = cuadroDesdeSegundo(inicioVisible(inicio, 2.2));
+  const frames = Math.max(12, Math.round(numero(duracion, 0.75) * 30));
+  const hasta = desde + frames;
+  const amp = Math.max(0.12, Math.min(0.36, numero(factor, 1.26) - 1));
+  return filtroZoompanCentro({ expresionZoom: `if(between(on,${desde},${hasta}),1+${amp.toFixed(3)}*sin((on-${desde})*PI/${frames}),1)` });
+}
+
+function filtroZoomFinalProgresivo({ inicio = 1.2, factor = 1.42 } = {}) {
+  const desde = cuadroDesdeSegundo(inicioVisible(inicio, 1.4));
+  const z = Math.max(1.20, Math.min(1.58, numero(factor, 1.42)));
+  const incremento = Math.max(0.0026, Math.min(0.0050, (z - 1) / 110));
+  return filtroZoompanCentro({ expresionZoom: `if(gte(on,${desde}),min(1+(on-${desde})*${incremento.toFixed(5)},${z.toFixed(3)}),1)` });
+}
+
+function filtroPaneoHorizontalProgresivo({ factor = 1.12, velocidad = 0.018 } = {}) {
+  const z = Math.max(1.06, Math.min(1.22, numero(factor, 1.12)));
+  const v = Math.max(0.006, Math.min(0.035, numero(velocidad, 0.018)));
+  return filtroZoompanCentro({
+    expresionZoom: z.toFixed(3),
+    expresionX: `(iw-iw/zoom)*(0.5+0.45*sin(on*${v.toFixed(3)}))`,
+    expresionY: 'ih/2-(ih/zoom/2)'
+  });
+}
+
+function filtroCamaraEnergia({ amplitud = 0.075, velocidad = 0.23 } = {}) {
+  const a = Math.max(0.035, Math.min(0.13, numero(amplitud, 0.075)));
+  const v = Math.max(0.12, Math.min(0.36, numero(velocidad, 0.23)));
+  return filtroZoompanCentro({
+    expresionZoom: `max(1.000,1.075+${a.toFixed(3)}*sin(on*${v.toFixed(3)}))`,
+    expresionX: `(iw-iw/zoom)*(0.5+0.32*sin(on*${(v * 0.72).toFixed(3)}))`,
+    expresionY: `(ih-ih/zoom)*(0.5+0.22*cos(on*${(v * 0.84).toFixed(3)}))`
+  });
 }
 
 function filtroZoomCentroVisible(factor = 1.18) {
   const z = Math.max(1.08, Math.min(1.45, numero(factor, 1.18)));
-
-  return [
-    `scale=trunc(iw*${z.toFixed(3)}/2)*2:trunc(ih*${z.toFixed(3)}/2)*2`,
-    `crop=trunc(iw/${z.toFixed(3)}/2)*2:trunc(ih/${z.toFixed(3)}/2)*2:(iw-ow)/2:(ih-oh)/2`,
-    'setsar=1'
-  ].join(',');
-}
-
-function filtroZoomOutVisible(factor = 1.14) {
-  const z = Math.max(1.06, Math.min(1.35, numero(factor, 1.14)));
-
   return [
     `scale=trunc(iw*${z.toFixed(3)}/2)*2:trunc(ih*${z.toFixed(3)}/2)*2`,
     `crop=trunc(iw/${z.toFixed(3)}/2)*2:trunc(ih/${z.toFixed(3)}/2)*2:(iw-ow)/2:(ih-oh)/2`,
@@ -89,16 +128,12 @@ function filtroZoomEstatico(factor = 1.1) {
   return filtroZoomCentroVisible(factor);
 }
 
-function filtroZoomOut(factor = 1.1) {
-  return filtroZoomOutVisible(factor);
-}
-
 function filtroFlash({ color = 'white@0.45', inicio = 1, duracion = 0.5 } = {}) {
-  return `drawbox=x=0:y=0:w=iw:h=ih:color=${color}:t=fill:enable='${enableEntre(inicio, duracion)}'`;
+  return `drawbox=x=0:y=0:w=iw:h=ih:color=${color}:t=fill:enable='${enableEntre(inicioVisible(inicio, 2.2), duracion)}'`;
 }
 
 function filtroBarras({ color = 'white@0.55', inicio = 1, duracion = 0.6, grosor = 18 } = {}) {
-  const e = enableEntre(inicio, duracion);
+  const e = enableEntre(inicioVisible(inicio, 2.2), duracion);
   const g = Math.max(8, Math.min(70, numero(grosor, 18)));
   return `drawbox=x=0:y=h*0.08:w=iw:h=${g}:color=${color}:t=fill:enable='${e}',drawbox=x=0:y=h*0.90:w=iw:h=${g}:color=${color}:t=fill:enable='${e}'`;
 }
@@ -111,7 +146,7 @@ function filtroMarco({ color = 'white@0.55', grosor = 8 } = {}) {
 function filtroTexto({ textoEfecto = 'EFECTO', posicion = 'centro', inicio = 0.5, duracion = 2, tamano = 54, caja = true, colorCaja = 'black@0.38' } = {}) {
   const t = limpiarTextoDrawtext(textoEfecto).toUpperCase();
   const size = Math.max(24, Math.min(96, numero(tamano, 54)));
-  const e = enableEntre(inicio, duracion);
+  const e = enableEntre(inicioVisible(inicio, 2.2), duracion);
   const y = posicion === 'superior'
     ? 'h*0.12'
     : posicion === 'inferior'
@@ -139,17 +174,23 @@ function filtroTexto({ textoEfecto = 'EFECTO', posicion = 'centro', inicio = 0.5
 }
 
 function filtroWipe({ inicio = 1, duracion = 0.7, color = 'white@0.62' } = {}) {
-  const desde = Math.max(0, numero(inicio, 0));
+  const desde = inicioVisible(inicio, 2.0);
   const dur = Math.max(0.2, numero(duracion, 0.7));
   const hasta = desde + dur;
   return `drawbox=x='-w+(2*w*((t-${desde.toFixed(3)})/${dur.toFixed(3)}))':y=0:w=iw:h=ih:color=${color}:t=fill:enable='between(t,${desde.toFixed(3)},${hasta.toFixed(3)})'`;
 }
 
-function filtroRebote({ inicio = 2, duracion = 0.8, amplitud = 14 } = {}) {
-  const e = enableEntre(inicio, duracion);
-  const a = Math.round(Math.max(4, Math.min(40, numero(amplitud, 14))));
+function filtroRebote({ inicio = 1.2, duracion = 0.8, amplitud = 14 } = {}) {
+  const i = inicioVisible(inicio, 2.2);
+  const e = enableEntre(i, duracion);
+  const a = Math.round(Math.max(4, Math.min(42, numero(amplitud, 14))));
   const ay = Math.round(a * 0.7);
   return `crop=w=iw-${a * 2}:h=ih-${a * 2}:x='if(${e},${a}+${a}*sin(80*t),${a})':y='if(${e},${a}+${ay}*cos(70*t),${a})',scale=trunc((iw+${a * 2})/2)*2:trunc((ih+${a * 2})/2)*2`;
+}
+
+function filtroGlitchRgb({ inicio = 1.2, duracion = 0.55 } = {}) {
+  const e = enableEntre(inicioVisible(inicio, 2.0), duracion);
+  return `eq=saturation='if(${e},1.65,1.12)':contrast='if(${e},1.22,1.06)',drawbox=x=0:y=0:w=iw:h=ih:color=magenta@0.20:t=fill:enable='${e}',drawbox=x=0:y=h*0.48:w=iw:h=8:color=cyan@0.38:t=fill:enable='${e}'`;
 }
 
 function filtroColorPorEfecto(efectoId, factor = 1) {
@@ -166,7 +207,7 @@ function construirFiltrosPorId({ efecto, textoPersonalizado = '', intensidad = n
   const id = efecto.id;
   const p = efecto.parametros || {};
   const factor = intensidadFactor(intensidad || efecto.intensidadBase);
-  const inicio = numero(efecto.segundoInicioPrueba, 0.8);
+  const inicio = inicioVisible(efecto.segundoInicioPrueba, 2.0);
   const textoFinal = textoPersonalizado || efecto.textoPrueba || efecto.nombre;
 
   switch (id) {
@@ -177,38 +218,29 @@ function construirFiltrosPorId({ efecto, textoPersonalizado = '', intensidad = n
       return [filtroZoomOutCentroProgresivo(1.32 * factor)];
 
     case 'zoom-pulso':
-      return [
-        filtroZoomCentroVisible(1.16 * factor),
-        filtroFlash({ color: 'white@0.16', inicio, duracion: 0.8 })
-      ];
+      return [filtroZoomPulsoProgresivo({ amplitud: 0.055 * factor, base: 1.055, velocidad: 0.18 })];
 
     case 'punch-in-rapido':
-      return [
-        filtroZoomCentroVisible(1.28 * factor),
-        filtroFlash({ color: 'white@0.22', inicio, duracion: 0.35 })
-      ];
+      return [filtroPunchInProgresivo({ inicio, duracion: p.duracion || 0.75, factor: 1.28 * factor })];
 
     case 'zoom-dramatico-final':
-      return [
-        filtroZoomCentroVisible(1.34 * factor),
-        filtroTexto({ textoEfecto: 'FINAL', posicion: 'centro', inicio, duracion: 1.2, tamano: 54 })
-      ];
+      return [filtroZoomFinalProgresivo({ inicio: 1.0, factor: 1.36 * factor }), filtroTexto({ textoEfecto: 'FINAL', posicion: 'centro', inicio: 1.1, duracion: 1.2, tamano: 54 })];
 
     case 'shake-suave': return [filtroRebote({ inicio, duracion: p.duracion || 0.55, amplitud: 10 * factor })];
     case 'flash-blanco-impacto': return [filtroFlash({ color: p.color || 'white@0.55', inicio, duracion: p.duracion || 0.45 })];
     case 'golpe-rojo': return [filtroFlash({ color: p.color || 'red@0.38', inicio, duracion: p.duracion || 0.5 })];
-    case 'explosion-texto-boom': return [filtroFlash({ color: 'red@0.20', inicio, duracion: 0.9 }), filtroTexto({ textoEfecto: textoFinal, posicion: 'centro', inicio, duracion: p.duracion || 0.9, tamano: p.fuenteTamano || 82, colorCaja: 'red@0.28' })];
+    case 'explosion-texto-boom': return [filtroPunchInProgresivo({ inicio, duracion: 0.8, factor: 1.22 }), filtroFlash({ color: 'red@0.20', inicio, duracion: 0.9 }), filtroTexto({ textoEfecto: textoFinal, posicion: 'centro', inicio, duracion: p.duracion || 0.9, tamano: p.fuenteTamano || 82, colorCaja: 'red@0.28' })];
     case 'flash-barras-cine': return [filtroFlash({ color: 'white@0.34', inicio, duracion: p.duracion || 0.55 }), filtroBarras({ inicio, duracion: p.duracion || 0.55 })];
     case 'transicion-flash-blanco': return [filtroFlash({ color: p.color || 'white@0.60', inicio, duracion: p.duracion || 0.5 })];
     case 'transicion-fundido-negro': return [filtroFlash({ color: p.color || 'black@0.62', inicio, duracion: p.duracion || 0.65 })];
     case 'transicion-barras-horizontales': return [filtroBarras({ inicio, duracion: p.duracion || 0.6, grosor: p.grosor || 20 })];
-    case 'transicion-glitch-rgb': return [filtroFlash({ color: p.color || 'magenta@0.22', inicio, duracion: p.duracion || 0.55 }), 'eq=saturation=1.45:contrast=1.10'];
+    case 'transicion-glitch-rgb': return [filtroGlitchRgb({ inicio, duracion: p.duracion || 0.55 })];
     case 'transicion-wipe-lateral': return [filtroWipe({ inicio, duracion: p.duracion || 0.7 })];
-    case 'paneo-suave-horizontal': return [filtroZoomEstatico(1.04), filtroMarco({ color: 'white@0.18', grosor: 4 })];
-    case 'pulso-camara-suave': return [filtroZoomEstatico(1.035), filtroFlash({ color: 'white@0.10', inicio: 0.8, duracion: 1.2 })];
+    case 'paneo-suave-horizontal': return [filtroPaneoHorizontalProgresivo({ factor: 1.10 * factor, velocidad: 0.018 })];
+    case 'pulso-camara-suave': return [filtroZoomPulsoProgresivo({ amplitud: 0.030 * factor, base: 1.035, velocidad: 0.11 })];
     case 'foco-centro': return [filtroColorPorEfecto(id, factor)];
     case 'rebote-mini': return [filtroRebote({ inicio, duracion: p.duracion || 0.8, amplitud: p.amplitud || 14 })];
-    case 'camara-energia-redes': return [filtroZoomEstatico(1.08), filtroBarras({ color: 'white@0.18', inicio: 0.3, duracion: 0.7, grosor: 10 })];
+    case 'camara-energia-redes': return [filtroCamaraEnergia({ amplitud: 0.065 * factor, velocidad: 0.23 }), filtroBarras({ color: 'white@0.16', inicio: 0.35, duracion: 0.6, grosor: 10 })];
     case 'look-cine-calido':
     case 'blanco-negro-drama':
     case 'contraste-redes':
@@ -220,7 +252,7 @@ function construirFiltrosPorId({ efecto, textoPersonalizado = '', intensidad = n
     case 'subtitulo-muestra': return [filtroTexto({ textoEfecto: textoFinal, posicion: 'subtitulo', inicio, duracion: p.duracion || 4.0, tamano: p.fuenteTamano || 42, caja: false })];
     case 'etiqueta-superior': return [filtroTexto({ textoEfecto: textoFinal, posicion: 'superior', inicio, duracion: p.duracion || 3.0, tamano: p.fuenteTamano || 34 })];
     case 'texto-alerta-rojo': return [filtroTexto({ textoEfecto: textoFinal, posicion: 'centro', inicio, duracion: p.duracion || 1.8, tamano: p.fuenteTamano || 58, colorCaja: p.colorCaja || 'red@0.35' })];
-    case 'formato-viral-gancho': return [filtroZoomEstatico(1.06), filtroTexto({ textoEfecto: textoFinal, posicion: 'superior', inicio, duracion: p.duracionTexto || 2.4, tamano: 48, colorCaja: 'blue@0.38' })];
+    case 'formato-viral-gancho': return [filtroZoomPulsoProgresivo({ amplitud: 0.050 * factor, base: 1.055, velocidad: 0.18 }), filtroTexto({ textoEfecto: textoFinal, posicion: 'superior', inicio, duracion: p.duracionTexto || 2.4, tamano: 48, colorCaja: 'blue@0.38' })];
     case 'barras-cinematograficas': return [`drawbox=x=0:y=0:w=iw:h=ih*${numero(p.altoRelativo, 0.08)}:color=black@0.88:t=fill,drawbox=x=0:y=ih-ih*${numero(p.altoRelativo, 0.08)}:w=iw:h=ih*${numero(p.altoRelativo, 0.08)}:color=black@0.88:t=fill`];
     case 'marco-social': return [filtroMarco({ color: p.color || 'white@0.55', grosor: p.grosor || 8 })];
     case 'callout-superior': return [filtroTexto({ textoEfecto: textoFinal, posicion: 'superior', inicio, duracion: p.duracion || 2.5, tamano: p.fuenteTamano || 48, colorCaja: 'black@0.42' })];
