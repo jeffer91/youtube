@@ -5,7 +5,7 @@
 
 import { obtenerEfectoLabPorId, validarEfectoLab } from './catalogo-efectos-lab.js';
 
-export const VERSION_FILTROS_FFMPEG_LAB = '1.0.2';
+export const VERSION_FILTROS_FFMPEG_LAB = '1.0.3';
 
 function numero(valor, respaldo = 0) {
   const n = Number(valor);
@@ -41,6 +41,17 @@ function enableEntre(inicio = 0, duracion = 1) {
 
 function filtroBase() {
   return 'scale=trunc(iw/2)*2:trunc(ih/2)*2,setsar=1';
+}
+
+function filtroZoomInCentroProgresivo(factor = 1.36) {
+  const z = Math.max(1.18, Math.min(1.55, numero(factor, 1.36)));
+  const incrementoPorFrame = Math.max(0.0022, Math.min(0.0045, (z - 1) / 130));
+
+  return [
+    'fps=30',
+    `zoompan=z='min(1+on*${incrementoPorFrame.toFixed(5)},${z.toFixed(3)})':d=1:x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':s=720x1280:fps=30`,
+    'setsar=1'
+  ].join(',');
 }
 
 function filtroZoomCentroVisible(factor = 1.18) {
@@ -149,7 +160,7 @@ function construirFiltrosPorId({ efecto, textoPersonalizado = '', intensidad = n
 
   switch (id) {
     case 'zoom-in-centro':
-      return [filtroZoomCentroVisible(1.22 * factor)];
+      return [filtroZoomInCentroProgresivo(1.38 * factor)];
 
     case 'zoom-out-centro':
       return [filtroZoomOutVisible(1.16 * factor)];
