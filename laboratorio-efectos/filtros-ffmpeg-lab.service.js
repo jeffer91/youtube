@@ -5,7 +5,7 @@
 
 import { obtenerEfectoLabPorId, validarEfectoLab } from './catalogo-efectos-lab.js';
 
-export const VERSION_FILTROS_FFMPEG_LAB = '1.0.3';
+export const VERSION_FILTROS_FFMPEG_LAB = '1.0.4';
 
 function numero(valor, respaldo = 0) {
   const n = Number(valor);
@@ -50,6 +50,17 @@ function filtroZoomInCentroProgresivo(factor = 1.36) {
   return [
     'fps=30',
     `zoompan=z='min(1+on*${incrementoPorFrame.toFixed(5)},${z.toFixed(3)})':d=1:x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':s=720x1280:fps=30`,
+    'setsar=1'
+  ].join(',');
+}
+
+function filtroZoomOutCentroProgresivo(factor = 1.32) {
+  const zInicio = Math.max(1.16, Math.min(1.55, numero(factor, 1.32)));
+  const decrementoPorFrame = Math.max(0.0018, Math.min(0.0042, (zInicio - 1) / 130));
+
+  return [
+    'fps=30',
+    `zoompan=z='max(${zInicio.toFixed(3)}-on*${decrementoPorFrame.toFixed(5)},1.000)':d=1:x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':s=720x1280:fps=30`,
     'setsar=1'
   ].join(',');
 }
@@ -163,7 +174,7 @@ function construirFiltrosPorId({ efecto, textoPersonalizado = '', intensidad = n
       return [filtroZoomInCentroProgresivo(1.38 * factor)];
 
     case 'zoom-out-centro':
-      return [filtroZoomOutVisible(1.16 * factor)];
+      return [filtroZoomOutCentroProgresivo(1.32 * factor)];
 
     case 'zoom-pulso':
       return [
