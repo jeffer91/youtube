@@ -5,7 +5,7 @@
 
 import { obtenerEfectoLabPorId, validarEfectoLab } from './catalogo-efectos-lab.js';
 
-export const VERSION_FILTROS_FFMPEG_LAB = '1.1.1';
+export const VERSION_FILTROS_FFMPEG_LAB = '1.1.2';
 
 function numero(valor, respaldo = 0) {
   const n = Number(valor);
@@ -170,8 +170,7 @@ function filtroTexto({ textoEfecto = 'EFECTO', posicion = 'centro', inicio = 0.5
         : '(h-text_h)/2';
   const x = '(w-text_w)/2';
   const partes = [
-    'drawtext',
-    `text='${t}'`,
+    `drawtext=text='${t}'`,
     `x=${x}`,
     `y=${y}`,
     `fontsize=${size}`,
