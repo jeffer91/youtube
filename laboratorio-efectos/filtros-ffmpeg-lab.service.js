@@ -5,7 +5,7 @@
 
 import { obtenerEfectoLabPorId, validarEfectoLab } from './catalogo-efectos-lab.js';
 
-export const VERSION_FILTROS_FFMPEG_LAB = '1.1.4';
+export const VERSION_FILTROS_FFMPEG_LAB = '1.1.5';
 
 function numero(valor, respaldo = 0) {
   const n = Number(valor);
@@ -149,7 +149,7 @@ function filtroFlash({ color = 'white@0.45', inicio = 1, duracion = 0.5 } = {}) 
 function filtroBarras({ color = 'white@0.55', inicio = 1, duracion = 0.6, grosor = 18 } = {}) {
   const e = enableEntre(inicioVisible(inicio, 2.2), duracion);
   const g = Math.max(8, Math.min(70, numero(grosor, 18)));
-  return `drawbox=x=0:y=h*0.08:w=iw:h=${g}:color=${color}:t=fill:enable='${e}',drawbox=x=0:y=h*0.90:w=iw:h=${g}:color=${color}:t=fill:enable='${e}'`;
+  return `drawbox=x=0:y=ih*0.08:w=iw:h=${g}:color=${color}:t=fill:enable='${e}',drawbox=x=0:y=ih*0.90:w=iw:h=${g}:color=${color}:t=fill:enable='${e}'`;
 }
 
 function filtroMarco({ color = 'white@0.55', grosor = 8 } = {}) {
@@ -193,12 +193,12 @@ function filtroTextoBoomComic({ textoEfecto = 'BOOM', inicio = 1.0, duracion = 0
   const e = enableEntre(i, d);
 
   return [
-    `drawbox=x=w*0.23:y=h*0.42:w=w*0.54:h=h*0.17:color=white@0.86:t=fill:enable='${e}'`,
-    `drawbox=x=w*0.26:y=h*0.45:w=w*0.48:h=h*0.11:color=yellow@0.95:t=fill:enable='${e}'`,
-    `drawbox=x=w*0.19:y=h*0.49:w=w*0.10:h=8:color=white@0.95:t=fill:enable='${e}'`,
-    `drawbox=x=w*0.71:y=h*0.49:w=w*0.10:h=8:color=white@0.95:t=fill:enable='${e}'`,
-    `drawbox=x=w*0.49:y=h*0.34:w=8:h=h*0.10:color=yellow@0.95:t=fill:enable='${e}'`,
-    `drawbox=x=w*0.49:y=h*0.56:w=8:h=h*0.10:color=yellow@0.95:t=fill:enable='${e}'`,
+    `drawbox=x=iw*0.23:y=ih*0.42:w=iw*0.54:h=ih*0.17:color=white@0.86:t=fill:enable='${e}'`,
+    `drawbox=x=iw*0.26:y=ih*0.45:w=iw*0.48:h=ih*0.11:color=yellow@0.95:t=fill:enable='${e}'`,
+    `drawbox=x=iw*0.19:y=ih*0.49:w=iw*0.10:h=8:color=white@0.95:t=fill:enable='${e}'`,
+    `drawbox=x=iw*0.71:y=ih*0.49:w=iw*0.10:h=8:color=white@0.95:t=fill:enable='${e}'`,
+    `drawbox=x=iw*0.49:y=ih*0.34:w=8:h=ih*0.10:color=yellow@0.95:t=fill:enable='${e}'`,
+    `drawbox=x=iw*0.49:y=ih*0.56:w=8:h=ih*0.10:color=yellow@0.95:t=fill:enable='${e}'`,
     `drawtext=text='${t}':x=(w-text_w)/2:y=(h-text_h)/2:fontsize=98:fontcolor=white:borderw=12:bordercolor=black@0.98:shadowcolor=black@0.70:shadowx=4:shadowy=4:enable='${e}'`,
     `drawtext=text='${t}':x=(w-text_w)/2:y=(h-text_h)/2:fontsize=82:fontcolor=yellow:borderw=5:bordercolor=0xFF7A00@0.98:shadowcolor=black@0.35:shadowx=2:shadowy=2:enable='${e}'`
   ].join(',');
@@ -208,7 +208,7 @@ function filtroWipe({ inicio = 1, duracion = 0.7, color = 'white@0.62' } = {}) {
   const desde = inicioVisible(inicio, 2.0);
   const dur = duracionVisible(duracion, 0.25, 1.2);
   const hasta = desde + dur;
-  return `drawbox=x='-w+(2*w*((t-${desde.toFixed(3)})/${dur.toFixed(3)}))':y=0:w=iw:h=ih:color=${color}:t=fill:enable='between(t,${desde.toFixed(3)},${hasta.toFixed(3)})'`;
+  return `drawbox=x='-iw+(2*iw*((t-${desde.toFixed(3)})/${dur.toFixed(3)}))':y=0:w=iw:h=ih:color=${color}:t=fill:enable='between(t,${desde.toFixed(3)},${hasta.toFixed(3)})'`;
 }
 
 function filtroRebote({ inicio = 1.2, duracion = 0.8, amplitud = 14 } = {}) {
@@ -222,7 +222,7 @@ function filtroRebote({ inicio = 1.2, duracion = 0.8, amplitud = 14 } = {}) {
 
 function filtroGlitchRgb({ inicio = 1.2, duracion = 0.55 } = {}) {
   const e = enableEntre(inicioVisible(inicio, 2.0), duracion);
-  return `eq=saturation=1.24:contrast=1.08,drawbox=x=0:y=0:w=iw:h=ih:color=magenta@0.20:t=fill:enable='${e}',drawbox=x=0:y=h*0.48:w=iw:h=8:color=cyan@0.38:t=fill:enable='${e}',drawbox=x=0:y=h*0.56:w=iw:h=5:color=red@0.22:t=fill:enable='${e}'`;
+  return `eq=saturation=1.24:contrast=1.08,drawbox=x=0:y=0:w=iw:h=ih:color=magenta@0.20:t=fill:enable='${e}',drawbox=x=0:y=ih*0.48:w=iw:h=8:color=cyan@0.38:t=fill:enable='${e}',drawbox=x=0:y=ih*0.56:w=iw:h=5:color=red@0.22:t=fill:enable='${e}'`;
 }
 
 function filtroColorPorEfecto(efectoId, factor = 1) {
