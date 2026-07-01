@@ -32,7 +32,8 @@ export function renderBibliotecaProyectoView() {
           max-width: 760px;
         }
 
-        .project-library-image-chip {
+        .project-library-image-chip,
+        .project-library-image-counter {
           border-radius: 999px;
           background: #eff6ff;
           color: #1d4ed8;
@@ -42,48 +43,154 @@ export function renderBibliotecaProyectoView() {
           white-space: nowrap;
         }
 
+        .project-library-image-pager {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 10px;
+          flex-wrap: wrap;
+        }
+
+        .project-library-image-pager-actions {
+          display: flex;
+          gap: 8px;
+          flex-wrap: wrap;
+        }
+
         .project-library-image-request-list {
           display: grid;
-          grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
           gap: 10px;
         }
 
         .project-library-image-request-card {
           border: 1px solid #e2e8f0;
-          border-radius: 18px;
+          border-radius: 20px;
           background: #fff;
-          padding: 12px;
+          padding: 14px;
           display: grid;
-          gap: 8px;
+          gap: 12px;
         }
 
-        .project-library-image-request-card strong {
+        .project-library-image-request-top {
+          display: flex;
+          justify-content: space-between;
+          align-items: flex-start;
+          gap: 10px;
+          flex-wrap: wrap;
+        }
+
+        .project-library-image-request-title strong {
           display: block;
           color: #0f172a;
-          font-size: 15px;
+          font-size: 20px;
+          line-height: 1.15;
         }
 
-        .project-library-image-request-card span,
-        .project-library-image-request-card small {
+        .project-library-image-search-box {
+          border: 1px solid #bfdbfe;
+          border-radius: 16px;
+          background: #eff6ff;
+          padding: 10px 12px;
+        }
+
+        .project-library-image-search-box span {
           display: block;
-          color: #64748b;
-          font-weight: 800;
-          line-height: 1.35;
-        }
-
-        .project-library-image-request-card small {
+          color: #1d4ed8;
           font-size: 11px;
+          font-weight: 950;
+          text-transform: uppercase;
+          letter-spacing: .04em;
         }
 
+        .project-library-image-search-box strong {
+          display: block;
+          color: #0f172a;
+          font-size: 18px;
+          margin-top: 2px;
+        }
+
+        .project-library-image-description {
+          margin: 0;
+          color: #475569;
+          font-weight: 800;
+          line-height: 1.4;
+          display: -webkit-box;
+          -webkit-line-clamp: 2;
+          -webkit-box-orient: vertical;
+          overflow: hidden;
+        }
+
+        .project-library-smart-upload {
+          border: 2px dashed #93c5fd;
+          border-radius: 20px;
+          background: #f8fbff;
+          padding: 16px;
+          display: grid;
+          gap: 10px;
+          cursor: pointer;
+          transition: border-color .18s ease, background .18s ease, transform .18s ease;
+        }
+
+        .project-library-smart-upload:hover,
+        .project-library-smart-upload.is-dragover {
+          border-color: #2563eb;
+          background: #eff6ff;
+          transform: translateY(-1px);
+        }
+
+        .project-library-smart-upload strong {
+          color: #0f172a;
+          font-size: 16px;
+        }
+
+        .project-library-smart-upload span {
+          color: #64748b;
+          font-size: 12px;
+          font-weight: 850;
+        }
+
+        .project-library-smart-upload-actions,
         .project-library-image-request-actions {
           display: flex;
           flex-wrap: wrap;
           gap: 8px;
         }
 
-        .project-library-image-request-actions button:disabled {
-          opacity: .55;
-          cursor: not-allowed;
+        .project-library-internet-results {
+          border: 1px solid #e2e8f0;
+          border-radius: 18px;
+          background: #fff;
+          padding: 12px;
+          display: grid;
+          gap: 10px;
+        }
+
+        .project-library-internet-results header {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          gap: 10px;
+          margin: 0;
+        }
+
+        .project-library-internet-options {
+          display: grid;
+          grid-template-columns: repeat(3, minmax(0, 1fr));
+          gap: 8px;
+        }
+
+        .project-library-internet-option {
+          min-height: 82px;
+          border: 1px dashed #cbd5e1;
+          border-radius: 14px;
+          background: #f8fafc;
+          display: grid;
+          place-items: center;
+          color: #64748b;
+          font-size: 12px;
+          font-weight: 900;
+          text-align: center;
+          padding: 8px;
         }
 
         .project-library-image-request-note {
@@ -95,6 +202,12 @@ export function renderBibliotecaProyectoView() {
           padding: 10px 12px;
           font-size: 12px;
           font-weight: 850;
+        }
+
+        @media (max-width: 760px) {
+          .project-library-internet-options {
+            grid-template-columns: 1fr;
+          }
         }
       </style>
 
@@ -111,52 +224,57 @@ export function renderBibliotecaProyectoView() {
         <header>
           <div>
             <p class="eyebrow">Apoyo visual</p>
-            <h3>Imágenes sugeridas para subir</h3>
-            <p>Después de cargar el proyecto, aquí aparecerán las imágenes que conviene buscar y subir para reforzar el video.</p>
+            <h3>Imagen sugerida</h3>
+            <p>Sube una imagen por vez. Puedes pegar, arrastrar, examinar o elegir una opción de internet cuando esté conectada.</p>
           </div>
-          <span class="project-library-image-chip">Bloque 1 · Visual</span>
+          <span class="project-library-image-chip">Una por vez</span>
         </header>
 
-        <div id="projectLibrarySuggestedImagesList" class="project-library-image-request-list" aria-label="Lista de imágenes sugeridas">
-          <article class="project-library-image-request-card" data-image-suggestion-card="tema-principal">
-            <div>
-              <strong>Tema principal del video</strong>
-              <span>Uso sugerido: imagen de apoyo para reforzar la idea central.</span>
-              <small>Estado: pendiente de detección automática.</small>
-            </div>
-            <div class="project-library-image-request-actions">
-              <button class="project-library-button is-save" type="button" disabled>Subir imagen</button>
-              <button class="project-library-button is-muted" type="button" disabled>No necesaria</button>
-            </div>
-          </article>
+        <div class="project-library-image-pager" aria-label="Paginación de imágenes sugeridas">
+          <span id="projectLibrarySuggestedImagesCounter" class="project-library-image-counter">0 de 0</span>
+          <div class="project-library-image-pager-actions">
+            <button id="projectLibrarySuggestedPrevBtn" class="project-library-button is-muted" type="button" data-suggested-image-action="prev">Anterior</button>
+            <button id="projectLibrarySuggestedNextBtn" class="project-library-button is-muted" type="button" data-suggested-image-action="next">Siguiente</button>
+          </div>
+        </div>
 
-          <article class="project-library-image-request-card" data-image-suggestion-card="personaje-lugar-equipo">
-            <div>
-              <strong>Personaje, lugar, equipo o país mencionado</strong>
-              <span>Uso sugerido: recurso visual cuando se mencione en la transcripción.</span>
-              <small>Estado: pendiente de detección automática.</small>
+        <div id="projectLibrarySuggestedImagesList" class="project-library-image-request-list" aria-label="Imagen sugerida actual">
+          <article class="project-library-image-request-card" data-image-suggestion-card="tema-principal" data-image-suggestion-state="pendiente">
+            <div class="project-library-image-request-top">
+              <div class="project-library-image-request-title">
+                <strong>Tema principal del video</strong>
+              </div>
+              <span class="project-library-image-chip">Pendiente</span>
             </div>
-            <div class="project-library-image-request-actions">
-              <button class="project-library-button is-save" type="button" disabled>Subir imagen</button>
-              <button class="project-library-button is-muted" type="button" disabled>No necesaria</button>
+            <div class="project-library-image-search-box">
+              <span>Buscar</span>
+              <strong>tema principal video</strong>
             </div>
-          </article>
-
-          <article class="project-library-image-request-card" data-image-suggestion-card="grafico-tabla-mapa">
-            <div>
-              <strong>Tabla, mapa o gráfico de apoyo</strong>
-              <span>Uso sugerido: imagen explicativa para partes difíciles del video.</span>
-              <small>Estado: pendiente de detección automática.</small>
+            <p class="project-library-image-description">Imagen de apoyo para reforzar la idea central del video.</p>
+            <div id="projectLibrarySuggestedDropZone" class="project-library-smart-upload" data-suggested-image-action="upload">
+              <strong>Pega, arrastra o examina la imagen</strong>
+              <span>Ctrl+V, soltar imagen aquí o usar el botón Examinar.</span>
+              <div class="project-library-smart-upload-actions">
+                <button class="project-library-button is-save" type="button" data-suggested-image-action="upload">Examinar imagen</button>
+                <button class="project-library-button is-muted" type="button" data-suggested-image-action="skip">No necesaria</button>
+              </div>
             </div>
-            <div class="project-library-image-request-actions">
-              <button class="project-library-button is-save" type="button" disabled>Subir imagen</button>
-              <button class="project-library-button is-muted" type="button" disabled>No necesaria</button>
-            </div>
+            <section class="project-library-internet-results" aria-label="Opciones de internet">
+              <header>
+                <strong>Imágenes de internet</strong>
+                <button class="project-library-button" type="button" data-suggested-image-action="search-internet">Buscar 3 imágenes</button>
+              </header>
+              <div class="project-library-internet-options" id="projectLibraryInternetImageOptions">
+                <div class="project-library-internet-option">Opción 1</div>
+                <div class="project-library-internet-option">Opción 2</div>
+                <div class="project-library-internet-option">Opción 3</div>
+              </div>
+            </section>
           </article>
         </div>
 
         <p id="projectLibrarySuggestedImagesHint" class="project-library-image-request-note">
-          En el Bloque 2 estos botones se conectarán para que puedas subir cada imagen sugerida y guardarla como recurso temporal del proyecto.
+          Bloque 1: pantalla lista para trabajar una imagen por vez. Los siguientes bloques conectan pegado, arrastre, Gemini y búsqueda real.
         </p>
       </section>
 
