@@ -1,5 +1,6 @@
 import path from 'path';
 import { asegurarCarpeta, escribirJson, leerJsonSiExiste, obtenerRutaRaiz } from '../comun/archivos.js';
+import { detectarImagenesSugeridasDesdeEntendimiento } from '../entender/recursos-sugeridos/detectar-imagenes-sugeridas.service.js';
 
 const SUGERENCIAS_BASE = Object.freeze([
   {
@@ -78,6 +79,8 @@ function normalizarSugerencia(sugerencia = {}, base = {}) {
     detalle: texto(sugerencia.detalle || base.detalle, ''),
     recursoId: texto(sugerencia.recursoId || base.recursoId, ''),
     archivoNombre: texto(sugerencia.archivoNombre || base.archivoNombre, ''),
+    prioridad: Number.isFinite(Number(sugerencia.prioridad ?? base.prioridad)) ? Number(sugerencia.prioridad ?? base.prioridad) : 50,
+    fuente: texto(sugerencia.fuente || base.fuente, 'manual'),
     actualizadoEn: texto(sugerencia.actualizadoEn || base.actualizadoEn, new Date().toISOString())
   };
 }
@@ -89,6 +92,7 @@ function crearEstadoInicial(proyectoId) {
     tipo: 'imagenes-sugeridas-proyecto',
     version: 1,
     total: SUGERENCIAS_BASE.length,
+    totalAutomaticas: 0,
     sugerencias: SUGERENCIAS_BASE.map((item) => normalizarSugerencia(item)),
     actualizadoEn: new Date().toISOString()
   };
@@ -101,9 +105,13 @@ function fusionarSugerencias(base = [], cambios = []) {
     const id = texto(item.id, '');
     if (!id) return;
     const previo = mapa.get(id) || {};
-    mapa.set(id, normalizarSugerencia({ ...previo, ...item, actualizadoEn: new Date().toISOString() }, previo));
+    const previoProtegido = ['subida', 'guardada', 'omitida'].includes(normalizarEstado(previo.estado));
+    const cambio = previoProtegido
+      ? { ...item, estado: previo.estado, detalle: previo.detalle, recursoId: previo.recursoId, archivoNombre: previo.archivoNombre }
+      : item;
+    mapa.set(id, normalizarSugerencia({ ...previo, ...cambio, actualizadoEn: new Date().toISOString() }, previo));
   });
-  return [...mapa.values()];
+  return [...mapa.values()].sort((a, b) => Number(b.prioridad || 0) - Number(a.prioridad || 0));
 }
 
 export async function cargarImagenesSugeridasProyecto({ proyectoId } = {}) {
@@ -118,6 +126,7 @@ export async function cargarImagenesSugeridasProyecto({ proyectoId } = {}) {
     ok: true,
     proyectoId,
     total: sugerencias.length,
+    totalAutomaticas: sugerencias.filter((item) => item.fuente === 'auto-entendimiento').length,
     sugerencias,
     rutaArchivo,
     existe: true
@@ -136,10 +145,24 @@ export async function guardarImagenesSugeridasProyecto({ proyectoId, sugerencia 
     tipo: 'imagenes-sugeridas-proyecto',
     version: 1,
     total: fusionadas.length,
+    totalAutomaticas: fusionadas.filter((item) => item.fuente === 'auto-entendimiento').length,
     sugerencias: fusionadas,
     ultimaAccion: accion,
     actualizadoEn: new Date().toISOString()
   };
   await escribirJson(rutaArchivo, salida);
   return { ...salida, rutaArchivo, existe: true };
+}
+
+export async function actualizarImagenesSugeridasDesdeEntendimiento({ proyectoId, resultadoEntendimiento = {} } = {}) {
+  if (!proyectoId) throw new Error('Falta proyectoId para actualizar imágenes sugeridas desde Entendimiento.');
+  const deteccion = detectarImagenesSugeridasDesdeEntendimiento(resultadoEntendimiento);
+  if (!deteccion.sugerencias?.length) {
+    return await cargarImagenesSugeridasProyecto({ proyectoId });
+  }
+  return await guardarImagenesSugeridasProyecto({
+    proyectoId,
+    accion: 'auto-entendimiento',
+    sugerencias: deteccion.sugerencias
+  });
 }
