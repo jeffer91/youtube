@@ -1,41 +1,6 @@
 export function renderBibliotecaProyectoView() {
   return `
     <section class="aj-view-card project-library-page" data-project-library-root data-smart-state="sin-proyecto" data-proceso-root="biblioteca-proyecto" data-proceso-paso-activo="cargar-proyecto">
-      <div class="project-library-hero">
-        <div>
-          <p class="eyebrow">Etapa intermedia</p>
-          <h2>Biblioteca del proyecto</h2>
-          <p>Organiza los recursos temporales de este video después del Entendimiento y antes del Plan. La pantalla muestra solo el paso que corresponde.</p>
-        </div>
-        <span class="aj-status-chip" id="projectLibraryStateChip">Esperando proyecto</span>
-      </div>
-
-      <div data-proceso-resumen="biblioteca-proyecto"></div>
-
-      <section class="project-library-flow" aria-label="Flujo guiado de biblioteca proyecto">
-        <button id="projectLibraryStepProject" class="project-library-step is-active" type="button" data-project-library-wizard-go="proyecto" data-proceso-step="cargar-proyecto">
-          <span>1</span><div><strong>Proyecto</strong><small>Cargar ID y validar Entendimiento</small></div>
-        </button>
-        <button id="projectLibraryStepUpload" class="project-library-step is-locked" type="button" data-project-library-wizard-go="archivo" data-proceso-step="elegir-archivo">
-          <span>2</span><div><strong>Archivo</strong><small>Elegir recurso temporal</small></div>
-        </button>
-        <button id="projectLibraryStepCategory" class="project-library-step is-locked" type="button" data-project-library-wizard-go="categoria" data-proceso-step="categoria">
-          <span>3</span><div><strong>Categoría</strong><small>Clasificar el recurso</small></div>
-        </button>
-        <button id="projectLibraryStepData" class="project-library-step is-locked" type="button" data-project-library-wizard-go="datos" data-proceso-step="uso-etiquetas">
-          <span>4</span><div><strong>Uso</strong><small>Uso sugerido y etiquetas</small></div>
-        </button>
-        <button id="projectLibraryStepSave" class="project-library-step is-locked" type="button" data-project-library-wizard-go="guardar" data-proceso-step="guardar-temporal">
-          <span>5</span><div><strong>Guardar</strong><small>Registrar temporal</small></div>
-        </button>
-        <button id="projectLibraryStepReview" class="project-library-step is-locked" type="button" data-project-library-wizard-go="revisar" data-proceso-step="revisar-recursos">
-          <span>6</span><div><strong>Revisar</strong><small>Confirmar recursos</small></div>
-        </button>
-        <button id="projectLibraryStepPlan" class="project-library-step is-locked" type="button" data-project-library-wizard-go="plan" data-proceso-step="ir-plan">
-          <span>7</span><div><strong>Plan</strong><small>Continuar solo cuando esté listo</small></div>
-        </button>
-      </section>
-
       <section id="projectLibraryMessage" class="project-library-message" hidden></section>
 
       <section class="project-library-kpis" aria-label="Resumen biblioteca proyecto">
