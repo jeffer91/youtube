@@ -8,7 +8,7 @@ const SUGERENCIAS_BASE = Object.freeze({
     nombre: 'Tema principal del video',
     motivo: 'La app necesita una imagen principal para reforzar la idea central del video.',
     usoSugerido: 'imagen de apoyo para reforzar la idea central del video',
-    busquedaCorta: 'tema principal video',
+    busquedaCorta: 'tema principal',
     etiquetas: ['tema-principal', 'apoyo-visual', 'temporal'],
     categoria: 'otro'
   },
@@ -17,7 +17,7 @@ const SUGERENCIAS_BASE = Object.freeze({
     nombre: 'Personaje, lugar, equipo o país mencionado',
     motivo: 'La transcripción puede mencionar personas, lugares, equipos o países que conviene mostrar visualmente.',
     usoSugerido: 'recurso visual cuando se mencione en la transcripción',
-    busquedaCorta: 'personaje lugar equipo',
+    busquedaCorta: 'persona lugar equipo',
     etiquetas: ['mencionado', 'apoyo-visual', 'temporal'],
     categoria: 'otro'
   },
@@ -32,6 +32,12 @@ const SUGERENCIAS_BASE = Object.freeze({
   }
 });
 
+const PALABRAS_RUIDO_BUSQUEDA = new Set([
+  'auto', 'apoyo', 'visual', 'apoyo-visual', 'temporal', 'imagen', 'imagenes', 'imágenes', 'foto', 'fotos',
+  'recurso', 'proyecto', 'video', 'cuando', 'mencione', 'menciona', 'seleccion', 'selección', 'pais', 'país',
+  'para', 'con', 'sin', 'del', 'de', 'la', 'el', 'los', 'las', 'un', 'una', 'en', 'se', 'y', 'o'
+]);
+
 let inicializado = false;
 let sugerenciaPendiente = null;
 let esperaArchivoTimer = null;
@@ -42,15 +48,59 @@ let pegadoInicializado = false;
 
 function $(id) { return document.getElementById(id); }
 function texto(valor = '', respaldo = '') { const limpio = String(valor ?? '').trim(); return limpio || respaldo; }
-function escapar(valor = '') { return texto(valor, '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c])); }
-function limitarDescripcion(valor = '') { const limpio = texto(valor, 'Imagen de apoyo para reforzar el video.'); return limpio.length > 170 ? `${limpio.slice(0, 167)}...` : limpio; }
+function escapar(valor = '') { return texto(valor, '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
+function quitarHtml(valor = '') { return texto(valor, '').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim(); }
+function limitarDescripcion(valor = '') { const limpio = texto(quitarHtml(valor), 'Imagen de apoyo para reforzar el video.'); return limpio.length > 150 ? `${limpio.slice(0, 147)}...` : limpio; }
+function normalizarClave(valor = '') { return texto(valor, '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase(); }
+
+function limpiarFraseCorta(valor = '', respaldo = 'imagen apoyo') {
+  const tokens = texto(valor, respaldo)
+    .replace(/[-_]+/g, ' ')
+    .split(/\s+/)
+    .map((item) => item.trim())
+    .filter(Boolean)
+    .filter((item) => !PALABRAS_RUIDO_BUSQUEDA.has(normalizarClave(item)));
+  return texto(tokens.slice(0, 5).join(' '), respaldo);
+}
+
+function limpiarTituloArchivo(valor = '', respaldo = 'Imagen sugerida') {
+  return texto(valor, respaldo)
+    .replace(/^File:/i, '')
+    .replace(/\.(jpg|jpeg|png|webp|gif|svg)$/i, '')
+    .replace(/[_-]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function crearFraseCorta(sugerencia = {}) {
+  const directa = texto(sugerencia.fraseCorta || sugerencia.tituloCorto || sugerencia.nombre, 'Imagen sugerida');
+  return limpiarFraseCorta(directa, 'Imagen sugerida');
+}
 
 function crearBusquedaCorta(sugerencia = {}) {
-  const valor = texto(sugerencia.busquedaCorta || sugerencia.busqueda || sugerencia.query || '', '');
-  if (valor) return valor.split(/\s+/).slice(0, 8).join(' ');
-  const nombre = texto(sugerencia.nombre, 'imagen apoyo');
-  const etiquetas = Array.isArray(sugerencia.etiquetas) ? sugerencia.etiquetas.join(' ') : '';
-  return texto(`${nombre} ${etiquetas}`.split(/\s+/).slice(0, 8).join(' '), nombre);
+  const frase = crearFraseCorta(sugerencia);
+  return limpiarFraseCorta(frase, 'imagen apoyo');
+}
+
+function crearDescripcionSugerencia(sugerencia = {}) {
+  const estado = texto(sugerencia.detalle, '');
+  if (estado && !/^estado:/i.test(estado)) return limitarDescripcion(estado);
+  const uso = texto(sugerencia.usoSugerido || sugerencia.uso, '');
+  if (uso) return limitarDescripcion(uso);
+  const motivo = texto(sugerencia.motivo, '');
+  if (motivo) return limitarDescripcion(motivo);
+  return 'Imagen de apoyo para reforzar esta parte del video.';
+}
+
+function crearConsultaInternet(sugerencia = {}) {
+  const frase = crearFraseCorta(sugerencia);
+  const etiquetas = Array.isArray(sugerencia.etiquetas) ? sugerencia.etiquetas : [];
+  const etiquetasUtiles = etiquetas
+    .map((item) => String(item || '').replace(/[-_]+/g, ' ').trim())
+    .filter(Boolean)
+    .filter((item) => !PALABRAS_RUIDO_BUSQUEDA.has(normalizarClave(item)))
+    .slice(0, 2);
+  return texto([frase, ...etiquetasUtiles].join(' '), frase);
 }
 
 function obtenerProyectoId() { return $('projectLibraryProjectId')?.value?.trim() || localStorage.getItem(STORAGE_PROYECTO_ETAPAS) || 'sin-proyecto'; }
@@ -104,12 +154,17 @@ function normalizarSugerencia(sugerencia = {}) {
   const base = SUGERENCIAS_BASE[sugerencia.id] || {};
   const nombre = texto(sugerencia.nombre || base.nombre, 'Imagen sugerida');
   const usoSugerido = texto(sugerencia.usoSugerido || sugerencia.uso || base.usoSugerido, 'apoyo visual del proyecto');
+  const temporal = { ...base, ...sugerencia, nombre, usoSugerido };
+  const fraseCorta = crearFraseCorta(temporal);
   return {
     id: texto(sugerencia.id || base.id, 'sugerencia-imagen'),
     nombre,
+    fraseCorta,
+    descripcion: crearDescripcionSugerencia(temporal),
     motivo: texto(sugerencia.motivo || base.motivo, 'Imagen sugerida para reforzar el video.'),
     usoSugerido,
-    busquedaCorta: crearBusquedaCorta({ ...base, ...sugerencia, nombre, usoSugerido }),
+    busquedaCorta: crearBusquedaCorta({ ...temporal, fraseCorta }),
+    consultaInternet: crearConsultaInternet({ ...temporal, fraseCorta }),
     categoria: texto(sugerencia.categoria || base.categoria, 'otro'),
     etiquetas: Array.isArray(sugerencia.etiquetas) && sugerencia.etiquetas.length ? sugerencia.etiquetas : (base.etiquetas || ['apoyo-visual', 'temporal']),
     estado: texto(sugerencia.estado || base.estado, 'pendiente'),
@@ -126,10 +181,10 @@ function estadoTexto(sugerencia = {}) {
 
 function renderCardSugerencia(sugerenciaEntrada = {}) {
   const sugerencia = normalizarSugerencia(sugerenciaEntrada);
-  const descripcion = limitarDescripcion(sugerencia.detalle || sugerencia.usoSugerido || sugerencia.motivo);
+  const descripcion = limitarDescripcion(sugerencia.descripcion || sugerencia.usoSugerido || sugerencia.motivo);
   return `
     <article class="project-library-image-request-card" data-image-suggestion-card="${escapar(sugerencia.id)}" data-image-suggestion-state="${escapar(sugerencia.estado)}">
-      <div class="project-library-image-request-top"><div class="project-library-image-request-title"><strong>${escapar(sugerencia.nombre)}</strong></div><span class="project-library-image-chip">${escapar(estadoTexto(sugerencia))}</span></div>
+      <div class="project-library-image-request-top"><div class="project-library-image-request-title"><strong>${escapar(sugerencia.fraseCorta)}</strong></div><span class="project-library-image-chip">${escapar(estadoTexto(sugerencia))}</span></div>
       <div class="project-library-image-search-box"><span>Buscar</span><strong>${escapar(sugerencia.busquedaCorta)}</strong></div>
       <p class="project-library-image-description">${escapar(descripcion)}</p>
       <div id="projectLibrarySuggestedDropZone" class="project-library-smart-upload" data-suggested-image-upload-zone="true">
@@ -142,7 +197,11 @@ function renderCardSugerencia(sugerenciaEntrada = {}) {
       </div>
       <section class="project-library-internet-results" aria-label="Opciones de internet">
         <header><strong>Imágenes de internet</strong><button class="project-library-button" type="button" data-suggested-image-action="search-internet">Buscar 3 imágenes</button></header>
-        <div class="project-library-internet-options" id="projectLibraryInternetImageOptions"><div class="project-library-internet-option">Opción 1</div><div class="project-library-internet-option">Opción 2</div><div class="project-library-internet-option">Opción 3</div></div>
+        <div class="project-library-internet-options" id="projectLibraryInternetImageOptions">
+          <div class="project-library-internet-option">Presiona Buscar 3 imágenes</div>
+          <div class="project-library-internet-option">Se mostrarán fotos reales</div>
+          <div class="project-library-internet-option">Luego elige una</div>
+        </div>
       </section>
     </article>`;
 }
@@ -190,10 +249,10 @@ function avanzarSugerencia(direccion = 1) {
 function obtenerSugerenciaDesdeCard(card) {
   const id = card?.dataset?.imageSuggestionCard || sugerenciasActuales[indiceSugerenciaActual]?.id || '';
   const base = SUGERENCIAS_BASE[id] || sugerenciasActuales.find((item) => item.id === id) || null;
-  const titulo = texto(card?.querySelector('strong')?.textContent, base?.nombre || id);
+  const titulo = texto(card?.querySelector('.project-library-image-request-title strong')?.textContent, base?.nombre || id);
   const busquedaCorta = texto(card?.querySelector('.project-library-image-search-box strong')?.textContent, base?.busquedaCorta || titulo);
   const uso = texto(card?.querySelector('.project-library-image-description')?.textContent, base?.usoSugerido || 'apoyo visual');
-  return normalizarSugerencia({ ...(base || {}), id, nombre: titulo, busquedaCorta, usoSugerido: uso, estado: card?.dataset?.imageSuggestionState || base?.estado || 'pendiente' });
+  return normalizarSugerencia({ ...(base || {}), id, nombre: titulo, fraseCorta: titulo, busquedaCorta, usoSugerido: uso, descripcion: uso, estado: card?.dataset?.imageSuggestionState || base?.estado || 'pendiente' });
 }
 
 function obtenerCardPorSugerencia(id) { return [...document.querySelectorAll('[data-image-suggestion-card]')].find((card) => card.dataset.imageSuggestionCard === id) || null; }
@@ -294,13 +353,13 @@ function aplicarSugerenciaEnFormulario(sugerenciaEntrada, archivo = {}) {
   const sugerencia = normalizarSugerencia(sugerenciaEntrada);
   const nombreArchivo = archivo.name || archivo.nombreOriginal || archivo.ruta?.split(/[\\/]/).pop() || $('projectLibraryNewOriginalName')?.value || '';
   const ruta = archivo.path || archivo.ruta || $('projectLibraryNewPath')?.value || '';
-  const nombreLimpio = sugerencia.nombre.replace(/^(imagen de|foto de)\s+/i, '').trim();
+  const nombreLimpio = sugerencia.fraseCorta.replace(/^(imagen de|foto de)\s+/i, '').trim();
   if ($('projectLibrarySelectedFileName')) $('projectLibrarySelectedFileName').textContent = nombreArchivo || nombreLimpio;
   if ($('projectLibrarySelectedFileMeta')) $('projectLibrarySelectedFileMeta').textContent = `imagen · ${formatearPeso(archivo.size || archivo.pesoBytes || Number($('projectLibraryNewSize')?.value || 0))} · sugerencia: ${nombreLimpio}`;
   if ($('projectLibraryNewName')) $('projectLibraryNewName').value = nombreLimpio;
   if ($('projectLibraryNewType')) $('projectLibraryNewType').value = 'imagen';
   if ($('projectLibraryNewFormat')) $('projectLibraryNewFormat').value = 'imagen';
-  if ($('projectLibraryNewUsage')) $('projectLibraryNewUsage').value = sugerencia.usoSugerido;
+  if ($('projectLibraryNewUsage')) $('projectLibraryNewUsage').value = sugerencia.descripcion || sugerencia.usoSugerido;
   if ($('projectLibraryNewTags')) $('projectLibraryNewTags').value = sugerencia.etiquetas.join(', ');
   if ($('projectLibraryNewPath') && ruta) $('projectLibraryNewPath').value = ruta;
   if ($('projectLibraryNewOriginalName') && nombreArchivo) $('projectLibraryNewOriginalName').value = nombreArchivo;
@@ -385,14 +444,15 @@ async function procesarArchivoInteligente(file, card, origen = 'archivo') {
   const proyectoId = obtenerProyectoId();
   if (!proyectoId || proyectoId === 'sin-proyecto') { setMensaje('Primero carga el proyecto para subir imágenes sugeridas.', 'warn'); return; }
   try {
-    setMensaje(origen === 'pegado' ? 'Pegando imagen...' : origen === 'arrastre' ? 'Cargando imagen arrastrada...' : 'Cargando imagen...', 'normal');
+    setMensaje(origen === 'pegado' ? 'Pegando imagen...' : origen === 'arrastre' ? 'Cargando imagen arrastrada...' : origen === 'internet' ? 'Cargando imagen de internet...' : 'Cargando imagen...', 'normal');
     const archivo = await convertirFileAArchivoTemporal(file, origen);
     aplicarSugerenciaEnFormulario(sugerencia, archivo);
     actualizarEstadoCard(card, 'subida', 'Estado: imagen seleccionada y lista para guardar.');
     await actualizarEstadoGuardado(sugerencia.id, {
       estado: 'subida',
       detalle: 'Estado: imagen seleccionada y lista para guardar.',
-      nombre: sugerencia.nombre,
+      nombre: sugerencia.fraseCorta,
+      descripcion: sugerencia.descripcion,
       usoSugerido: sugerencia.usoSugerido,
       busquedaCorta: sugerencia.busquedaCorta,
       categoria: sugerencia.categoria,
@@ -420,7 +480,8 @@ function esperarAplicacionArchivo(sugerencia, card, valorPrevio = '') {
     await actualizarEstadoGuardado(sugerencia.id, {
       estado: 'subida',
       detalle: 'Estado: imagen seleccionada y lista para guardar.',
-      nombre: sugerencia.nombre,
+      nombre: sugerencia.fraseCorta || sugerencia.nombre,
+      descripcion: sugerencia.descripcion,
       usoSugerido: sugerencia.usoSugerido,
       busquedaCorta: sugerencia.busquedaCorta,
       categoria: sugerencia.categoria,
@@ -439,7 +500,7 @@ async function abrirSelectorParaSugerencia(card) {
   sugerenciaPendiente = { sugerencia, card };
   const valorPrevio = $('projectLibraryNewOriginalName')?.value || $('projectLibrarySelectedFileName')?.textContent || '';
   const botonCargaNormal = document.querySelector('[data-project-library-action="choose-file"]');
-  setMensaje(`Elige una imagen para: ${sugerencia.nombre}.`, 'normal');
+  setMensaje(`Elige una imagen para: ${sugerencia.fraseCorta}.`, 'normal');
   if (botonCargaNormal && !botonCargaNormal.disabled) { botonCargaNormal.click(); esperarAplicacionArchivo(sugerencia, card, valorPrevio); return; }
   const input = $('projectLibraryFileInput');
   if (input) { input.click(); esperarAplicacionArchivo(sugerencia, card, valorPrevio); }
@@ -449,18 +510,130 @@ async function marcarNoNecesaria(card) {
   const sugerencia = obtenerSugerenciaDesdeCard(card);
   if (!sugerencia?.id) return;
   actualizarEstadoCard(card, 'omitida');
-  await actualizarEstadoGuardado(sugerencia.id, { estado: 'omitida', detalle: 'Estado: marcada como no necesaria.', nombre: sugerencia.nombre, usoSugerido: sugerencia.usoSugerido, busquedaCorta: sugerencia.busquedaCorta, categoria: sugerencia.categoria, etiquetas: sugerencia.etiquetas });
-  setMensaje(`Sugerencia marcada como no necesaria: ${sugerencia.nombre}.`, 'ok');
+  await actualizarEstadoGuardado(sugerencia.id, { estado: 'omitida', detalle: 'Estado: marcada como no necesaria.', nombre: sugerencia.fraseCorta, descripcion: sugerencia.descripcion, usoSugerido: sugerencia.usoSugerido, busquedaCorta: sugerencia.busquedaCorta, categoria: sugerencia.categoria, etiquetas: sugerencia.etiquetas });
+  setMensaje(`Sugerencia marcada como no necesaria: ${sugerencia.fraseCorta}.`, 'ok');
   setTimeout(() => avanzarSugerencia(1), 350);
 }
 
-function mostrarBusquedaInternetPendiente(card) {
+function pintarOpcionesInternet(opcionesContainer, html) {
+  if (opcionesContainer) opcionesContainer.innerHTML = html;
+}
+
+function crearHtmlCargandoInternet(sugerencia) {
+  return `<div class="project-library-internet-option">Buscando imágenes para ${escapar(sugerencia.busquedaCorta)}...</div><div class="project-library-internet-option">Conectando con internet</div><div class="project-library-internet-option">Preparando opciones</div>`;
+}
+
+function crearUrlBusquedaImagenes(consulta) {
+  return `https://www.google.com/search?tbm=isch&q=${encodeURIComponent(consulta)}`;
+}
+
+function crearHtmlSinResultados(sugerencia, mensaje = '') {
+  const url = crearUrlBusquedaImagenes(sugerencia.consultaInternet || sugerencia.busquedaCorta);
+  return `<button class="project-library-internet-option" type="button" data-suggested-image-action="open-image-search" data-search-url="${escapar(url)}">Abrir búsqueda externa</button><div class="project-library-internet-option">${escapar(mensaje || 'No se encontraron imágenes automáticas.')}</div><div class="project-library-internet-option">También puedes pegar o arrastrar una imagen</div>`;
+}
+
+function renderOpcionInternet(opcion = {}) {
+  return `<button class="project-library-internet-option is-loaded" type="button" data-suggested-image-action="choose-internet" data-image-url="${escapar(opcion.url)}" data-image-title="${escapar(opcion.titulo)}" data-image-description="${escapar(opcion.descripcion)}">
+    <img src="${escapar(opcion.url)}" alt="${escapar(opcion.titulo)}" loading="lazy" referrerpolicy="no-referrer" style="width:100%;height:120px;object-fit:cover;border-radius:12px;display:block;margin-bottom:8px;" />
+    <strong style="display:block;color:#0f172a;font-size:13px;line-height:1.2;margin-bottom:4px;">${escapar(opcion.titulo)}</strong>
+    <span style="display:block;color:#64748b;font-size:11px;line-height:1.25;">${escapar(opcion.descripcion)}</span>
+    <small style="display:block;margin-top:6px;color:#1d4ed8;font-weight:950;">Elegir esta imagen</small>
+  </button>`;
+}
+
+function opcionDesdeWikimediaPage(pagina = {}, sugerencia = {}, indice = 0) {
+  const info = pagina.imageinfo?.[0] || {};
+  const meta = info.extmetadata || {};
+  const url = info.thumburl || info.url || '';
+  const tituloBase = limpiarTituloArchivo(meta.ObjectName?.value || pagina.title || sugerencia.fraseCorta, sugerencia.fraseCorta);
+  const descripcionBase = quitarHtml(meta.ImageDescription?.value || meta.ObjectName?.value || '');
+  return {
+    id: `wikimedia-${pagina.pageid || indice}`,
+    url,
+    originalUrl: info.descriptionurl || info.url || url,
+    titulo: limpiarFraseCorta(tituloBase, sugerencia.fraseCorta),
+    descripcion: limitarDescripcion(descripcionBase || `Imagen de internet para: ${sugerencia.descripcion || sugerencia.usoSugerido}.`)
+  };
+}
+
+async function buscarImagenesInternet(sugerenciaEntrada = {}) {
+  const sugerencia = normalizarSugerencia(sugerenciaEntrada);
+  const consulta = crearConsultaInternet(sugerencia);
+  const endpoint = `https://commons.wikimedia.org/w/api.php?action=query&generator=search&gsrsearch=${encodeURIComponent(consulta)}&gsrnamespace=6&gsrlimit=8&prop=imageinfo&iiprop=url|mime|extmetadata&iiurlwidth=520&format=json&origin=*`;
+  const respuesta = await fetch(endpoint, { method: 'GET' });
+  if (!respuesta.ok) throw new Error(`No se pudo buscar imágenes de internet. HTTP ${respuesta.status}`);
+  const datos = await respuesta.json();
+  const paginas = Object.values(datos?.query?.pages || {});
+  return paginas
+    .map((pagina, indice) => opcionDesdeWikimediaPage(pagina, sugerencia, indice))
+    .filter((item) => item.url && /\.(jpg|jpeg|png|webp|gif)(\?|$)/i.test(item.url))
+    .slice(0, 3);
+}
+
+async function mostrarBusquedaInternet(card) {
   const sugerencia = obtenerSugerenciaDesdeCard(card);
   const opciones = card?.querySelector('#projectLibraryInternetImageOptions');
-  if (opciones) {
-    opciones.innerHTML = `<div class="project-library-internet-option">Buscar: ${escapar(sugerencia.busquedaCorta)}</div><div class="project-library-internet-option">Opción real en Bloque 3</div><div class="project-library-internet-option">Elegir imagen después</div>`;
+  if (!opciones || !sugerencia?.id) return;
+  pintarOpcionesInternet(opciones, crearHtmlCargandoInternet(sugerencia));
+  setMensaje(`Buscando 3 imágenes reales para: ${sugerencia.busquedaCorta}.`, 'normal');
+  try {
+    const resultados = await buscarImagenesInternet(sugerencia);
+    if (!resultados.length) {
+      pintarOpcionesInternet(opciones, crearHtmlSinResultados(sugerencia));
+      setMensaje('No se encontraron imágenes automáticas. Puedes abrir búsqueda externa o pegar una imagen.', 'warn');
+      return;
+    }
+    pintarOpcionesInternet(opciones, resultados.map(renderOpcionInternet).join(''));
+    setMensaje('Se encontraron imágenes. Elige una opción o pega tu propia imagen.', 'ok');
+  } catch (error) {
+    pintarOpcionesInternet(opciones, crearHtmlSinResultados(sugerencia, error.message));
+    setMensaje(`No se pudo cargar imágenes automáticas: ${error.message}`, 'warn');
   }
-  setMensaje('Bloque 2 dejó lista la subida. La búsqueda real de 3 imágenes se conecta en el siguiente bloque.', 'normal');
+}
+
+function extensionDesdeMime(mime = '') {
+  const limpio = String(mime || '').toLowerCase();
+  if (limpio.includes('png')) return '.png';
+  if (limpio.includes('webp')) return '.webp';
+  if (limpio.includes('gif')) return '.gif';
+  return '.jpg';
+}
+
+function nombreArchivoSeguro(valor = 'imagen-internet') {
+  return limpiarFraseCorta(valor, 'imagen-internet')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-zA-Z0-9._-]+/g, '-')
+    .replace(/-+/g, '-')
+    .replace(/^-|-$/g, '')
+    .toLowerCase() || 'imagen-internet';
+}
+
+async function crearFileDesdeImagenInternet(boton) {
+  const url = boton?.dataset?.imageUrl || '';
+  if (!url) throw new Error('La opción de internet no tiene URL de imagen.');
+  const titulo = texto(boton.dataset.imageTitle, 'imagen-internet');
+  const respuesta = await fetch(url, { method: 'GET', mode: 'cors' });
+  if (!respuesta.ok) throw new Error(`No se pudo descargar la imagen seleccionada. HTTP ${respuesta.status}`);
+  const blob = await respuesta.blob();
+  const nombre = `${nombreArchivoSeguro(titulo)}${extensionDesdeMime(blob.type)}`;
+  return new File([blob], nombre, { type: blob.type || 'image/jpeg' });
+}
+
+async function elegirImagenInternet(card, boton) {
+  try {
+    setMensaje('Preparando imagen seleccionada desde internet...', 'normal');
+    const file = await crearFileDesdeImagenInternet(boton);
+    await procesarArchivoInteligente(file, card, 'internet');
+  } catch (error) {
+    setMensaje(`${error.message}. Puedes abrir la imagen, copiarla y pegarla en la zona de carga.`, 'error');
+  }
+}
+
+function abrirBusquedaExterna(boton) {
+  const url = boton?.dataset?.searchUrl || '';
+  if (!url) return;
+  window.open(url, '_blank', 'noopener,noreferrer');
 }
 
 function imagenDesdeClipboard(evento) {
@@ -495,7 +668,9 @@ function conectarBotonesSugerencias(root) {
       const card = evento.target.closest('[data-image-suggestion-card]') || obtenerCardPorSugerencia(sugerenciasActuales[indiceSugerenciaActual]?.id);
       if (accion === 'upload') await abrirSelectorParaSugerencia(card);
       if (accion === 'skip') await marcarNoNecesaria(card);
-      if (accion === 'search-internet') mostrarBusquedaInternetPendiente(card);
+      if (accion === 'search-internet') await mostrarBusquedaInternet(card);
+      if (accion === 'choose-internet') await elegirImagenInternet(card, evento.target.closest('[data-suggested-image-action]'));
+      if (accion === 'open-image-search') abrirBusquedaExterna(evento.target.closest('[data-suggested-image-action]'));
     });
     root.addEventListener('dragover', (evento) => {
       const zona = evento.target.closest('[data-suggested-image-upload-zone]');
@@ -528,7 +703,7 @@ function conectarBotonesSugerencias(root) {
       setTimeout(async () => {
         aplicarSugerenciaEnFormulario(sugerenciaPendiente.sugerencia, archivo);
         actualizarEstadoCard(sugerenciaPendiente.card, 'subida', 'Estado: imagen seleccionada y lista para guardar.');
-        await actualizarEstadoGuardado(sugerenciaPendiente.sugerencia.id, { estado: 'subida', detalle: 'Estado: imagen seleccionada y lista para guardar.', nombre: sugerenciaPendiente.sugerencia.nombre, usoSugerido: sugerenciaPendiente.sugerencia.usoSugerido, busquedaCorta: sugerenciaPendiente.sugerencia.busquedaCorta, categoria: sugerenciaPendiente.sugerencia.categoria, etiquetas: sugerenciaPendiente.sugerencia.etiquetas, archivoNombre: archivo.name || '' });
+        await actualizarEstadoGuardado(sugerenciaPendiente.sugerencia.id, { estado: 'subida', detalle: 'Estado: imagen seleccionada y lista para guardar.', nombre: sugerenciaPendiente.sugerencia.fraseCorta || sugerenciaPendiente.sugerencia.nombre, descripcion: sugerenciaPendiente.sugerencia.descripcion, usoSugerido: sugerenciaPendiente.sugerencia.usoSugerido, busquedaCorta: sugerenciaPendiente.sugerencia.busquedaCorta, categoria: sugerenciaPendiente.sugerencia.categoria, etiquetas: sugerenciaPendiente.sugerencia.etiquetas, archivoNombre: archivo.name || '' });
         setMensaje('Imagen lista. Presiona Guardar temporal para finalizar y pasar a la siguiente.', 'ok');
         sugerenciaPendiente = null;
       }, 160);
