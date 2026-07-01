@@ -17,6 +17,7 @@ import { normalizarVideosEntendimiento } from './normalizar-videos-entendimiento
 import { crearLineaTiempoMultivideo } from './linea-tiempo-multivideo.service.js';
 import { procesarEntendimientoMultivideo } from './entendimiento-multivideo.service.js';
 import { unirEntendimientoMultivideo } from './unir-entendimiento-multivideo.service.js';
+import { actualizarImagenesSugeridasDesdeEntendimiento } from '../../biblioteca-proyecto/imagenes-sugeridas-proyecto.service.js';
 
 function numero(valor, respaldo = 0) {
   const n = Number(valor);
@@ -238,6 +239,20 @@ export async function procesarEntendimientoProyectoEtapa({ proyectoId, opciones 
       }
     });
 
+    await reportarProgreso({ mensaje: 'Detectando imágenes sugeridas para Biblioteca.' });
+    const imagenesSugeridas = await actualizarImagenesSugeridasDesdeEntendimiento({
+      proyectoId,
+      resultadoEntendimiento: {
+        ...resultadoEntendimiento,
+        resumenEtapa: resumen,
+        lineaTiempoGlobal,
+        entendimientoGlobal
+      }
+    }).catch((error) => {
+      console.warn('[Entendimiento] No se pudieron generar imágenes sugeridas:', error.message);
+      return null;
+    });
+
     const estadoFinal = await avanzarEstadoProyectoEtapas({
       proyectoId,
       etapaDestino: ETAPAS_AUTOVIDEO.ENTENDIMIENTO,
@@ -256,6 +271,7 @@ export async function procesarEntendimientoProyectoEtapa({ proyectoId, opciones 
       entrada: resultadoEntendimiento.entrada,
       resultado: resultadoEntendimiento,
       resumen,
+      imagenesSugeridas,
       videosEntendimiento: videosNormalizados,
       lineaTiempoGlobal,
       entendimientoGlobal,
