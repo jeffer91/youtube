@@ -23,70 +23,40 @@ function renderPerfil(perfil) {
 export function renderPerfilesView() {
   return `
     <section class="aj-view-card profiles-page" data-perfiles-root data-proceso-root="perfiles" data-proceso-paso-activo="elegir">
-      <div class="profiles-hero">
-        <div>
-          <p class="eyebrow">Perfiles</p>
-          <h2>Estilos de edición</h2>
-          <p>Cada perfil explica cómo debe editar la app: ritmo, textos, efectos, animaciones, tono visual y uso recomendado. La información se muestra por partes.</p>
-        </div>
-        <span class="aj-status-chip" id="profilesStateChip">Sin perfil seleccionado</span>
-      </div>
-
-      <div data-proceso-resumen="perfiles"></div>
-
-      <section class="profiles-flow" aria-label="Flujo guiado de perfiles">
-        <button class="profiles-step is-active" type="button" data-perfiles-wizard-go="elegir" data-proceso-step="elegir"><b>1</b><span><strong>Elegir</strong><small>Perfil editorial</small></span></button>
-        <button class="profiles-step is-locked" type="button" data-perfiles-wizard-go="ritmo" data-proceso-step="ritmo"><b>2</b><span><strong>Ritmo</strong><small>Velocidad y tono</small></span></button>
-        <button class="profiles-step is-locked" type="button" data-perfiles-wizard-go="textos" data-proceso-step="textos"><b>3</b><span><strong>Textos</strong><small>Títulos y frases</small></span></button>
-        <button class="profiles-step is-locked" type="button" data-perfiles-wizard-go="visual" data-proceso-step="visual"><b>4</b><span><strong>Visual</strong><small>Efectos y estética</small></span></button>
-        <button class="profiles-step is-locked" type="button" data-perfiles-wizard-go="uso" data-proceso-step="uso"><b>5</b><span><strong>Uso</strong><small>Cuándo usarlo</small></span></button>
-      </section>
-
       <section id="profilesMessage" class="profiles-message" hidden></section>
+
+      <section class="profiles-flow" aria-label="Navegación de perfiles">
+        <button class="profiles-step is-active" type="button" data-perfiles-wizard-go="elegir" data-proceso-step="elegir"><span><strong>Elegir</strong></span></button>
+        <button class="profiles-step is-locked" type="button" data-perfiles-wizard-go="ritmo" data-proceso-step="ritmo"><span><strong>Ritmo</strong></span></button>
+        <button class="profiles-step is-locked" type="button" data-perfiles-wizard-go="textos" data-proceso-step="textos"><span><strong>Textos</strong></span></button>
+        <button class="profiles-step is-locked" type="button" data-perfiles-wizard-go="visual" data-proceso-step="visual"><span><strong>Visual</strong></span></button>
+        <button class="profiles-step is-locked" type="button" data-perfiles-wizard-go="uso" data-proceso-step="uso"><span><strong>Uso</strong></span></button>
+        <span class="aj-status-chip" id="profilesStateChip">Sin perfil seleccionado</span>
+      </section>
 
       <section class="profiles-wizard">
         <article class="profiles-wizard-panel is-active" data-perfiles-wizard-panel="elegir">
-          <div class="profiles-panel-heading">
-            <p class="eyebrow">Paso 1</p>
-            <h3>Elegir perfil editorial</h3>
-            <p>Selecciona primero el estilo del video. Después se revisa ritmo, textos, visual y uso ideal sin saturar la pantalla.</p>
-          </div>
+          <div class="profiles-panel-heading"><h3>Elegir perfil editorial</h3></div>
           <div class="profiles-grid">${PERFILES.map(renderPerfil).join('')}</div>
         </article>
 
         <article class="profiles-wizard-panel" data-perfiles-wizard-panel="ritmo" hidden>
-          <div class="profiles-panel-heading">
-            <p class="eyebrow">Paso 2</p>
-            <h3>Ritmo del perfil</h3>
-            <p>Define la velocidad, energía y sensación general de edición.</p>
-          </div>
+          <div class="profiles-panel-heading"><h3>Ritmo</h3></div>
           <div id="profileRitmoDetail" class="profiles-detail-card"><div class="profiles-empty">Selecciona un perfil para ver su ritmo.</div></div>
         </article>
 
         <article class="profiles-wizard-panel" data-perfiles-wizard-panel="textos" hidden>
-          <div class="profiles-panel-heading">
-            <p class="eyebrow">Paso 3</p>
-            <h3>Textos y frases</h3>
-            <p>Revisa qué tipo de títulos, frases, marcadores o llamados debe usar la edición.</p>
-          </div>
+          <div class="profiles-panel-heading"><h3>Textos y frases</h3></div>
           <div id="profileTextosDetail" class="profiles-detail-card"><div class="profiles-empty">Selecciona un perfil para ver sus textos.</div></div>
         </article>
 
         <article class="profiles-wizard-panel" data-perfiles-wizard-panel="visual" hidden>
-          <div class="profiles-panel-heading">
-            <p class="eyebrow">Paso 4</p>
-            <h3>Tratamiento visual</h3>
-            <p>Revisa la estética, efectos, énfasis y estilo visual recomendado.</p>
-          </div>
+          <div class="profiles-panel-heading"><h3>Tratamiento visual</h3></div>
           <div id="profileVisualDetail" class="profiles-detail-card"><div class="profiles-empty">Selecciona un perfil para ver el tratamiento visual.</div></div>
         </article>
 
         <article class="profiles-wizard-panel" data-perfiles-wizard-panel="uso" hidden>
-          <div class="profiles-panel-heading">
-            <p class="eyebrow">Paso 5</p>
-            <h3>Uso ideal</h3>
-            <p>Confirma cuándo conviene usar este perfil antes de iniciar un proyecto.</p>
-          </div>
+          <div class="profiles-panel-heading"><h3>Uso ideal</h3></div>
           <div id="profileUsoDetail" class="profiles-detail-card"><div class="profiles-empty">Selecciona un perfil para ver su uso ideal.</div></div>
         </article>
       </section>
