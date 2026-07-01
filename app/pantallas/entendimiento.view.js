@@ -1,27 +1,6 @@
 export function renderEntendimientoView() {
   return `
     <section class="aj-view-card entendimiento-view" data-entendimiento-root data-proceso-root="entendimiento" data-proceso-paso-activo="cargar-proyecto">
-      <div class="entendimiento-hero">
-        <div>
-          <p class="eyebrow">Etapa 1</p>
-          <h2>Entendimiento del video</h2>
-          <p>Revisa qué entendió AutoVideoJeff antes de cargar recursos temporales y crear el plan de edición. La pantalla muestra un paso a la vez para evitar saturación.</p>
-        </div>
-        <span class="aj-status-chip" id="entendimientoEstadoChip">Esperando proyecto</span>
-      </div>
-
-      <div data-proceso-resumen="entendimiento"></div>
-
-      <section class="entendimiento-flow" aria-label="Flujo guiado de entendimiento">
-        <button class="entendimiento-step is-active" type="button" data-entendimiento-wizard-go="cargar" data-proceso-step="cargar-proyecto"><b>1</b><span><strong>Cargar</strong><small>Proyecto</small></span></button>
-        <button class="entendimiento-step is-locked" type="button" data-entendimiento-wizard-go="procesar" data-proceso-step="procesar"><b>2</b><span><strong>Procesar</strong><small>Entendimiento</small></span></button>
-        <button class="entendimiento-step is-locked" type="button" data-entendimiento-wizard-go="transcripcion" data-proceso-step="transcripcion"><b>3</b><span><strong>Transcripción</strong><small>Texto base</small></span></button>
-        <button class="entendimiento-step is-locked" type="button" data-entendimiento-wizard-go="fotogramas" data-proceso-step="fotogramas"><b>4</b><span><strong>Fotogramas</strong><small>Frames clave</small></span></button>
-        <button class="entendimiento-step is-locked" type="button" data-entendimiento-wizard-go="analisis" data-proceso-step="analisis-global"><b>5</b><span><strong>Análisis</strong><small>Lectura global</small></span></button>
-        <button class="entendimiento-step is-locked" type="button" data-entendimiento-wizard-go="biblioteca" data-proceso-step="pasar-biblioteca"><b>6</b><span><strong>Biblioteca</strong><small>Siguiente</small></span></button>
-        <button class="entendimiento-step is-advanced" type="button" data-entendimiento-wizard-go="avanzado" data-proceso-step="motores"><b>+</b><span><strong>Avanzado</strong><small>Motores</small></span></button>
-      </section>
-
       <section id="entendimientoMensaje" class="entendimiento-message" hidden></section>
 
       <section class="entendimiento-wizard">
