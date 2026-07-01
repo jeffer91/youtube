@@ -1,34 +1,22 @@
 export function renderProduccionView() {
   return `
     <section class="aj-view-card produccion-maestro-view" data-produccion-maestro-root data-proceso-root="produccion-maestro" data-proceso-paso-activo="cargar-producir">
-      <div class="produccion-maestro-hero">
-        <div>
-          <p class="eyebrow">Etapa 3</p>
-          <h2>Producción maestro</h2>
-          <p>Genera y revisa el video maestro por pasos. La producción real sigue igual, pero la pantalla ya no muestra preview, timeline, auditoría y detalles al mismo tiempo.</p>
-        </div>
-        <span class="aj-status-chip" id="produccionMaestroEstadoChip">Esperando proyecto</span>
-      </div>
-
-      <div data-proceso-resumen="produccion-maestro"></div>
-
-      <section class="produccion-maestro-flow" aria-label="Flujo guiado de producción maestro">
-        <button class="produccion-maestro-step is-active" type="button" data-produccion-wizard-go="cargar" data-proceso-step="cargar-producir"><b>1</b><span><strong>Cargar</strong><small>Producir maestro</small></span></button>
-        <button class="produccion-maestro-step is-locked" type="button" data-produccion-wizard-go="preview" data-proceso-step="preview"><b>2</b><span><strong>Preview</strong><small>Video exportado</small></span></button>
-        <button class="produccion-maestro-step is-locked" type="button" data-produccion-wizard-go="comparacion" data-proceso-step="comparacion"><b>3</b><span><strong>Antes/después</strong><small>Control visual</small></span></button>
-        <button class="produccion-maestro-step is-locked" type="button" data-produccion-wizard-go="problemas" data-proceso-step="problemas"><b>4</b><span><strong>Problemas</strong><small>Auditoría rápida</small></span></button>
-        <button class="produccion-maestro-step is-locked" type="button" data-produccion-wizard-go="adaptacion" data-proceso-step="adaptacion"><b>5</b><span><strong>Adaptación</strong><small>Siguiente etapa</small></span></button>
-        <button class="produccion-maestro-step is-advanced" type="button" data-produccion-wizard-go="avanzado" data-proceso-step="timeline-auditoria"><b>+</b><span><strong>Avanzado</strong><small>Timeline / detalle</small></span></button>
-      </section>
-
       <section id="produccionMaestroMensaje" class="produccion-maestro-message" hidden></section>
+
+      <section class="produccion-maestro-flow" aria-label="Navegación de producción maestro">
+        <button class="produccion-maestro-step is-active" type="button" data-produccion-wizard-go="cargar" data-proceso-step="cargar-producir"><span><strong>Cargar</strong></span></button>
+        <button class="produccion-maestro-step is-locked" type="button" data-produccion-wizard-go="preview" data-proceso-step="preview"><span><strong>Preview</strong></span></button>
+        <button class="produccion-maestro-step is-locked" type="button" data-produccion-wizard-go="comparacion" data-proceso-step="comparacion"><span><strong>Antes/después</strong></span></button>
+        <button class="produccion-maestro-step is-locked" type="button" data-produccion-wizard-go="problemas" data-proceso-step="problemas"><span><strong>Problemas</strong></span></button>
+        <button class="produccion-maestro-step is-locked" type="button" data-produccion-wizard-go="adaptacion" data-proceso-step="adaptacion"><span><strong>Adaptación</strong></span></button>
+        <button class="produccion-maestro-step is-advanced" type="button" data-produccion-wizard-go="avanzado" data-proceso-step="timeline-auditoria"><span><strong>Avanzado</strong></span></button>
+        <span class="aj-status-chip" id="produccionMaestroEstadoChip">Esperando proyecto</span>
+      </section>
 
       <section class="produccion-maestro-wizard">
         <article class="produccion-maestro-wizard-panel is-active" data-produccion-wizard-panel="cargar">
           <div class="produccion-maestro-panel-heading">
-            <p class="eyebrow">Paso 1</p>
             <h3>Cargar o producir video maestro</h3>
-            <p>Confirma el proyecto. Puedes cargar una producción existente o producir el maestro desde el plan aprobado.</p>
           </div>
           <div class="produccion-maestro-toolbar">
             <label for="produccionMaestroProyectoId">
@@ -59,7 +47,7 @@ export function renderProduccionView() {
 
         <article class="produccion-maestro-wizard-panel" data-produccion-wizard-panel="preview" hidden>
           <article class="produccion-maestro-panel produccion-maestro-panel--preview">
-            <header><div><p class="eyebrow">Paso 2</p><h3>Preview del video maestro</h3></div><span id="produccionMaestroPreviewEstado">Sin video</span></header>
+            <header><div><h3>Preview del video maestro</h3></div><span id="produccionMaestroPreviewEstado">Sin video</span></header>
             <video id="produccionMaestroVideo" class="produccion-maestro-video" controls playsinline></video>
             <div class="produccion-maestro-actions-row">
               <a id="produccionMaestroDescarga" class="secondary-button" href="#" hidden>Descargar maestro</a>
@@ -69,7 +57,7 @@ export function renderProduccionView() {
 
         <article class="produccion-maestro-wizard-panel" data-produccion-wizard-panel="comparacion" hidden>
           <article class="produccion-maestro-panel produccion-maestro-panel--compare">
-            <header><div><p class="eyebrow">Paso 3</p><h3>Antes / después</h3></div><span id="produccionMaestroComparacionEstado">Pendiente</span></header>
+            <header><div><h3>Antes / después</h3></div><span id="produccionMaestroComparacionEstado">Pendiente</span></header>
             <div class="produccion-maestro-compare">
               <article><strong>Antes</strong><video id="produccionMaestroAntes" controls playsinline></video></article>
               <article><strong>Después</strong><video id="produccionMaestroDespues" controls playsinline></video></article>
@@ -79,8 +67,7 @@ export function renderProduccionView() {
 
         <article class="produccion-maestro-wizard-panel" data-produccion-wizard-panel="problemas" hidden>
           <article class="produccion-maestro-panel produccion-maestro-panel--audit">
-            <header><div><p class="eyebrow">Paso 4</p><h3>Auditoría rápida</h3></div><span id="produccionMaestroAuditoriaEstado">Sin datos</span></header>
-            <p class="produccion-maestro-panel-note">Aquí se revisa qué se aplicó y qué queda pendiente antes de adaptar a plataformas.</p>
+            <header><div><h3>Auditoría rápida</h3></div><span id="produccionMaestroAuditoriaEstado">Sin datos</span></header>
             <div id="produccionMaestroAuditoria" class="produccion-maestro-audit"><div class="produccion-maestro-empty">Sin auditoría cargada.</div></div>
           </article>
         </article>
@@ -88,8 +75,8 @@ export function renderProduccionView() {
         <article class="produccion-maestro-wizard-panel" data-produccion-wizard-panel="adaptacion" hidden>
           <footer class="produccion-maestro-footer">
             <div>
-              <strong>Paso 5 · Pasar a Adaptación</strong>
-              <span>Cuando el maestro esté listo, genera versiones para TikTok, Reels, Shorts, YouTube y otros formatos.</span>
+              <strong>Pasar a Adaptación</strong>
+              <span>Genera versiones para plataformas.</span>
             </div>
             <button id="produccionMaestroAdaptarBtn" class="primary-button" type="button" disabled>Adaptar a plataformas</button>
           </footer>
@@ -97,18 +84,16 @@ export function renderProduccionView() {
 
         <article class="produccion-maestro-wizard-panel" data-produccion-wizard-panel="avanzado" data-proceso-avanzado hidden>
           <div class="produccion-maestro-panel-heading">
-            <p class="eyebrow">Avanzado</p>
             <h3>Timeline editorial, filtros y detalle profesional</h3>
-            <p>Estos controles siguen disponibles, pero ya no saturan la revisión principal del maestro.</p>
           </div>
 
           <article class="produccion-maestro-panel produccion-maestro-panel--timeline">
-            <header><div><p class="eyebrow">Timeline editorial</p><h3>Marcadores aplicados y planificados</h3></div><span id="produccionMaestroTimelineEstado">0</span></header>
+            <header><div><h3>Marcadores aplicados y planificados</h3></div><span id="produccionMaestroTimelineEstado">0</span></header>
             <div id="produccionMaestroTimelineResumen" class="produccion-maestro-timeline-summary"><div class="produccion-maestro-empty">Sin resumen de timeline.</div></div>
             <div class="produccion-maestro-timeline-controls" aria-label="Filtros de timeline editorial">
               <label for="produccionMaestroFiltroPista"><span>Pista</span><select id="produccionMaestroFiltroPista"><option value="todas">Todas</option><option value="global">Global</option><option value="cortes">Cortes</option><option value="subtitulos">Subtítulos</option><option value="textos">Textos</option><option value="zooms">Zooms</option><option value="efectos">Efectos</option><option value="animaciones">Animaciones</option><option value="transiciones">Transiciones</option><option value="audio-sfx">Audio / SFX</option><option value="recursos">Recursos</option><option value="diagnostico">Diagnóstico</option></select></label>
               <label for="produccionMaestroFiltroEstado"><span>Estado</span><select id="produccionMaestroFiltroEstado"><option value="todos">Todos</option><option value="aplicado">Aplicados</option><option value="planificado">Planificados</option><option value="omitido">Omitidos</option><option value="fallback">Fallback</option><option value="revision">Revisión</option></select></label>
-              <label for="produccionMaestroBuscarMarcador"><span>Buscar</span><input id="produccionMaestroBuscarMarcador" type="search" placeholder="zoom, hit, global, Gemini..." autocomplete="off" /></label>
+              <label for="produccionMaestroBuscarMarcador"><span>Buscar</span><input id="produccionMaestroBuscarMarcador" type="search" placeholder="zoom, hit, global..." autocomplete="off" /></label>
               <button id="produccionMaestroLimpiarFiltrosBtn" class="secondary-button" type="button">Limpiar filtros</button>
             </div>
             <p id="produccionMaestroFiltroResumen" class="produccion-maestro-filter-summary">Sin filtros aplicados.</p>
@@ -118,7 +103,7 @@ export function renderProduccionView() {
           </article>
 
           <section class="produccion-maestro-panel produccion-maestro-panel--details">
-            <header><div><p class="eyebrow">Detalle profesional</p><h3>Plan usado, edición, marcadores y salida</h3></div><span id="produccionMaestroDetalleEstado">0</span></header>
+            <header><div><h3>Plan usado, edición, marcadores y salida</h3></div><span id="produccionMaestroDetalleEstado">0</span></header>
             <div id="produccionMaestroDetalle" class="produccion-maestro-detail"><div class="produccion-maestro-empty">Carga una producción para ver el detalle.</div></div>
           </section>
         </article>
