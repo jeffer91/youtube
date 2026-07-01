@@ -38,22 +38,12 @@ let esperaArchivoTimer = null;
 let fetchInterceptado = false;
 let sugerenciasActuales = [];
 let indiceSugerenciaActual = 0;
+let pegadoInicializado = false;
 
 function $(id) { return document.getElementById(id); }
-
-function texto(valor = '', respaldo = '') {
-  const limpio = String(valor ?? '').trim();
-  return limpio || respaldo;
-}
-
-function escapar(valor = '') {
-  return texto(valor, '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
-}
-
-function limitarDescripcion(valor = '') {
-  const limpio = texto(valor, 'Imagen de apoyo para reforzar el video.');
-  return limpio.length > 170 ? `${limpio.slice(0, 167)}...` : limpio;
-}
+function texto(valor = '', respaldo = '') { const limpio = String(valor ?? '').trim(); return limpio || respaldo; }
+function escapar(valor = '') { return texto(valor, '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c])); }
+function limitarDescripcion(valor = '') { const limpio = texto(valor, 'Imagen de apoyo para reforzar el video.'); return limpio.length > 170 ? `${limpio.slice(0, 167)}...` : limpio; }
 
 function crearBusquedaCorta(sugerencia = {}) {
   const valor = texto(sugerencia.busquedaCorta || sugerencia.busqueda || sugerencia.query || '', '');
@@ -63,26 +53,11 @@ function crearBusquedaCorta(sugerencia = {}) {
   return texto(`${nombre} ${etiquetas}`.split(/\s+/).slice(0, 8).join(' '), nombre);
 }
 
-function obtenerProyectoId() {
-  return $('projectLibraryProjectId')?.value?.trim() || localStorage.getItem(STORAGE_PROYECTO_ETAPAS) || 'sin-proyecto';
-}
-
-function claveStorage() {
-  return `${STORAGE_IMAGENES_SUGERIDAS}.${obtenerProyectoId()}`;
-}
-
-function claveIndice() {
-  return `${STORAGE_INDICE_SUGERENCIA}.${obtenerProyectoId()}`;
-}
-
-function leerIndiceGuardado() {
-  const n = Number(localStorage.getItem(claveIndice()) || 0);
-  return Number.isFinite(n) && n >= 0 ? n : 0;
-}
-
-function guardarIndice() {
-  localStorage.setItem(claveIndice(), String(indiceSugerenciaActual));
-}
+function obtenerProyectoId() { return $('projectLibraryProjectId')?.value?.trim() || localStorage.getItem(STORAGE_PROYECTO_ETAPAS) || 'sin-proyecto'; }
+function claveStorage() { return `${STORAGE_IMAGENES_SUGERIDAS}.${obtenerProyectoId()}`; }
+function claveIndice() { return `${STORAGE_INDICE_SUGERENCIA}.${obtenerProyectoId()}`; }
+function leerIndiceGuardado() { const n = Number(localStorage.getItem(claveIndice()) || 0); return Number.isFinite(n) && n >= 0 ? n : 0; }
+function guardarIndice() { localStorage.setItem(claveIndice(), String(indiceSugerenciaActual)); }
 
 async function obtenerBaseApi() {
   const apiElectron = window.AutoVideoJeff?.servidor?.obtenerEstado;
@@ -107,17 +82,8 @@ async function apiJson(ruta, opciones = {}) {
   return datos;
 }
 
-function leerEstadoSugerenciasLocal() {
-  try {
-    return JSON.parse(localStorage.getItem(claveStorage()) || '{}') || {};
-  } catch (_error) {
-    return {};
-  }
-}
-
-function guardarEstadoSugerenciasLocal(estado = {}) {
-  localStorage.setItem(claveStorage(), JSON.stringify(estado));
-}
+function leerEstadoSugerenciasLocal() { try { return JSON.parse(localStorage.getItem(claveStorage()) || '{}') || {}; } catch (_error) { return {}; } }
+function guardarEstadoSugerenciasLocal(estado = {}) { localStorage.setItem(claveStorage(), JSON.stringify(estado)); }
 
 function setMensaje(mensaje, tipo = 'normal') {
   const box = $('projectLibraryMessage');
@@ -163,20 +129,9 @@ function renderCardSugerencia(sugerenciaEntrada = {}) {
   const descripcion = limitarDescripcion(sugerencia.detalle || sugerencia.usoSugerido || sugerencia.motivo);
   return `
     <article class="project-library-image-request-card" data-image-suggestion-card="${escapar(sugerencia.id)}" data-image-suggestion-state="${escapar(sugerencia.estado)}">
-      <div class="project-library-image-request-top">
-        <div class="project-library-image-request-title">
-          <strong>${escapar(sugerencia.nombre)}</strong>
-        </div>
-        <span class="project-library-image-chip">${escapar(estadoTexto(sugerencia))}</span>
-      </div>
-
-      <div class="project-library-image-search-box">
-        <span>Buscar</span>
-        <strong>${escapar(sugerencia.busquedaCorta)}</strong>
-      </div>
-
+      <div class="project-library-image-request-top"><div class="project-library-image-request-title"><strong>${escapar(sugerencia.nombre)}</strong></div><span class="project-library-image-chip">${escapar(estadoTexto(sugerencia))}</span></div>
+      <div class="project-library-image-search-box"><span>Buscar</span><strong>${escapar(sugerencia.busquedaCorta)}</strong></div>
       <p class="project-library-image-description">${escapar(descripcion)}</p>
-
       <div id="projectLibrarySuggestedDropZone" class="project-library-smart-upload" data-suggested-image-upload-zone="true">
         <strong>Pega, arrastra o examina la imagen</strong>
         <span>Ctrl+V, soltar imagen aquí o usar Examinar.</span>
@@ -185,17 +140,9 @@ function renderCardSugerencia(sugerenciaEntrada = {}) {
           <button class="project-library-button is-muted" type="button" data-suggested-image-action="skip">No necesaria</button>
         </div>
       </div>
-
       <section class="project-library-internet-results" aria-label="Opciones de internet">
-        <header>
-          <strong>Imágenes de internet</strong>
-          <button class="project-library-button" type="button" data-suggested-image-action="search-internet">Buscar 3 imágenes</button>
-        </header>
-        <div class="project-library-internet-options" id="projectLibraryInternetImageOptions">
-          <div class="project-library-internet-option">Opción 1</div>
-          <div class="project-library-internet-option">Opción 2</div>
-          <div class="project-library-internet-option">Opción 3</div>
-        </div>
+        <header><strong>Imágenes de internet</strong><button class="project-library-button" type="button" data-suggested-image-action="search-internet">Buscar 3 imágenes</button></header>
+        <div class="project-library-internet-options" id="projectLibraryInternetImageOptions"><div class="project-library-internet-option">Opción 1</div><div class="project-library-internet-option">Opción 2</div><div class="project-library-internet-option">Opción 3</div></div>
       </section>
     </article>`;
 }
@@ -249,9 +196,7 @@ function obtenerSugerenciaDesdeCard(card) {
   return normalizarSugerencia({ ...(base || {}), id, nombre: titulo, busquedaCorta, usoSugerido: uso, estado: card?.dataset?.imageSuggestionState || base?.estado || 'pendiente' });
 }
 
-function obtenerCardPorSugerencia(id) {
-  return [...document.querySelectorAll('[data-image-suggestion-card]')].find((card) => card.dataset.imageSuggestionCard === id) || null;
-}
+function obtenerCardPorSugerencia(id) { return [...document.querySelectorAll('[data-image-suggestion-card]')].find((card) => card.dataset.imageSuggestionCard === id) || null; }
 
 function actualizarEstadoCard(card, estado = 'pendiente', detalle = '') {
   if (!card) return;
@@ -263,29 +208,19 @@ function actualizarEstadoCard(card, estado = 'pendiente', detalle = '') {
   if (chip) chip.textContent = estadoTexto({ estado });
   const descripcion = card.querySelector('.project-library-image-description');
   if (descripcion && detalle) descripcion.textContent = detalle;
-
   const actual = sugerenciasActuales.find((item) => item.id === card.dataset.imageSuggestionCard);
-  if (actual) {
-    actual.estado = estado;
-    if (detalle) actual.detalle = detalle;
-  }
+  if (actual) { actual.estado = estado; if (detalle) actual.detalle = detalle; }
 }
 
 function aplicarEstadoGuardadoEnCardsLocal() {
   const estado = leerEstadoSugerenciasLocal();
   const fusionadas = sugerenciasActuales.map((item) => ({ ...(item || {}), ...(estado[item.id] || {}) }));
-  if (fusionadas.length) {
-    sugerenciasActuales = fusionadas.map(normalizarSugerencia);
-    renderSugerenciaActual();
-  }
+  if (fusionadas.length) { sugerenciasActuales = fusionadas.map(normalizarSugerencia); renderSugerenciaActual(); }
 }
 
 async function cargarEstadoSugerenciasServidor() {
   const proyectoId = obtenerProyectoId();
-  if (!proyectoId || proyectoId === 'sin-proyecto') {
-    aplicarEstadoGuardadoEnCardsLocal();
-    return null;
-  }
+  if (!proyectoId || proyectoId === 'sin-proyecto') { aplicarEstadoGuardadoEnCardsLocal(); return null; }
   try {
     const datos = await apiJson(`/api/proyectos/${encodeURIComponent(proyectoId)}/biblioteca-proyecto/imagenes-sugeridas`);
     const paquete = datos.imagenesSugeridas || {};
@@ -302,7 +237,6 @@ async function actualizarEstadoGuardado(id, datos) {
   const estado = leerEstadoSugerenciasLocal();
   estado[id] = { ...(estado[id] || {}), ...datos, actualizadoEn: new Date().toISOString() };
   guardarEstadoSugerenciasLocal(estado);
-
   const proyectoId = obtenerProyectoId();
   if (!proyectoId || proyectoId === 'sin-proyecto') return;
   try {
@@ -337,12 +271,30 @@ function asegurarCampoSugerenciaActiva() {
   return input;
 }
 
+function activarPanelGuardarTemporal() {
+  const root = document.querySelector('[data-project-library-root]');
+  if (!root) return;
+  root.querySelectorAll('[data-project-library-wizard-panel]').forEach((panel) => {
+    const activo = panel.dataset.projectLibraryWizardPanel === 'guardar';
+    panel.classList.toggle('is-active', activo);
+    panel.hidden = !activo;
+    if (activo) panel.classList.remove('is-disabled');
+  });
+  const saveBtn = $('projectLibrarySaveBtn');
+  const fieldset = $('projectLibraryFormFieldset');
+  const form = $('projectLibraryForm');
+  const saveCard = document.querySelector('[data-smart-section="guardar"]');
+  if (saveBtn) saveBtn.disabled = false;
+  if (fieldset) fieldset.disabled = false;
+  if (form) form.classList.remove('is-disabled');
+  if (saveCard) saveCard.classList.remove('is-disabled');
+}
+
 function aplicarSugerenciaEnFormulario(sugerenciaEntrada, archivo = {}) {
   const sugerencia = normalizarSugerencia(sugerenciaEntrada);
   const nombreArchivo = archivo.name || archivo.nombreOriginal || archivo.ruta?.split(/[\\/]/).pop() || $('projectLibraryNewOriginalName')?.value || '';
   const ruta = archivo.path || archivo.ruta || $('projectLibraryNewPath')?.value || '';
   const nombreLimpio = sugerencia.nombre.replace(/^(imagen de|foto de)\s+/i, '').trim();
-
   if ($('projectLibrarySelectedFileName')) $('projectLibrarySelectedFileName').textContent = nombreArchivo || nombreLimpio;
   if ($('projectLibrarySelectedFileMeta')) $('projectLibrarySelectedFileMeta').textContent = `imagen · ${formatearPeso(archivo.size || archivo.pesoBytes || Number($('projectLibraryNewSize')?.value || 0))} · sugerencia: ${nombreLimpio}`;
   if ($('projectLibraryNewName')) $('projectLibraryNewName').value = nombreLimpio;
@@ -352,14 +304,13 @@ function aplicarSugerenciaEnFormulario(sugerenciaEntrada, archivo = {}) {
   if ($('projectLibraryNewTags')) $('projectLibraryNewTags').value = sugerencia.etiquetas.join(', ');
   if ($('projectLibraryNewPath') && ruta) $('projectLibraryNewPath').value = ruta;
   if ($('projectLibraryNewOriginalName') && nombreArchivo) $('projectLibraryNewOriginalName').value = nombreArchivo;
-  if ($('projectLibraryNewMime') && archivo.type) $('projectLibraryNewMime').value = archivo.type;
+  if ($('projectLibraryNewMime') && (archivo.type || archivo.mime)) $('projectLibraryNewMime').value = archivo.type || archivo.mime;
   if ($('projectLibraryNewSize') && archivo.size) $('projectLibraryNewSize').value = archivo.size;
   const sugerenciaInput = asegurarCampoSugerenciaActiva();
   if (sugerenciaInput) sugerenciaInput.value = sugerencia.id;
   seleccionarCategoriaDisponible(sugerencia.categoria || 'otro');
-
   actualizarRevisionVisual();
-  setTimeout(() => document.querySelector('[data-project-library-wizard-go="datos"]')?.click(), 80);
+  activarPanelGuardarTemporal();
 }
 
 function actualizarRevisionVisual() {
@@ -416,6 +367,44 @@ function interceptarGuardadoRecursoTemporal() {
   };
 }
 
+async function convertirFileAArchivoTemporal(file, origen = 'archivo') {
+  if (!file) throw new Error('No se recibió una imagen válida.');
+  if (!String(file.type || '').startsWith('image/') && !/\.(png|jpe?g|webp|gif)$/i.test(file.name || '')) throw new Error('Solo se aceptan imágenes en esta sección.');
+  if (file.path || file.ruta) return { ...file, origenSubidaInteligente: origen };
+  const guardar = window.AutoVideoJeff?.biblioteca?.guardarArchivoTemporal;
+  if (typeof guardar !== 'function') throw new Error('Para pegar imágenes o arrastrarlas sin ruta, abre la app en modo Electron.');
+  const bytes = await file.arrayBuffer();
+  const resultado = await guardar({ bytes, mime: file.type || 'image/png', nombreOriginal: file.name || `imagen-${Date.now()}.png`, origen });
+  if (!resultado?.ok || !resultado.archivo) throw new Error(resultado?.mensaje || 'No se pudo guardar la imagen temporal.');
+  return { ...resultado.archivo, origenSubidaInteligente: origen };
+}
+
+async function procesarArchivoInteligente(file, card, origen = 'archivo') {
+  const sugerencia = obtenerSugerenciaDesdeCard(card);
+  if (!sugerencia?.id) return;
+  const proyectoId = obtenerProyectoId();
+  if (!proyectoId || proyectoId === 'sin-proyecto') { setMensaje('Primero carga el proyecto para subir imágenes sugeridas.', 'warn'); return; }
+  try {
+    setMensaje(origen === 'pegado' ? 'Pegando imagen...' : origen === 'arrastre' ? 'Cargando imagen arrastrada...' : 'Cargando imagen...', 'normal');
+    const archivo = await convertirFileAArchivoTemporal(file, origen);
+    aplicarSugerenciaEnFormulario(sugerencia, archivo);
+    actualizarEstadoCard(card, 'subida', 'Estado: imagen seleccionada y lista para guardar.');
+    await actualizarEstadoGuardado(sugerencia.id, {
+      estado: 'subida',
+      detalle: 'Estado: imagen seleccionada y lista para guardar.',
+      nombre: sugerencia.nombre,
+      usoSugerido: sugerencia.usoSugerido,
+      busquedaCorta: sugerencia.busquedaCorta,
+      categoria: sugerencia.categoria,
+      etiquetas: sugerencia.etiquetas,
+      archivoNombre: archivo.name || archivo.nombreOriginal || ''
+    });
+    setMensaje('Imagen lista. Presiona Guardar temporal para finalizar y pasar a la siguiente.', 'ok');
+  } catch (error) {
+    setMensaje(error.message, 'error');
+  }
+}
+
 function esperarAplicacionArchivo(sugerencia, card, valorPrevio = '') {
   clearInterval(esperaArchivoTimer);
   let intentos = 0;
@@ -425,15 +414,12 @@ function esperarAplicacionArchivo(sugerencia, card, valorPrevio = '') {
     const hayArchivo = actual && actual !== valorPrevio && !/ningún archivo/i.test(actual);
     if (!hayArchivo && intentos < 40) return;
     clearInterval(esperaArchivoTimer);
-    if (!hayArchivo) {
-      setMensaje('No se detectó una imagen seleccionada para la sugerencia.', 'warn');
-      return;
-    }
+    if (!hayArchivo) { setMensaje('No se detectó una imagen seleccionada para la sugerencia.', 'warn'); return; }
     aplicarSugerenciaEnFormulario(sugerencia, {});
-    actualizarEstadoCard(card, 'subida');
+    actualizarEstadoCard(card, 'subida', 'Estado: imagen seleccionada y lista para guardar.');
     await actualizarEstadoGuardado(sugerencia.id, {
       estado: 'subida',
-      detalle: 'Estado: imagen seleccionada y formulario preparado.',
+      detalle: 'Estado: imagen seleccionada y lista para guardar.',
       nombre: sugerencia.nombre,
       usoSugerido: sugerencia.usoSugerido,
       busquedaCorta: sugerencia.busquedaCorta,
@@ -441,7 +427,7 @@ function esperarAplicacionArchivo(sugerencia, card, valorPrevio = '') {
       etiquetas: sugerencia.etiquetas,
       archivoNombre: actual
     });
-    setMensaje(`Imagen vinculada a la sugerencia: ${sugerencia.nombre}. Revisa los datos y guarda el temporal.`, 'ok');
+    setMensaje('Imagen lista. Presiona Guardar temporal para finalizar y pasar a la siguiente.', 'ok');
   }, 250);
 }
 
@@ -449,43 +435,21 @@ async function abrirSelectorParaSugerencia(card) {
   const sugerencia = obtenerSugerenciaDesdeCard(card);
   if (!sugerencia?.id) return;
   const proyectoId = obtenerProyectoId();
-  if (!proyectoId || proyectoId === 'sin-proyecto') {
-    setMensaje('Primero carga el proyecto para subir imágenes sugeridas.', 'warn');
-    return;
-  }
-
+  if (!proyectoId || proyectoId === 'sin-proyecto') { setMensaje('Primero carga el proyecto para subir imágenes sugeridas.', 'warn'); return; }
   sugerenciaPendiente = { sugerencia, card };
   const valorPrevio = $('projectLibraryNewOriginalName')?.value || $('projectLibrarySelectedFileName')?.textContent || '';
   const botonCargaNormal = document.querySelector('[data-project-library-action="choose-file"]');
-
   setMensaje(`Elige una imagen para: ${sugerencia.nombre}.`, 'normal');
-
-  if (botonCargaNormal && !botonCargaNormal.disabled) {
-    botonCargaNormal.click();
-    esperarAplicacionArchivo(sugerencia, card, valorPrevio);
-    return;
-  }
-
+  if (botonCargaNormal && !botonCargaNormal.disabled) { botonCargaNormal.click(); esperarAplicacionArchivo(sugerencia, card, valorPrevio); return; }
   const input = $('projectLibraryFileInput');
-  if (input) {
-    input.click();
-    esperarAplicacionArchivo(sugerencia, card, valorPrevio);
-  }
+  if (input) { input.click(); esperarAplicacionArchivo(sugerencia, card, valorPrevio); }
 }
 
 async function marcarNoNecesaria(card) {
   const sugerencia = obtenerSugerenciaDesdeCard(card);
   if (!sugerencia?.id) return;
   actualizarEstadoCard(card, 'omitida');
-  await actualizarEstadoGuardado(sugerencia.id, {
-    estado: 'omitida',
-    detalle: 'Estado: marcada como no necesaria.',
-    nombre: sugerencia.nombre,
-    usoSugerido: sugerencia.usoSugerido,
-    busquedaCorta: sugerencia.busquedaCorta,
-    categoria: sugerencia.categoria,
-    etiquetas: sugerencia.etiquetas
-  });
+  await actualizarEstadoGuardado(sugerencia.id, { estado: 'omitida', detalle: 'Estado: marcada como no necesaria.', nombre: sugerencia.nombre, usoSugerido: sugerencia.usoSugerido, busquedaCorta: sugerencia.busquedaCorta, categoria: sugerencia.categoria, etiquetas: sugerencia.etiquetas });
   setMensaje(`Sugerencia marcada como no necesaria: ${sugerencia.nombre}.`, 'ok');
   setTimeout(() => avanzarSugerencia(1), 350);
 }
@@ -494,12 +458,29 @@ function mostrarBusquedaInternetPendiente(card) {
   const sugerencia = obtenerSugerenciaDesdeCard(card);
   const opciones = card?.querySelector('#projectLibraryInternetImageOptions');
   if (opciones) {
-    opciones.innerHTML = `
-      <div class="project-library-internet-option">Buscar: ${escapar(sugerencia.busquedaCorta)}</div>
-      <div class="project-library-internet-option">Opción real en Bloque 3</div>
-      <div class="project-library-internet-option">Elegir imagen después</div>`;
+    opciones.innerHTML = `<div class="project-library-internet-option">Buscar: ${escapar(sugerencia.busquedaCorta)}</div><div class="project-library-internet-option">Opción real en Bloque 3</div><div class="project-library-internet-option">Elegir imagen después</div>`;
   }
-  setMensaje('Bloque 1 dejó listo el espacio. La búsqueda real de 3 imágenes se conecta en el siguiente bloque.', 'normal');
+  setMensaje('Bloque 2 dejó lista la subida. La búsqueda real de 3 imágenes se conecta en el siguiente bloque.', 'normal');
+}
+
+function imagenDesdeClipboard(evento) {
+  const items = [...(evento.clipboardData?.items || [])];
+  const item = items.find((entrada) => String(entrada.type || '').startsWith('image/'));
+  return item?.getAsFile?.() || null;
+}
+
+function conectarPegadoGlobal() {
+  if (pegadoInicializado) return;
+  pegadoInicializado = true;
+  document.addEventListener('paste', async (evento) => {
+    const root = document.querySelector('[data-project-library-image-requests]');
+    if (!root) return;
+    const file = imagenDesdeClipboard(evento);
+    if (!file) return;
+    evento.preventDefault();
+    const card = obtenerCardPorSugerencia(sugerenciasActuales[indiceSugerenciaActual]?.id);
+    await procesarArchivoInteligente(file, card, 'pegado');
+  });
 }
 
 function conectarBotonesSugerencias(root) {
@@ -516,6 +497,26 @@ function conectarBotonesSugerencias(root) {
       if (accion === 'skip') await marcarNoNecesaria(card);
       if (accion === 'search-internet') mostrarBusquedaInternetPendiente(card);
     });
+    root.addEventListener('dragover', (evento) => {
+      const zona = evento.target.closest('[data-suggested-image-upload-zone]');
+      if (!zona) return;
+      evento.preventDefault();
+      zona.classList.add('is-dragover');
+    });
+    root.addEventListener('dragleave', (evento) => {
+      const zona = evento.target.closest('[data-suggested-image-upload-zone]');
+      if (zona) zona.classList.remove('is-dragover');
+    });
+    root.addEventListener('drop', async (evento) => {
+      const zona = evento.target.closest('[data-suggested-image-upload-zone]');
+      if (!zona) return;
+      evento.preventDefault();
+      zona.classList.remove('is-dragover');
+      const file = [...(evento.dataTransfer?.files || [])].find((archivo) => String(archivo.type || '').startsWith('image/') || /\.(png|jpe?g|webp|gif)$/i.test(archivo.name || ''));
+      if (!file) { setMensaje('Arrastra una imagen válida: JPG, PNG, WEBP o GIF.', 'warn'); return; }
+      const card = zona.closest('[data-image-suggestion-card]') || obtenerCardPorSugerencia(sugerenciasActuales[indiceSugerenciaActual]?.id);
+      await procesarArchivoInteligente(file, card, 'arrastre');
+    });
   }
 
   const input = $('projectLibraryFileInput');
@@ -526,18 +527,9 @@ function conectarBotonesSugerencias(root) {
       const archivo = input.files?.[0] || {};
       setTimeout(async () => {
         aplicarSugerenciaEnFormulario(sugerenciaPendiente.sugerencia, archivo);
-        actualizarEstadoCard(sugerenciaPendiente.card, 'subida');
-        await actualizarEstadoGuardado(sugerenciaPendiente.sugerencia.id, {
-          estado: 'subida',
-          detalle: 'Estado: imagen seleccionada y formulario preparado.',
-          nombre: sugerenciaPendiente.sugerencia.nombre,
-          usoSugerido: sugerenciaPendiente.sugerencia.usoSugerido,
-          busquedaCorta: sugerenciaPendiente.sugerencia.busquedaCorta,
-          categoria: sugerenciaPendiente.sugerencia.categoria,
-          etiquetas: sugerenciaPendiente.sugerencia.etiquetas,
-          archivoNombre: archivo.name || ''
-        });
-        setMensaje(`Imagen vinculada a la sugerencia: ${sugerenciaPendiente.sugerencia.nombre}. Revisa los datos y guarda el temporal.`, 'ok');
+        actualizarEstadoCard(sugerenciaPendiente.card, 'subida', 'Estado: imagen seleccionada y lista para guardar.');
+        await actualizarEstadoGuardado(sugerenciaPendiente.sugerencia.id, { estado: 'subida', detalle: 'Estado: imagen seleccionada y lista para guardar.', nombre: sugerenciaPendiente.sugerencia.nombre, usoSugerido: sugerenciaPendiente.sugerencia.usoSugerido, busquedaCorta: sugerenciaPendiente.sugerencia.busquedaCorta, categoria: sugerenciaPendiente.sugerencia.categoria, etiquetas: sugerenciaPendiente.sugerencia.etiquetas, archivoNombre: archivo.name || '' });
+        setMensaje('Imagen lista. Presiona Guardar temporal para finalizar y pasar a la siguiente.', 'ok');
         sugerenciaPendiente = null;
       }, 160);
     });
@@ -548,6 +540,7 @@ async function activarImagenesSugeridas() {
   setTimeout(async () => {
     const root = document.querySelector('[data-project-library-image-requests]');
     conectarBotonesSugerencias(root);
+    conectarPegadoGlobal();
     if (!sugerenciasActuales.length) renderSugerencias([]);
     await cargarEstadoSugerenciasServidor();
   }, 0);
@@ -557,20 +550,10 @@ export function inicializarBibliotecaImagenesSugeridasUI() {
   if (typeof document === 'undefined' || inicializado) return;
   inicializado = true;
   interceptarGuardadoRecursoTemporal();
-  document.addEventListener('autovideo:navegacion', (evento) => {
-    if (evento.detail?.pantallaId === 'biblioteca' || evento.detail?.pantallaId === 'biblioteca-proyecto') activarImagenesSugeridas();
-  });
-  document.addEventListener('autovideo:biblioteca-area', (evento) => {
-    if (evento.detail?.area === 'proyecto') activarImagenesSugeridas();
-  });
-  document.addEventListener('click', (evento) => {
-    if (evento.target.closest('#projectLibraryLoadBtn') || evento.target.closest('#projectLibraryRefreshBtn')) {
-      setTimeout(() => activarImagenesSugeridas(), 400);
-    }
-  });
+  document.addEventListener('autovideo:navegacion', (evento) => { if (evento.detail?.pantallaId === 'biblioteca' || evento.detail?.pantallaId === 'biblioteca-proyecto') activarImagenesSugeridas(); });
+  document.addEventListener('autovideo:biblioteca-area', (evento) => { if (evento.detail?.area === 'proyecto') activarImagenesSugeridas(); });
+  document.addEventListener('click', (evento) => { if (evento.target.closest('#projectLibraryLoadBtn') || evento.target.closest('#projectLibraryRefreshBtn')) setTimeout(() => activarImagenesSugeridas(), 400); });
   activarImagenesSugeridas();
 }
 
-if (typeof document !== 'undefined') {
-  document.addEventListener('DOMContentLoaded', inicializarBibliotecaImagenesSugeridasUI);
-}
+if (typeof document !== 'undefined') document.addEventListener('DOMContentLoaded', inicializarBibliotecaImagenesSugeridasUI);
