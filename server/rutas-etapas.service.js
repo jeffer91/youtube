@@ -31,6 +31,7 @@ import { procesarProduccionMaestroProyectoEtapa } from '../etapas/03-produccion/
 import { procesarAdaptacionPlataformasProyectoEtapa } from '../etapas/04-adaptacion/procesar-adaptacion-plataformas.service.js';
 import { procesarResultadoFinalProyectoEtapa } from '../etapas/05-resultado/procesar-resultado-final.service.js';
 import { listarRecursosProyecto, guardarRecursoProyecto } from '../biblioteca-proyecto/biblioteca-proyecto.conexion.js';
+import { cargarImagenesSugeridasProyecto, guardarImagenesSugeridasProyecto } from '../biblioteca-proyecto/imagenes-sugeridas-proyecto.service.js';
 
 const CONFIG_ETAPAS_API = Object.freeze({
   entendimiento: { etapa: ETAPAS_AUTOVIDEO.ENTENDIMIENTO, estadoProcesando: ESTADOS_PROYECTO_ETAPAS.ENTENDIENDO, mensaje: 'Entendimiento real conectado desde el Bloque 6.' },
@@ -57,8 +58,20 @@ async function cargarEstadoBibliotecaProyecto(proyectoId) {
   const entendimiento = await cargarResultadoEtapa({ proyectoId, etapa: ETAPAS_AUTOVIDEO.ENTENDIMIENTO, valorPorDefecto: null });
   const videos = await cargarVideosProyecto(proyectoId);
   const recursos = await listarRecursosProyecto(crearProyectoBibliotecaEtapas(proyectoId));
+  const imagenesSugeridas = await cargarImagenesSugeridasProyecto({ proyectoId });
   const habilitada = Boolean(entendimiento?.resultado || entendimiento);
-  return { proyectoId, habilitada, listoParaPlan: habilitada, estado, entendimiento: entendimiento ? { existe: true, etapa: ETAPAS_AUTOVIDEO.ENTENDIMIENTO } : { existe: false }, videos, totalRecursos: recursos.length, recursos };
+  return {
+    proyectoId,
+    habilitada,
+    listoParaPlan: habilitada,
+    estado,
+    entendimiento: entendimiento ? { existe: true, etapa: ETAPAS_AUTOVIDEO.ENTENDIMIENTO } : { existe: false },
+    videos,
+    totalRecursos: recursos.length,
+    recursos,
+    imagenesSugeridas,
+    totalImagenesSugeridas: imagenesSugeridas.total || imagenesSugeridas.sugerencias?.length || 0
+  };
 }
 
 function crearProyectoIdDesdeNombre(nombre) {
@@ -156,7 +169,42 @@ async function guardarBibliotecaProyecto(req, res, aplicarCabeceras) {
     if (!estadoBiblioteca.habilitada) throw new Error('Biblioteca proyecto bloqueada: primero procesa Entendimiento.');
     const proyecto = crearProyectoBibliotecaEtapas(proyectoId);
     const resultado = await guardarRecursoProyecto(proyecto, { ...(req.body || {}), proyectoId }, { accionDuplicado: req.body?.accionDuplicado || 'preguntar' });
+    if (req.body?.sugerenciaId) {
+      await guardarImagenesSugeridasProyecto({
+        proyectoId,
+        accion: 'recurso-temporal-guardado',
+        sugerencia: {
+          id: req.body.sugerenciaId,
+          estado: 'guardada',
+          recursoId: resultado?.recurso?.id || resultado?.id || '',
+          archivoNombre: req.body?.nombreOriginal || req.body?.nombre || '',
+          detalle: 'Estado: imagen guardada como recurso temporal del proyecto.'
+        }
+      }).catch((error) => console.warn('[API etapas] No se pudo actualizar sugerencia vinculada:', error.message));
+    }
     return responderOk(res, resultado?.recurso ? resultado : { recurso: resultado });
+  } catch (error) { return responderError(res, error, 400); }
+}
+
+async function obtenerImagenesSugeridas(req, res, aplicarCabeceras) {
+  try {
+    aplicarCabeceras(res);
+    const imagenesSugeridas = await cargarImagenesSugeridasProyecto({ proyectoId: req.params.proyectoId });
+    return responderOk(res, { imagenesSugeridas });
+  } catch (error) { return responderError(res, error, 400); }
+}
+
+async function guardarImagenesSugeridas(req, res, aplicarCabeceras) {
+  try {
+    aplicarCabeceras(res);
+    const proyectoId = req.params.proyectoId;
+    const resultado = await guardarImagenesSugeridasProyecto({
+      proyectoId,
+      sugerencia: req.body?.sugerencia || null,
+      sugerencias: Array.isArray(req.body?.sugerencias) ? req.body.sugerencias : null,
+      accion: req.body?.accion || 'actualizar'
+    });
+    return responderOk(res, { imagenesSugeridas: resultado });
   } catch (error) { return responderError(res, error, 400); }
 }
 
@@ -243,6 +291,8 @@ export function registrarRutasEtapas(app, opciones = {}) {
   app.get('/api/proyectos/:proyectoId/entendimiento', (req, res) => cargarEtapa(req, res, aplicarCabeceras, 'entendimiento'));
   app.get('/api/proyectos/:proyectoId/biblioteca-proyecto', (req, res) => obtenerBibliotecaProyecto(req, res, aplicarCabeceras));
   app.get('/api/proyectos/:proyectoId/biblioteca-proyecto/estado', (req, res) => obtenerBibliotecaProyecto(req, res, aplicarCabeceras));
+  app.get('/api/proyectos/:proyectoId/biblioteca-proyecto/imagenes-sugeridas', (req, res) => obtenerImagenesSugeridas(req, res, aplicarCabeceras));
+  app.post('/api/proyectos/:proyectoId/biblioteca-proyecto/imagenes-sugeridas', (req, res) => guardarImagenesSugeridas(req, res, aplicarCabeceras));
   app.post('/api/proyectos/:proyectoId/biblioteca-proyecto', (req, res) => guardarBibliotecaProyecto(req, res, aplicarCabeceras));
   app.post('/api/proyectos/:proyectoId/plan/procesar', (req, res) => registrarSolicitudEtapa({ req, res, aplicarCabeceras, tipo: 'plan' }));
   app.get('/api/proyectos/:proyectoId/plan', (req, res) => cargarEtapa(req, res, aplicarCabeceras, 'plan'));
