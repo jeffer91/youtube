@@ -360,6 +360,79 @@ async function procesarEntendimientoProyectoEtapas(proyectoId) {
   });
 }
 
+function obtenerUltimoEventoEstadoProyecto(estado = {}) {
+  const historial = Array.isArray(estado?.historial) ? estado.historial : [];
+  return historial.length ? historial[historial.length - 1] : null;
+}
+
+function calcularPorcentajeEntendimiento({ mensaje = '', tick = 0, porcentajeActual = 55 } = {}) {
+  const limpio = String(mensaje || '').toLowerCase();
+  if (limpio.includes('detectados')) return Math.max(porcentajeActual, 58);
+  if (limpio.includes('línea de tiempo') || limpio.includes('linea de tiempo') || limpio.includes('duración')) return Math.max(porcentajeActual, 62);
+  if (limpio.includes('datos técnicos')) return Math.max(porcentajeActual, 66);
+  if (limpio.includes('transcribiendo')) return Math.max(porcentajeActual, 70);
+  if (limpio.includes('fotogramas')) return Math.max(porcentajeActual, 82);
+  if (limpio.includes('análisis editorial') || limpio.includes('analisis editorial')) return Math.max(porcentajeActual, 86);
+  if (limpio.includes('reporte')) return Math.max(porcentajeActual, 89);
+  if (limpio.includes('por video listo')) return Math.max(porcentajeActual, 91);
+  if (limpio.includes('uniendo')) return Math.max(porcentajeActual, 94);
+  if (limpio.includes('guardando')) return Math.max(porcentajeActual, 96);
+  if (limpio.includes('completado')) return 100;
+  return Math.min(96, Math.max(porcentajeActual, 55 + Math.floor(tick / 3)));
+}
+
+async function consultarEstadoProyectoEtapas(proyectoId) {
+  return await apiJson(`/api/proyectos/${encodeURIComponent(proyectoId)}/estado`, { method: 'GET' });
+}
+
+function iniciarSeguimientoEntendimientoEtapas({ proyectoId, totalVideos = 1 } = {}) {
+  let cerrado = false;
+  let tick = 0;
+  let ultimoMensaje = '';
+  let porcentajeActual = 55;
+
+  const consultar = async () => {
+    if (cerrado || !proyectoId) return;
+    try {
+      const datos = await consultarEstadoProyectoEtapas(proyectoId);
+      const evento = obtenerUltimoEventoEstadoProyecto(datos.estado);
+      const mensaje = evento?.mensaje || datos.estado?.estado || 'Procesando entendimiento en servidor.';
+      porcentajeActual = calcularPorcentajeEntendimiento({ mensaje, tick, porcentajeActual });
+      tick += 1;
+      if (mensaje !== ultimoMensaje || tick % 4 === 0) {
+        ultimoMensaje = mensaje;
+        actualizarProgresoReal({
+          titulo: 'Procesando entendimiento real',
+          detalle: `${mensaje} Proyecto: ${proyectoId}. Videos: ${totalVideos}.`,
+          porcentaje: porcentajeActual,
+          estado: 'procesando',
+          etapa: 'entendimiento'
+        });
+      }
+    } catch (error) {
+      if (tick % 4 === 0) {
+        actualizarProgresoReal({
+          titulo: 'Procesando entendimiento real',
+          detalle: `El servidor sigue trabajando. No se pudo leer estado temporal: ${error.message}`,
+          porcentaje: Math.min(96, porcentajeActual + 1),
+          estado: 'procesando',
+          etapa: 'entendimiento'
+        });
+      }
+      tick += 1;
+    }
+  };
+
+  consultar();
+  const intervalo = setInterval(consultar, 2500);
+  return {
+    cerrar() {
+      cerrado = true;
+      clearInterval(intervalo);
+    }
+  };
+}
+
 async function iniciarProgresoLegacy(jobId) {
   prepararProgresoReal();
   const url = await crearUrlApi(`/api/progreso/${encodeURIComponent(jobId)}`);
@@ -422,8 +495,14 @@ async function procesarFormularioPorEtapas(archivos) {
   actualizarProgresoReal({ titulo: 'Subiendo videos', detalle: `Guardando ${archivos.length} video(s) en el proyecto ${proyectoId}.`, porcentaje: 28, estado: 'procesando', etapa: 'videos' });
   await subirVideosProyectoEtapas({ proyectoId, archivos, nombreProyecto: payload.nombre });
 
-  actualizarProgresoReal({ titulo: 'Procesando entendimiento', detalle: 'Generando transcripción, fotogramas y análisis global.', porcentaje: 55, estado: 'procesando', etapa: 'entendimiento' });
-  const entendimiento = await procesarEntendimientoProyectoEtapas(proyectoId);
+  actualizarProgresoReal({ titulo: 'Iniciando entendimiento real', detalle: `El servidor empezará a leer el estado real del proyecto ${proyectoId}.`, porcentaje: 55, estado: 'procesando', etapa: 'entendimiento' });
+  const seguimiento = iniciarSeguimientoEntendimientoEtapas({ proyectoId, totalVideos: archivos.length || 1 });
+  let entendimiento;
+  try {
+    entendimiento = await procesarEntendimientoProyectoEtapas(proyectoId);
+  } finally {
+    seguimiento.cerrar();
+  }
 
   actualizarProgresoReal({ titulo: 'Entendimiento listo', detalle: `Proyecto ${proyectoId} preparado para revisar y crear plan.`, porcentaje: 100, estado: 'finalizado', etapa: 'entendimiento' });
   return { proyectoId, entendimiento };
