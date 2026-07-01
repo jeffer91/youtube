@@ -24,6 +24,9 @@ const api = Object.freeze({
   biblioteca: Object.freeze({
     seleccionarArchivo: async () => {
       return await ipcRenderer.invoke('biblioteca:seleccionarArchivo');
+    },
+    guardarArchivoTemporal: async (payload = {}) => {
+      return await ipcRenderer.invoke('biblioteca:guardarArchivoTemporal', payload);
     }
   })
 });
