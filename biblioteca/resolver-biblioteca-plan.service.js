@@ -1,11 +1,12 @@
 /*
-  Bloque Biblioteca 5
-  Funcion: unir biblioteca general permanente + biblioteca temporal del proyecto para que el Plan pueda usarlas sin copiar archivos.
+  Bloque Biblioteca 5 + Imágenes sugeridas
+  Funcion: unir biblioteca general permanente + biblioteca temporal del proyecto + imágenes sugeridas para que el Plan pueda usarlas sin copiar archivos.
 */
 
 import path from 'path';
 import { buscarRecursosBiblioteca } from './buscar-recurso.service.js';
 import { buscarRecursosProyecto, listarRecursosProyecto } from '../biblioteca-proyecto/biblioteca-proyecto.conexion.js';
+import { cargarImagenesSugeridasProyecto } from '../biblioteca-proyecto/imagenes-sugeridas-proyecto.service.js';
 import { obtenerRutaDatos } from '../comun/archivos.js';
 
 const CATEGORIAS_PRIORITARIAS = ['intro', 'logo', 'top-1', 'top-2', 'top-3', 'overlay', 'texto-plantilla', 'transicion', 'ending', 'musica', 'efecto-sonoro', 'otro'];
@@ -64,6 +65,26 @@ function normalizarRecursoBiblioteca(recurso = {}, alcance = 'general') {
     tipo: recurso.tipo || 'video',
     estadoTecnico: recurso.estadoTecnico || recurso.estado || 'pendiente',
     usoSugerido: recurso.usoSugerido || recurso.tipoEdicion || recurso.estadoUso || 'recurso_apoyo'
+  };
+}
+
+function normalizarImagenSugerida(sugerencia = {}) {
+  const estado = texto(sugerencia.estado, 'pendiente').toLowerCase();
+  return {
+    id: sugerencia.id || `imagen-sugerida-${texto(sugerencia.nombre, 'apoyo-visual').toLowerCase().replace(/[^a-z0-9]+/g, '-')}`,
+    nombre: texto(sugerencia.nombre, 'Imagen sugerida'),
+    motivo: texto(sugerencia.motivo || sugerencia.detalle, 'Imagen sugerida desde Entendimiento.'),
+    usoSugerido: texto(sugerencia.usoSugerido || sugerencia.uso, 'apoyo visual'),
+    categoria: sugerencia.categoria || 'otro',
+    tipo: 'imagen',
+    formato: 'imagen',
+    etiquetas: Array.isArray(sugerencia.etiquetas) ? sugerencia.etiquetas : [],
+    estado,
+    recursoId: sugerencia.recursoId || '',
+    archivoNombre: sugerencia.archivoNombre || '',
+    prioridad: Number.isFinite(Number(sugerencia.prioridad)) ? Number(sugerencia.prioridad) : 50,
+    fuente: sugerencia.fuente || 'manual',
+    actualizadoEn: sugerencia.actualizadoEn || null
   };
 }
 
@@ -167,13 +188,69 @@ function convertirRecursoAPlan({ recurso, index, puntaje = 0, razones = [] } = {
   };
 }
 
-function crearNecesidadesContexto({ entendimiento = {}, proyecto = {} } = {}) {
+function convertirImagenSugeridaAPlan({ sugerencia, index } = {}) {
+  const estado = sugerencia.estado || 'pendiente';
+  const disponible = ['guardada'].includes(estado);
+  const subidaSinGuardar = estado === 'subida';
+  return {
+    id: `imagen-sugerida-${sugerencia.id || index + 1}`,
+    nombre: sugerencia.nombre,
+    descripcion: `${sugerencia.usoSugerido} · estado: ${estado}`,
+    inicio: 0,
+    fin: null,
+    motivo: disponible
+      ? 'Imagen sugerida ya guardada como recurso temporal del proyecto.'
+      : subidaSinGuardar
+        ? 'Imagen seleccionada, pero debe guardarse como recurso temporal antes de producir.'
+        : 'Imagen pendiente de buscar/subir desde Biblioteca antes de producir.',
+    tipoPlan: 'imagen-sugerida-proyecto',
+    tipoEdicion: 'apoyo_visual',
+    categoria: 'imagen-sugerida',
+    tipo: 'imagen',
+    requiereAccion: !disponible,
+    accionPendiente: disponible ? '' : subidaSinGuardar ? 'Guardar imagen temporal' : 'Buscar y subir imagen',
+    imagenSugerida: {
+      id: sugerencia.id,
+      estado,
+      disponible,
+      recursoId: sugerencia.recursoId || '',
+      archivoNombre: sugerencia.archivoNombre || '',
+      fuente: sugerencia.fuente || 'manual',
+      etiquetas: sugerencia.etiquetas || [],
+      prioridad: sugerencia.prioridad ?? null
+    }
+  };
+}
+
+function crearResumenImagenesSugeridas(sugerencias = []) {
+  const utiles = sugerencias.filter((item) => item.estado !== 'omitida');
+  return {
+    total: sugerencias.length,
+    utiles: utiles.length,
+    pendientes: utiles.filter((item) => item.estado === 'pendiente').length,
+    subidas: utiles.filter((item) => item.estado === 'subida').length,
+    guardadas: utiles.filter((item) => item.estado === 'guardada').length,
+    omitidas: sugerencias.filter((item) => item.estado === 'omitida').length,
+    automaticas: utiles.filter((item) => item.fuente === 'auto-entendimiento').length,
+    listoParaPlan: utiles.length > 0
+  };
+}
+
+function crearNecesidadesContexto({ entendimiento = {}, proyecto = {}, imagenesSugeridas = [] } = {}) {
   const necesidades = [
     ...(Array.isArray(entendimiento.analisisVideoGlobal?.necesidades) ? entendimiento.analisisVideoGlobal.necesidades : []),
     ...(Array.isArray(entendimiento.analisisVideo?.necesidades) ? entendimiento.analisisVideo.necesidades : []),
     ...(Array.isArray(entendimiento.resumenEtapa?.necesidades) ? entendimiento.resumenEtapa.necesidades : []),
     ...(Array.isArray(entendimiento.reporteEntendimiento?.resumen?.necesidades) ? entendimiento.reporteEntendimiento.resumen.necesidades : [])
   ];
+
+  imagenesSugeridas
+    .filter((item) => item.estado !== 'omitida')
+    .forEach((imagen) => necesidades.push({
+      nombre: imagen.nombre,
+      tipoEdicion: 'apoyo_visual',
+      descripcion: imagen.usoSugerido || imagen.motivo || 'Imagen sugerida para apoyar el video.'
+    }));
 
   CATEGORIAS_CONTEXTO.forEach((categoria) => necesidades.push({ nombre: categoria, tipoEdicion: categoria, descripcion: `Recurso de apoyo tipo ${categoria}` }));
   if (proyecto.esMultivideo || proyecto.totalVideos > 1) necesidades.push({ nombre: 'transicion entre videos', tipoEdicion: 'transicion', descripcion: 'Separadores para unir videos' });
@@ -184,8 +261,11 @@ export async function resolverBibliotecaParaPlan({ proyectoId, proyecto = {}, en
   if (!proyectoId) throw new Error('Falta proyectoId para resolver biblioteca del plan.');
   const proyectoBiblioteca = crearProyectoBibliotecaPlan({ proyectoId, proyecto });
   const perfil = proyecto.perfil || 'general';
-  const necesidades = crearNecesidadesContexto({ entendimiento, proyecto });
-  const tokensProyecto = tokensDe([proyecto.nombre, proyecto.perfil, proyecto.plataforma, proyecto.modoEdicion].join(' '));
+  const imagenesSugeridasEstado = await cargarImagenesSugeridasProyecto({ proyectoId }).catch(() => ({ sugerencias: [] }));
+  const imagenesSugeridas = (Array.isArray(imagenesSugeridasEstado.sugerencias) ? imagenesSugeridasEstado.sugerencias : [])
+    .map(normalizarImagenSugerida);
+  const necesidades = crearNecesidadesContexto({ entendimiento, proyecto, imagenesSugeridas });
+  const tokensProyecto = tokensDe([proyecto.nombre, proyecto.perfil, proyecto.plataforma, proyecto.modoEdicion, ...imagenesSugeridas.map((item) => item.nombre)].join(' '));
 
   const [recursosProyecto, recursosGeneralesPerfil, recursosGeneralesContexto] = await Promise.all([
     listarRecursosProyecto(proyectoBiblioteca),
@@ -205,26 +285,44 @@ export async function resolverBibliotecaParaPlan({ proyectoId, proyecto = {}, en
     .sort((a, b) => b.puntaje - a.puntaje || String(a.recurso.nombre).localeCompare(String(b.recurso.nombre), 'es'));
 
   const seleccionados = puntuados.slice(0, limiteSeleccionados);
-  const recursosPlan = seleccionados.map((item, index) => convertirRecursoAPlan({ recurso: item.recurso, index, puntaje: item.puntaje, razones: item.razones }));
+  const recursosBibliotecaPlan = seleccionados.map((item, index) => convertirRecursoAPlan({ recurso: item.recurso, index, puntaje: item.puntaje, razones: item.razones }));
+  const imagenesSugeridasPlan = imagenesSugeridas
+    .filter((item) => item.estado !== 'omitida')
+    .slice(0, 12)
+    .map((item, index) => convertirImagenSugeridaAPlan({ sugerencia: item, index }));
+  const recursosPlan = [...recursosBibliotecaPlan, ...imagenesSugeridasPlan];
   const totalProyecto = todos.filter((item) => item.alcanceBiblioteca === 'proyecto').length;
   const totalGeneral = todos.filter((item) => item.alcanceBiblioteca === 'general').length;
+  const resumenImagenesSugeridas = crearResumenImagenesSugeridas(imagenesSugeridas);
 
   return {
     ok: true,
     tipo: 'biblioteca-plan-combinada',
     proyectoId,
-    regla: 'La biblioteca proyecto es temporal. La biblioteca general es permanente. El plan referencia recursos sin copiarlos.',
+    regla: 'La biblioteca proyecto es temporal. La biblioteca general es permanente. El plan referencia recursos sin copiarlos. Las imágenes sugeridas se usan como lista de apoyo visual y control de pendientes.',
     resumen: {
       totalDisponibles: todos.length,
       totalGeneral,
       totalProyecto,
       seleccionados: recursosPlan.length,
-      seleccionadosGeneral: recursosPlan.filter((item) => item.biblioteca.origen === 'general').length,
-      seleccionadosProyecto: recursosPlan.filter((item) => item.biblioteca.origen === 'proyecto').length,
+      seleccionadosGeneral: recursosBibliotecaPlan.filter((item) => item.biblioteca?.origen === 'general').length,
+      seleccionadosProyecto: recursosBibliotecaPlan.filter((item) => item.biblioteca?.origen === 'proyecto').length,
+      imagenesSugeridas: resumenImagenesSugeridas.total,
+      imagenesSugeridasUtiles: resumenImagenesSugeridas.utiles,
+      imagenesSugeridasPendientes: resumenImagenesSugeridas.pendientes,
+      imagenesSugeridasSubidas: resumenImagenesSugeridas.subidas,
+      imagenesSugeridasGuardadas: resumenImagenesSugeridas.guardadas,
+      imagenesSugeridasOmitidas: resumenImagenesSugeridas.omitidas,
       listoParaPlan: true
+    },
+    imagenesSugeridas: {
+      ...resumenImagenesSugeridas,
+      sugerencias: imagenesSugeridas
     },
     recursosDisponibles: todos.map((recurso) => ({ id: recurso.id, nombre: recurso.nombre, origen: recurso.alcanceBiblioteca, tipo: recurso.tipo, categoria: recurso.categoria, estadoTecnico: recurso.estadoTecnico })),
     recursosPlan,
+    recursosBibliotecaPlan,
+    imagenesSugeridasPlan,
     creadoEn: new Date().toISOString()
   };
 }
