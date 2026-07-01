@@ -31,6 +31,20 @@
               <small>Este nombre se usará para identificar el video durante todas las etapas.</small>
             </label>
 
+            <label class="clean-project-style" for="styleVideoInput" data-nuevo-project-zone="estilo">
+              <span>Estilo del video</span>
+              <select id="styleVideoInput" name="estiloVideo">
+                <option value="11-contra-11">11 contra 11 / fútbol</option>
+                <option value="cine">Cine</option>
+                <option value="anime">Anime</option>
+                <option value="institucional">Institucional</option>
+                <option value="educacion">Educación / clases</option>
+                <option value="general" selected>General</option>
+                <option value="diversos">Diversos</option>
+              </select>
+              <small>Este estilo se usará para orientar el entendimiento, la biblioteca y las imágenes sugeridas.</small>
+            </label>
+
             <div class="clean-project-upload-zone" data-nuevo-project-zone="subir-video">
               <label class="file-picker clean-file-picker" for="videoInput">
                 <span class="file-picker__title">Subir video o varios videos</span>
@@ -136,6 +150,7 @@
   </section>
 
   <script type="module" src="./ajustes-gemini-ui.js"></script>
+  <script type="module" src="./nuevo-proyecto-estilo-ui.js"></script>
   <script type="module" src="./app.js"></script>
   <script type="module" src="./navegacion/navegacion-bootstrap.js"></script>
 </body>
