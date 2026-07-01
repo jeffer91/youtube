@@ -1,6 +1,103 @@
 export function renderBibliotecaProyectoView() {
   return `
     <section class="aj-view-card project-library-page" data-project-library-root data-smart-state="sin-proyecto" data-proceso-root="biblioteca-proyecto" data-proceso-paso-activo="cargar-proyecto">
+      <style>
+        .project-library-image-requests {
+          border: 1px solid #dbeafe;
+          border-radius: 22px;
+          background: linear-gradient(180deg, #f8fbff, #fff);
+          box-shadow: 0 12px 28px rgba(15, 23, 42, .07);
+          padding: 15px;
+          display: grid;
+          gap: 12px;
+          margin: 12px 0 14px;
+        }
+
+        .project-library-image-requests header {
+          display: flex;
+          align-items: flex-start;
+          justify-content: space-between;
+          gap: 12px;
+        }
+
+        .project-library-image-requests h3 {
+          margin: 0;
+          color: #0f172a;
+        }
+
+        .project-library-image-requests p:not(.eyebrow) {
+          margin: 4px 0 0;
+          color: #64748b;
+          font-weight: 800;
+          max-width: 760px;
+        }
+
+        .project-library-image-chip {
+          border-radius: 999px;
+          background: #eff6ff;
+          color: #1d4ed8;
+          padding: 6px 10px;
+          font-size: 11px;
+          font-weight: 950;
+          white-space: nowrap;
+        }
+
+        .project-library-image-request-list {
+          display: grid;
+          grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+          gap: 10px;
+        }
+
+        .project-library-image-request-card {
+          border: 1px solid #e2e8f0;
+          border-radius: 18px;
+          background: #fff;
+          padding: 12px;
+          display: grid;
+          gap: 8px;
+        }
+
+        .project-library-image-request-card strong {
+          display: block;
+          color: #0f172a;
+          font-size: 15px;
+        }
+
+        .project-library-image-request-card span,
+        .project-library-image-request-card small {
+          display: block;
+          color: #64748b;
+          font-weight: 800;
+          line-height: 1.35;
+        }
+
+        .project-library-image-request-card small {
+          font-size: 11px;
+        }
+
+        .project-library-image-request-actions {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 8px;
+        }
+
+        .project-library-image-request-actions button:disabled {
+          opacity: .55;
+          cursor: not-allowed;
+        }
+
+        .project-library-image-request-note {
+          margin: 0;
+          border: 1px dashed #bfdbfe;
+          border-radius: 14px;
+          background: #eff6ff;
+          color: #1e3a8a;
+          padding: 10px 12px;
+          font-size: 12px;
+          font-weight: 850;
+        }
+      </style>
+
       <section id="projectLibraryMessage" class="project-library-message" hidden></section>
 
       <section class="project-library-kpis" aria-label="Resumen biblioteca proyecto">
@@ -8,6 +105,59 @@ export function renderBibliotecaProyectoView() {
         <article><span>Recursos proyecto</span><strong id="projectLibraryTotalKpi">0</strong></article>
         <article><span>Videos</span><strong id="projectLibraryVideosKpi">—</strong></article>
         <article><span>Listo para plan</span><strong id="projectLibraryReadyKpi">—</strong></article>
+      </section>
+
+      <section class="project-library-image-requests" data-project-library-image-requests>
+        <header>
+          <div>
+            <p class="eyebrow">Apoyo visual</p>
+            <h3>Imágenes sugeridas para subir</h3>
+            <p>Después de cargar el proyecto, aquí aparecerán las imágenes que conviene buscar y subir para reforzar el video.</p>
+          </div>
+          <span class="project-library-image-chip">Bloque 1 · Visual</span>
+        </header>
+
+        <div id="projectLibrarySuggestedImagesList" class="project-library-image-request-list" aria-label="Lista de imágenes sugeridas">
+          <article class="project-library-image-request-card" data-image-suggestion-card="tema-principal">
+            <div>
+              <strong>Tema principal del video</strong>
+              <span>Uso sugerido: imagen de apoyo para reforzar la idea central.</span>
+              <small>Estado: pendiente de detección automática.</small>
+            </div>
+            <div class="project-library-image-request-actions">
+              <button class="project-library-button is-save" type="button" disabled>Subir imagen</button>
+              <button class="project-library-button is-muted" type="button" disabled>No necesaria</button>
+            </div>
+          </article>
+
+          <article class="project-library-image-request-card" data-image-suggestion-card="personaje-lugar-equipo">
+            <div>
+              <strong>Personaje, lugar, equipo o país mencionado</strong>
+              <span>Uso sugerido: recurso visual cuando se mencione en la transcripción.</span>
+              <small>Estado: pendiente de detección automática.</small>
+            </div>
+            <div class="project-library-image-request-actions">
+              <button class="project-library-button is-save" type="button" disabled>Subir imagen</button>
+              <button class="project-library-button is-muted" type="button" disabled>No necesaria</button>
+            </div>
+          </article>
+
+          <article class="project-library-image-request-card" data-image-suggestion-card="grafico-tabla-mapa">
+            <div>
+              <strong>Tabla, mapa o gráfico de apoyo</strong>
+              <span>Uso sugerido: imagen explicativa para partes difíciles del video.</span>
+              <small>Estado: pendiente de detección automática.</small>
+            </div>
+            <div class="project-library-image-request-actions">
+              <button class="project-library-button is-save" type="button" disabled>Subir imagen</button>
+              <button class="project-library-button is-muted" type="button" disabled>No necesaria</button>
+            </div>
+          </article>
+        </div>
+
+        <p id="projectLibrarySuggestedImagesHint" class="project-library-image-request-note">
+          En el Bloque 2 estos botones se conectarán para que puedas subir cada imagen sugerida y guardarla como recurso temporal del proyecto.
+        </p>
       </section>
 
       <section class="project-library-wizard">
