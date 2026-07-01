@@ -17,14 +17,31 @@ function limitarLista(lista = [], limite = 20) {
 
 function resumenRecurso(recurso = {}) {
   const biblioteca = recurso.biblioteca || recurso;
+  const imagenSugerida = recurso.imagenSugerida || null;
   return {
-    id: recurso.id || biblioteca.id || null,
+    id: recurso.id || biblioteca.id || imagenSugerida?.id || null,
     nombre: texto(recurso.nombre || biblioteca.nombre || 'Recurso', 160),
-    origen: biblioteca.origen || biblioteca.alcance || recurso.alcanceBiblioteca || 'general',
+    origen: imagenSugerida ? 'imagenes-sugeridas' : (biblioteca.origen || biblioteca.alcance || recurso.alcanceBiblioteca || 'general'),
     tipo: recurso.tipo || biblioteca.tipo || 'recurso',
     categoria: recurso.categoria || biblioteca.categoria || 'otro',
     uso: texto(recurso.tipoEdicion || recurso.usoSugerido || recurso.motivo || '', 220),
-    ruta: biblioteca.rutaRelativa || biblioteca.ruta || recurso.rutaRelativa || recurso.ruta || ''
+    ruta: biblioteca.rutaRelativa || biblioteca.ruta || recurso.rutaRelativa || recurso.ruta || '',
+    estadoImagenSugerida: imagenSugerida?.estado || null,
+    accionPendiente: recurso.accionPendiente || null,
+    requiereAccion: Boolean(recurso.requiereAccion)
+  };
+}
+
+function resumenImagenSugerida(item = {}) {
+  return {
+    id: item.id || null,
+    nombre: texto(item.nombre || 'Imagen sugerida', 140),
+    estado: item.estado || 'pendiente',
+    usoSugerido: texto(item.usoSugerido || item.uso || '', 220),
+    motivo: texto(item.motivo || item.detalle || '', 220),
+    recursoId: item.recursoId || '',
+    archivoNombre: item.archivoNombre || '',
+    fuente: item.fuente || 'manual'
   };
 }
 
@@ -39,7 +56,9 @@ function crearPromptBase(contexto = {}, compacto = {}) {
     `Duración: ${resumen.duracionSegundos || 0}s. Videos: ${resumen.totalVideos || 1}.`,
     `Transcripción: ${resumen.segmentosTranscripcion || 0} segmento(s). Frames: ${resumen.framesClave || 0}. Momentos clave: ${resumen.momentosClave || 0}.`,
     `Biblioteca: ${resumen.recursosBibliotecaProyecto || 0} temporales del proyecto y ${resumen.recursosBibliotecaGeneral || 0} generales permanentes.`,
+    `Imágenes sugeridas: ${resumen.imagenesSugeridas || 0} total, ${resumen.imagenesSugeridasGuardadas || 0} guardada(s), ${resumen.imagenesSugeridasPendientes || 0} pendiente(s).`,
     'Usa recursos de biblioteca por referencia, sin copiar rutas ni inventar archivos.',
+    'Si una imagen sugerida está pendiente, márcala como recurso visual requerido antes de producción; si está guardada, úsala como apoyo visual disponible.',
     'Entrega dos opciones de plan: una opción principal y una alternativa local/segura.',
     'La app elegirá automáticamente la mejor, por eso cada opción debe incluir validación.',
     'Devuelve resumen humano y JSON técnico ejecutable por Producción.',
@@ -91,6 +110,14 @@ export function normalizarContextoPlanParaIA(contexto = {}, opciones = {}) {
     biblioteca: {
       regla: contexto.biblioteca?.regla || 'Referenciar sin copiar.',
       resumen: contexto.biblioteca?.resumen || {},
+      imagenesSugeridas: {
+        total: contexto.biblioteca?.imagenesSugeridas?.total || 0,
+        pendientes: contexto.biblioteca?.imagenesSugeridas?.pendientes || 0,
+        subidas: contexto.biblioteca?.imagenesSugeridas?.subidas || 0,
+        guardadas: contexto.biblioteca?.imagenesSugeridas?.guardadas || 0,
+        omitidas: contexto.biblioteca?.imagenesSugeridas?.omitidas || 0,
+        sugerencias: limitarLista(contexto.biblioteca?.imagenesSugeridas?.sugerencias || [], 18).map(resumenImagenSugerida)
+      },
       recursosPlan: limitarLista(contexto.recursosPlan, limites.recursos).map(resumenRecurso)
     },
     salidaEsperada: contexto.salidaEsperada || SALIDA_PLAN_IA
@@ -107,6 +134,7 @@ export function normalizarContextoPlanParaIA(contexto = {}, opciones = {}) {
       'Debe existir JSON técnico.',
       'Cada timeline item debe tener inicio y fin.',
       'Cada recurso de biblioteca debe referenciar origen general/proyecto.',
+      'Debe respetar imágenes sugeridas: pendientes como requeridas y guardadas como disponibles.',
       'Debe respetar transcripción, frames, momentos clave y necesidades.',
       'Debe ser compatible con Producción.'
     ],
