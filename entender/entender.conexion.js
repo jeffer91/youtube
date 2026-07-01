@@ -9,6 +9,29 @@ function tieneTextoTranscrito(transcripcion) {
   return Boolean(String(transcripcion?.textoCompleto || '').trim());
 }
 
+function describirVideoProgreso(entrada = {}) {
+  const video = entrada.video || {};
+  const etiqueta = video.etiqueta || video.videoId || video.id || 'video';
+  const orden = video.orden || (Number.isFinite(Number(video.indice)) ? Number(video.indice) + 1 : null);
+  return orden ? `${etiqueta} (${orden})` : etiqueta;
+}
+
+async function notificarProgresoEntendimiento(opciones = {}, entrada = {}, detalle = '') {
+  if (typeof opciones.onProgreso !== 'function') return;
+  try {
+    await opciones.onProgreso({
+      etapa: 'entendimiento',
+      videoId: entrada?.video?.videoId || entrada?.video?.id || null,
+      ordenVideo: entrada?.video?.orden || null,
+      detalle,
+      mensaje: detalle,
+      fecha: new Date().toISOString()
+    });
+  } catch (error) {
+    console.warn('[Entendimiento] No se pudo reportar progreso:', error.message);
+  }
+}
+
 function crearTranscripcionesPorMotorDesdeMultimotor(paqueteMultimotor) {
   const resultados = Array.isArray(paqueteMultimotor?.resultados) ? paqueteMultimotor.resultados : [];
   return resultados.map((resultado) => ({
@@ -161,8 +184,14 @@ export async function entenderVideo(entrada, opciones = {}) {
     throw new Error('No se puede entender el video porque falta la ruta original.');
   }
 
+  const videoProgreso = describirVideoProgreso(entrada);
+  await notificarProgresoEntendimiento(opciones, entrada, `Analizando datos técnicos de ${videoProgreso}.`);
   const analisis = await analizarVideoSimple(entrada);
+
+  await notificarProgresoEntendimiento(opciones, entrada, `Transcribiendo audio de ${videoProgreso}. Esta parte puede demorar según el tamaño del video y el motor disponible.`);
   const transcripcion = await intentarTranscripcionDisponible({ entrada, analisis, opciones });
+
+  await notificarProgresoEntendimiento(opciones, entrada, `Extrayendo fotogramas clave de ${videoProgreso}.`);
   const fotogramas = await extraerFotogramasClave({ entrada, analisis, opciones }).catch((error) => ({
     ok: false,
     omitido: true,
@@ -171,7 +200,11 @@ export async function entenderVideo(entrada, opciones = {}) {
     mensaje: `No se pudieron extraer fotogramas: ${error.message}`,
     errores: [{ mensaje: error.message }]
   }));
+
+  await notificarProgresoEntendimiento(opciones, entrada, `Creando análisis editorial de ${videoProgreso}.`);
   const analisisVideo = await analizarVideoEditorial({ entrada, analisis, transcripcion, fotogramas, opciones });
+
+  await notificarProgresoEntendimiento(opciones, entrada, `Guardando reporte de entendimiento de ${videoProgreso}.`);
   const reporteEntendimiento = await crearReporteEntendimiento({ entrada, analisis, transcripcion, fotogramas, analisisVideo, opciones });
 
   return {
