@@ -11,6 +11,7 @@
 
 import fs from 'fs';
 import path from 'path';
+import crypto from 'crypto';
 import { fileURLToPath } from 'url';
 import { app as electronApp, BrowserWindow, dialog, ipcMain, shell } from 'electron';
 import { iniciarServidor, detenerServidor } from './server.js';
@@ -71,18 +72,71 @@ function mostrarErrorCarga(error) {
   dialog.showErrorBox('AutoVideoJeff no pudo abrir la ventana', mensaje);
 }
 
-function obtenerMetadataArchivo(rutaArchivo) {
+function obtenerMetadataArchivo(rutaArchivo, extras = {}) {
   const stat = fs.statSync(rutaArchivo);
   const nombre = path.basename(rutaArchivo);
   return {
     path: rutaArchivo,
     ruta: rutaArchivo,
     name: nombre,
-    nombreOriginal: nombre,
+    nombreOriginal: extras.nombreOriginal || nombre,
     size: stat.size,
+    type: extras.mime || extras.type || '',
+    mime: extras.mime || extras.type || '',
     extension: path.extname(nombre).toLowerCase(),
     actualizadoEn: stat.mtime?.toISOString?.() || null
   };
+}
+
+function extensionDesdeMime(mime = '') {
+  const limpio = String(mime || '').toLowerCase();
+  if (limpio.includes('jpeg')) return '.jpg';
+  if (limpio.includes('png')) return '.png';
+  if (limpio.includes('webp')) return '.webp';
+  if (limpio.includes('gif')) return '.gif';
+  return '.png';
+}
+
+function limpiarNombreArchivo(nombre = '') {
+  const base = String(nombre || 'imagen-pegada')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-zA-Z0-9._-]+/g, '-')
+    .replace(/-+/g, '-')
+    .replace(/^-|-$/g, '')
+    .slice(0, 80);
+  return base || 'imagen-pegada';
+}
+
+async function guardarArchivoTemporalBiblioteca(_evento, payload = {}) {
+  try {
+    const mime = String(payload.mime || payload.type || 'image/png');
+    const bytes = payload.bytes;
+    if (!bytes) throw new Error('No se recibieron bytes de imagen para guardar.');
+
+    const buffer = Buffer.isBuffer(bytes)
+      ? bytes
+      : bytes instanceof ArrayBuffer
+        ? Buffer.from(bytes)
+        : ArrayBuffer.isView(bytes)
+          ? Buffer.from(bytes.buffer)
+          : Buffer.from(bytes);
+
+    if (!buffer.length) throw new Error('La imagen recibida está vacía.');
+
+    const nombreOriginal = limpiarNombreArchivo(payload.nombreOriginal || payload.name || 'imagen-pegada');
+    const ext = path.extname(nombreOriginal) || extensionDesdeMime(mime);
+    const base = limpiarNombreArchivo(path.basename(nombreOriginal, path.extname(nombreOriginal)) || 'imagen-pegada');
+    const carpeta = path.join(process.env.AUTOVIDEOJEFF_ROOT_DIR || resolverRutaDatosElectron(), 'datos', 'temporales', 'biblioteca-inteligente');
+    await fs.promises.mkdir(carpeta, { recursive: true });
+    const nombreFinal = `${Date.now()}-${crypto.randomBytes(4).toString('hex')}-${base}${ext}`;
+    const destino = path.join(carpeta, nombreFinal);
+    await fs.promises.writeFile(destino, buffer);
+
+    return { ok: true, archivo: obtenerMetadataArchivo(destino, { mime, nombreOriginal }) };
+  } catch (error) {
+    return { ok: false, mensaje: error.message || 'No se pudo guardar la imagen temporal.' };
+  }
 }
 
 async function seleccionarArchivoBiblioteca() {
@@ -201,6 +255,7 @@ ipcMain.handle('app:estado', () => {
 });
 
 ipcMain.handle('biblioteca:seleccionarArchivo', seleccionarArchivoBiblioteca);
+ipcMain.handle('biblioteca:guardarArchivoTemporal', guardarArchivoTemporalBiblioteca);
 
 electronApp.whenReady().then(async () => {
   try {
