@@ -5,6 +5,7 @@ const SUGERENCIAS_BASE = Object.freeze({
   'tema-principal': {
     id: 'tema-principal',
     nombre: 'Tema principal del video',
+    motivo: 'La app necesita una imagen principal para reforzar la idea central del video.',
     usoSugerido: 'imagen de apoyo para reforzar la idea central del video',
     etiquetas: ['tema-principal', 'apoyo-visual', 'temporal'],
     categoria: 'otro'
@@ -12,6 +13,7 @@ const SUGERENCIAS_BASE = Object.freeze({
   'personaje-lugar-equipo': {
     id: 'personaje-lugar-equipo',
     nombre: 'Personaje, lugar, equipo o país mencionado',
+    motivo: 'La transcripción puede mencionar personas, lugares, equipos o países que conviene mostrar visualmente.',
     usoSugerido: 'recurso visual cuando se mencione en la transcripción',
     etiquetas: ['mencionado', 'apoyo-visual', 'temporal'],
     categoria: 'otro'
@@ -19,6 +21,7 @@ const SUGERENCIAS_BASE = Object.freeze({
   'grafico-tabla-mapa': {
     id: 'grafico-tabla-mapa',
     nombre: 'Tabla, mapa o gráfico de apoyo',
+    motivo: 'Algunas explicaciones pueden necesitar una imagen tipo tabla, mapa o gráfico.',
     usoSugerido: 'imagen explicativa para partes difíciles del video',
     etiquetas: ['grafico', 'tabla', 'mapa', 'temporal'],
     categoria: 'otro'
@@ -36,6 +39,10 @@ function texto(valor = '', respaldo = '') {
   return limpio || respaldo;
 }
 
+function escapar(valor = '') {
+  return texto(valor, '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+}
+
 function obtenerProyectoId() {
   return $('projectLibraryProjectId')?.value?.trim() || localStorage.getItem(STORAGE_PROYECTO_ETAPAS) || 'sin-proyecto';
 }
@@ -44,7 +51,30 @@ function claveStorage() {
   return `${STORAGE_IMAGENES_SUGERIDAS}.${obtenerProyectoId()}`;
 }
 
-function leerEstadoSugerencias() {
+async function obtenerBaseApi() {
+  const apiElectron = window.AutoVideoJeff?.servidor?.obtenerEstado;
+  if (typeof apiElectron === 'function') {
+    try {
+      const estado = await apiElectron();
+      if (estado?.url) return estado.url;
+    } catch (error) {
+      console.warn('[Biblioteca imágenes sugeridas] No se pudo leer servidor Electron:', error.message);
+    }
+  }
+  return window.location.origin;
+}
+
+async function apiJson(ruta, opciones = {}) {
+  const base = await obtenerBaseApi();
+  const respuesta = await fetch(`${base}${ruta}`, opciones);
+  const textoRespuesta = await respuesta.text();
+  let datos = {};
+  try { datos = textoRespuesta ? JSON.parse(textoRespuesta) : {}; } catch (_error) { datos = { ok: false, mensaje: textoRespuesta }; }
+  if (!respuesta.ok || datos.ok === false) throw new Error(datos.mensaje || `Error HTTP ${respuesta.status}`);
+  return datos;
+}
+
+function leerEstadoSugerenciasLocal() {
   try {
     return JSON.parse(localStorage.getItem(claveStorage()) || '{}') || {};
   } catch (_error) {
@@ -52,7 +82,7 @@ function leerEstadoSugerencias() {
   }
 }
 
-function guardarEstadoSugerencias(estado = {}) {
+function guardarEstadoSugerenciasLocal(estado = {}) {
   localStorage.setItem(claveStorage(), JSON.stringify(estado));
 }
 
@@ -71,41 +101,115 @@ function formatearPeso(bytes = 0) {
   return `${(numero / (1024 * 1024)).toFixed(1)} MB`;
 }
 
+function normalizarSugerencia(sugerencia = {}) {
+  const base = SUGERENCIAS_BASE[sugerencia.id] || {};
+  return {
+    id: texto(sugerencia.id || base.id, 'sugerencia-imagen'),
+    nombre: texto(sugerencia.nombre || base.nombre, 'Imagen sugerida'),
+    motivo: texto(sugerencia.motivo || base.motivo, 'Imagen sugerida para reforzar el video.'),
+    usoSugerido: texto(sugerencia.usoSugerido || sugerencia.uso || base.usoSugerido, 'apoyo visual del proyecto'),
+    categoria: texto(sugerencia.categoria || base.categoria, 'otro'),
+    etiquetas: Array.isArray(sugerencia.etiquetas) && sugerencia.etiquetas.length ? sugerencia.etiquetas : (base.etiquetas || ['apoyo-visual', 'temporal']),
+    estado: texto(sugerencia.estado || base.estado, 'pendiente'),
+    detalle: texto(sugerencia.detalle || '', '')
+  };
+}
+
+function renderCardSugerencia(sugerenciaEntrada = {}) {
+  const sugerencia = normalizarSugerencia(sugerenciaEntrada);
+  const estadoTexto = sugerencia.estado === 'guardada'
+    ? 'Estado: imagen guardada como recurso temporal.'
+    : sugerencia.estado === 'subida'
+      ? 'Estado: imagen seleccionada y formulario preparado.'
+      : sugerencia.estado === 'omitida'
+        ? 'Estado: marcada como no necesaria.'
+        : 'Estado: pendiente de imagen.';
+  return `
+    <article class="project-library-image-request-card" data-image-suggestion-card="${escapar(sugerencia.id)}" data-image-suggestion-state="${escapar(sugerencia.estado)}">
+      <div>
+        <strong>${escapar(sugerencia.nombre)}</strong>
+        <span>Uso sugerido: ${escapar(sugerencia.usoSugerido)}</span>
+        <small>${escapar(sugerencia.detalle || estadoTexto)}</small>
+      </div>
+      <div class="project-library-image-request-actions">
+        <button class="project-library-button is-save" type="button" data-suggested-image-action="upload">Subir imagen</button>
+        <button class="project-library-button is-muted" type="button" data-suggested-image-action="skip">No necesaria</button>
+      </div>
+    </article>`;
+}
+
+function renderSugerencias(sugerencias = []) {
+  const lista = $('projectLibrarySuggestedImagesList');
+  if (!lista) return;
+  const items = sugerencias.length ? sugerencias : Object.values(SUGERENCIAS_BASE).map((item) => ({ ...item, estado: 'pendiente' }));
+  lista.innerHTML = items.map(renderCardSugerencia).join('');
+}
+
 function obtenerSugerenciaDesdeCard(card) {
   const id = card?.dataset?.imageSuggestionCard || '';
   const base = SUGERENCIAS_BASE[id] || null;
-  if (!base) return null;
-  const titulo = texto(card.querySelector('strong')?.textContent, base.nombre);
-  const uso = texto(card.querySelector('span')?.textContent, base.usoSugerido).replace(/^Uso sugerido:\s*/i, '');
-  return { ...base, nombre: titulo, usoSugerido: uso };
+  const titulo = texto(card?.querySelector('strong')?.textContent, base?.nombre || id);
+  const uso = texto(card?.querySelector('span')?.textContent, base?.usoSugerido || 'apoyo visual').replace(/^Uso sugerido:\s*/i, '');
+  return normalizarSugerencia({ ...(base || {}), id, nombre: titulo, usoSugerido: uso, estado: card?.dataset?.imageSuggestionState || 'pendiente' });
 }
 
 function actualizarEstadoCard(card, estado = 'pendiente', detalle = '') {
   if (!card) return;
   card.dataset.imageSuggestionState = estado;
-  card.classList.toggle('is-subida', estado === 'subida');
+  card.classList.toggle('is-subida', estado === 'subida' || estado === 'guardada');
   card.classList.toggle('is-omitida', estado === 'omitida');
   card.classList.toggle('is-pendiente', estado === 'pendiente');
   const small = card.querySelector('small');
   if (small) {
-    if (estado === 'subida') small.textContent = detalle || 'Estado: imagen seleccionada y formulario preparado.';
+    if (estado === 'guardada') small.textContent = detalle || 'Estado: imagen guardada como recurso temporal.';
+    else if (estado === 'subida') small.textContent = detalle || 'Estado: imagen seleccionada y formulario preparado.';
     else if (estado === 'omitida') small.textContent = detalle || 'Estado: marcada como no necesaria.';
     else small.textContent = detalle || 'Estado: pendiente de imagen.';
   }
 }
 
-function aplicarEstadoGuardadoEnCards() {
-  const estado = leerEstadoSugerencias();
+function aplicarEstadoGuardadoEnCardsLocal() {
+  const estado = leerEstadoSugerenciasLocal();
   document.querySelectorAll('[data-image-suggestion-card]').forEach((card) => {
     const id = card.dataset.imageSuggestionCard;
-    actualizarEstadoCard(card, estado[id]?.estado || 'pendiente', estado[id]?.detalle || '');
+    actualizarEstadoCard(card, estado[id]?.estado || card.dataset.imageSuggestionState || 'pendiente', estado[id]?.detalle || '');
   });
 }
 
-function actualizarEstadoGuardado(id, datos) {
-  const estado = leerEstadoSugerencias();
+async function cargarEstadoSugerenciasServidor() {
+  const proyectoId = obtenerProyectoId();
+  if (!proyectoId || proyectoId === 'sin-proyecto') {
+    aplicarEstadoGuardadoEnCardsLocal();
+    return null;
+  }
+  try {
+    const datos = await apiJson(`/api/proyectos/${encodeURIComponent(proyectoId)}/biblioteca-proyecto/imagenes-sugeridas`);
+    const paquete = datos.imagenesSugeridas || {};
+    renderSugerencias(Array.isArray(paquete.sugerencias) ? paquete.sugerencias : []);
+    return paquete;
+  } catch (error) {
+    console.warn('[Biblioteca imágenes sugeridas] No se pudo cargar estado servidor:', error.message);
+    aplicarEstadoGuardadoEnCardsLocal();
+    return null;
+  }
+}
+
+async function actualizarEstadoGuardado(id, datos) {
+  const estado = leerEstadoSugerenciasLocal();
   estado[id] = { ...(estado[id] || {}), ...datos, actualizadoEn: new Date().toISOString() };
-  guardarEstadoSugerencias(estado);
+  guardarEstadoSugerenciasLocal(estado);
+
+  const proyectoId = obtenerProyectoId();
+  if (!proyectoId || proyectoId === 'sin-proyecto') return;
+  try {
+    await apiJson(`/api/proyectos/${encodeURIComponent(proyectoId)}/biblioteca-proyecto/imagenes-sugeridas`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ accion: datos.estado || 'actualizar', sugerencia: { id, ...datos } })
+    });
+  } catch (error) {
+    console.warn('[Biblioteca imágenes sugeridas] Estado guardado localmente, pero no en servidor:', error.message);
+  }
 }
 
 function seleccionarCategoriaDisponible(preferida = 'otro') {
@@ -117,8 +221,20 @@ function seleccionarCategoriaDisponible(preferida = 'otro') {
   else if (opciones.length) select.value = opciones[0];
 }
 
-function aplicarSugerenciaEnFormulario(sugerencia, archivo = {}) {
-  if (!sugerencia) return;
+function asegurarCampoSugerenciaActiva() {
+  let input = $('projectLibrarySuggestionId');
+  const form = $('projectLibraryForm');
+  if (!input && form) {
+    input = document.createElement('input');
+    input.type = 'hidden';
+    input.id = 'projectLibrarySuggestionId';
+    form.appendChild(input);
+  }
+  return input;
+}
+
+function aplicarSugerenciaEnFormulario(sugerenciaEntrada, archivo = {}) {
+  const sugerencia = normalizarSugerencia(sugerenciaEntrada);
   const nombreArchivo = archivo.name || archivo.nombreOriginal || archivo.ruta?.split(/[\\/]/).pop() || $('projectLibraryNewOriginalName')?.value || '';
   const ruta = archivo.path || archivo.ruta || $('projectLibraryNewPath')?.value || '';
   const nombreLimpio = sugerencia.nombre.replace(/^(imagen de|foto de)\s+/i, '').trim();
@@ -134,6 +250,8 @@ function aplicarSugerenciaEnFormulario(sugerencia, archivo = {}) {
   if ($('projectLibraryNewOriginalName') && nombreArchivo) $('projectLibraryNewOriginalName').value = nombreArchivo;
   if ($('projectLibraryNewMime') && archivo.type) $('projectLibraryNewMime').value = archivo.type;
   if ($('projectLibraryNewSize') && archivo.size) $('projectLibraryNewSize').value = archivo.size;
+  const sugerenciaInput = asegurarCampoSugerenciaActiva();
+  if (sugerenciaInput) sugerenciaInput.value = sugerencia.id;
   seleccionarCategoriaDisponible(sugerencia.categoria || 'otro');
 
   actualizarRevisionVisual();
@@ -152,7 +270,7 @@ function actualizarRevisionVisual() {
 function esperarAplicacionArchivo(sugerencia, card, valorPrevio = '') {
   clearInterval(esperaArchivoTimer);
   let intentos = 0;
-  esperaArchivoTimer = setInterval(() => {
+  esperaArchivoTimer = setInterval(async () => {
     intentos += 1;
     const actual = $('projectLibraryNewOriginalName')?.value || $('projectLibrarySelectedFileName')?.textContent || '';
     const hayArchivo = actual && actual !== valorPrevio && !/ningún archivo/i.test(actual);
@@ -164,10 +282,14 @@ function esperarAplicacionArchivo(sugerencia, card, valorPrevio = '') {
     }
     aplicarSugerenciaEnFormulario(sugerencia, {});
     actualizarEstadoCard(card, 'subida');
-    actualizarEstadoGuardado(sugerencia.id, {
+    await actualizarEstadoGuardado(sugerencia.id, {
       estado: 'subida',
       detalle: 'Estado: imagen seleccionada y formulario preparado.',
-      nombre: sugerencia.nombre
+      nombre: sugerencia.nombre,
+      usoSugerido: sugerencia.usoSugerido,
+      categoria: sugerencia.categoria,
+      etiquetas: sugerencia.etiquetas,
+      archivoNombre: actual
     });
     setMensaje(`Imagen vinculada a la sugerencia: ${sugerencia.nombre}. Revisa los datos y guarda el temporal.`, 'ok');
   }, 250);
@@ -175,7 +297,7 @@ function esperarAplicacionArchivo(sugerencia, card, valorPrevio = '') {
 
 async function abrirSelectorParaSugerencia(card) {
   const sugerencia = obtenerSugerenciaDesdeCard(card);
-  if (!sugerencia) return;
+  if (!sugerencia?.id) return;
   const proyectoId = obtenerProyectoId();
   if (!proyectoId || proyectoId === 'sin-proyecto') {
     setMensaje('Primero carga el proyecto para subir imágenes sugeridas.', 'warn');
@@ -201,36 +323,33 @@ async function abrirSelectorParaSugerencia(card) {
   }
 }
 
-function marcarNoNecesaria(card) {
+async function marcarNoNecesaria(card) {
   const sugerencia = obtenerSugerenciaDesdeCard(card);
-  if (!sugerencia) return;
+  if (!sugerencia?.id) return;
   actualizarEstadoCard(card, 'omitida');
-  actualizarEstadoGuardado(sugerencia.id, {
+  await actualizarEstadoGuardado(sugerencia.id, {
     estado: 'omitida',
     detalle: 'Estado: marcada como no necesaria.',
-    nombre: sugerencia.nombre
+    nombre: sugerencia.nombre,
+    usoSugerido: sugerencia.usoSugerido,
+    categoria: sugerencia.categoria,
+    etiquetas: sugerencia.etiquetas
   });
   setMensaje(`Sugerencia marcada como no necesaria: ${sugerencia.nombre}.`, 'ok');
 }
 
 function conectarBotonesSugerencias(root) {
-  if (!root || root.dataset.imagenesSugeridasInicializado === '1') return;
-  root.dataset.imagenesSugeridasInicializado = '1';
-
-  root.querySelectorAll('[data-image-suggestion-card]').forEach((card) => {
-    const botones = card.querySelectorAll('button');
-    botones.forEach((boton) => boton.disabled = false);
-    if (botones[0]) botones[0].dataset.suggestedImageAction = 'upload';
-    if (botones[1]) botones[1].dataset.suggestedImageAction = 'skip';
-  });
-
-  root.addEventListener('click', async (evento) => {
-    const accion = evento.target.closest('[data-suggested-image-action]')?.dataset.suggestedImageAction;
-    if (!accion) return;
-    const card = evento.target.closest('[data-image-suggestion-card]');
-    if (accion === 'upload') await abrirSelectorParaSugerencia(card);
-    if (accion === 'skip') marcarNoNecesaria(card);
-  });
+  if (!root) return;
+  if (root.dataset.imagenesSugeridasInicializado !== '1') {
+    root.dataset.imagenesSugeridasInicializado = '1';
+    root.addEventListener('click', async (evento) => {
+      const accion = evento.target.closest('[data-suggested-image-action]')?.dataset.suggestedImageAction;
+      if (!accion) return;
+      const card = evento.target.closest('[data-image-suggestion-card]');
+      if (accion === 'upload') await abrirSelectorParaSugerencia(card);
+      if (accion === 'skip') await marcarNoNecesaria(card);
+    });
+  }
 
   const input = $('projectLibraryFileInput');
   if (input && input.dataset.imagenesSugeridasChange !== '1') {
@@ -238,27 +357,30 @@ function conectarBotonesSugerencias(root) {
     input.addEventListener('change', () => {
       if (!sugerenciaPendiente?.sugerencia) return;
       const archivo = input.files?.[0] || {};
-      setTimeout(() => {
+      setTimeout(async () => {
         aplicarSugerenciaEnFormulario(sugerenciaPendiente.sugerencia, archivo);
         actualizarEstadoCard(sugerenciaPendiente.card, 'subida');
-        actualizarEstadoGuardado(sugerenciaPendiente.sugerencia.id, {
+        await actualizarEstadoGuardado(sugerenciaPendiente.sugerencia.id, {
           estado: 'subida',
           detalle: 'Estado: imagen seleccionada y formulario preparado.',
-          nombre: sugerenciaPendiente.sugerencia.nombre
+          nombre: sugerenciaPendiente.sugerencia.nombre,
+          usoSugerido: sugerenciaPendiente.sugerencia.usoSugerido,
+          categoria: sugerenciaPendiente.sugerencia.categoria,
+          etiquetas: sugerenciaPendiente.sugerencia.etiquetas,
+          archivoNombre: archivo.name || ''
         });
         setMensaje(`Imagen vinculada a la sugerencia: ${sugerenciaPendiente.sugerencia.nombre}. Revisa los datos y guarda el temporal.`, 'ok');
         sugerenciaPendiente = null;
       }, 160);
     });
   }
-
-  aplicarEstadoGuardadoEnCards();
 }
 
-function activarImagenesSugeridas() {
-  setTimeout(() => {
+async function activarImagenesSugeridas() {
+  setTimeout(async () => {
     const root = document.querySelector('[data-project-library-image-requests]');
     conectarBotonesSugerencias(root);
+    await cargarEstadoSugerenciasServidor();
   }, 0);
 }
 
@@ -270,6 +392,11 @@ export function inicializarBibliotecaImagenesSugeridasUI() {
   });
   document.addEventListener('autovideo:biblioteca-area', (evento) => {
     if (evento.detail?.area === 'proyecto') activarImagenesSugeridas();
+  });
+  document.addEventListener('click', (evento) => {
+    if (evento.target.closest('#projectLibraryLoadBtn') || evento.target.closest('#projectLibraryRefreshBtn')) {
+      setTimeout(() => activarImagenesSugeridas(), 400);
+    }
   });
   activarImagenesSugeridas();
 }
