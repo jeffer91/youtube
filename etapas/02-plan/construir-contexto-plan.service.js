@@ -1,6 +1,6 @@
 /*
   Bloque 2 - Constructor de contexto para Plan
-  Función: absorber Entendimiento + Biblioteca general + Biblioteca proyecto antes de crear el Plan o llamar a IA.
+  Función: absorber Entendimiento + Biblioteca general + Biblioteca proyecto + imágenes sugeridas antes de crear el Plan o llamar a IA.
 */
 
 import { crearContextoPlanModelo } from './contexto-plan.modelo.js';
@@ -154,6 +154,7 @@ function normalizarNecesidad(necesidad = {}, index = 0) {
 
 function crearResumenBiblioteca(biblioteca = {}) {
   const resumen = biblioteca.resumen || {};
+  const imagenes = biblioteca.imagenesSugeridas || {};
   return {
     regla: biblioteca.regla || 'La biblioteca se referencia sin copiar archivos.',
     resumen,
@@ -164,6 +165,15 @@ function crearResumenBiblioteca(biblioteca = {}) {
     proyecto: {
       disponibles: resumen.totalProyecto || 0,
       seleccionados: resumen.seleccionadosProyecto || 0
+    },
+    imagenesSugeridas: {
+      total: imagenes.total || resumen.imagenesSugeridas || 0,
+      utiles: imagenes.utiles || resumen.imagenesSugeridasUtiles || 0,
+      pendientes: imagenes.pendientes || resumen.imagenesSugeridasPendientes || 0,
+      subidas: imagenes.subidas || resumen.imagenesSugeridasSubidas || 0,
+      guardadas: imagenes.guardadas || resumen.imagenesSugeridasGuardadas || 0,
+      omitidas: imagenes.omitidas || resumen.imagenesSugeridasOmitidas || 0,
+      sugerencias: arr(imagenes.sugerencias).slice(0, 24)
     },
     totalDisponibles: resumen.totalDisponibles || 0,
     recursosDisponibles: arr(biblioteca.recursosDisponibles).slice(0, 80)
@@ -183,6 +193,7 @@ export function construirContextoPlan({ proyectoId, proyecto = {}, estado = {}, 
   const totalVideos = obtenerTotalVideos(entendimiento);
   const bibliotecaContexto = crearResumenBiblioteca(biblioteca);
   const recursosPlan = arr(biblioteca.recursosPlan);
+  const imagenesSugeridasPlan = arr(biblioteca.imagenesSugeridasPlan);
 
   const proyectoContexto = {
     id: proyectoId || proyecto.id || proyecto.proyectoId,
@@ -208,6 +219,11 @@ export function construirContextoPlan({ proyectoId, proyecto = {}, estado = {}, 
     recursosBibliotecaDisponibles: bibliotecaContexto.totalDisponibles,
     recursosBibliotecaGeneral: bibliotecaContexto.general.seleccionados,
     recursosBibliotecaProyecto: bibliotecaContexto.proyecto.seleccionados,
+    imagenesSugeridas: bibliotecaContexto.imagenesSugeridas.total,
+    imagenesSugeridasPendientes: bibliotecaContexto.imagenesSugeridas.pendientes,
+    imagenesSugeridasSubidas: bibliotecaContexto.imagenesSugeridas.subidas,
+    imagenesSugeridasGuardadas: bibliotecaContexto.imagenesSugeridas.guardadas,
+    imagenesSugeridasPlan: imagenesSugeridasPlan.length,
     recursosPlan: recursosPlan.length,
     listoParaIA: Boolean(textoCompleto || segmentos.length || momentosClave.length || frames.length)
   };
