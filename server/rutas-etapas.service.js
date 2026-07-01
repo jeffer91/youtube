@@ -31,7 +31,7 @@ import { procesarProduccionMaestroProyectoEtapa } from '../etapas/03-produccion/
 import { procesarAdaptacionPlataformasProyectoEtapa } from '../etapas/04-adaptacion/procesar-adaptacion-plataformas.service.js';
 import { procesarResultadoFinalProyectoEtapa } from '../etapas/05-resultado/procesar-resultado-final.service.js';
 import { listarRecursosProyecto, guardarRecursoProyecto } from '../biblioteca-proyecto/biblioteca-proyecto.conexion.js';
-import { cargarImagenesSugeridasProyecto, guardarImagenesSugeridasProyecto } from '../biblioteca-proyecto/imagenes-sugeridas-proyecto.service.js';
+import { cargarImagenesSugeridasProyecto, guardarImagenesSugeridasProyecto, actualizarImagenesSugeridasDesdeEntendimiento } from '../biblioteca-proyecto/imagenes-sugeridas-proyecto.service.js';
 
 const CONFIG_ETAPAS_API = Object.freeze({
   entendimiento: { etapa: ETAPAS_AUTOVIDEO.ENTENDIMIENTO, estadoProcesando: ESTADOS_PROYECTO_ETAPAS.ENTENDIENDO, mensaje: 'Entendimiento real conectado desde el Bloque 6.' },
@@ -58,8 +58,17 @@ async function cargarEstadoBibliotecaProyecto(proyectoId) {
   const entendimiento = await cargarResultadoEtapa({ proyectoId, etapa: ETAPAS_AUTOVIDEO.ENTENDIMIENTO, valorPorDefecto: null });
   const videos = await cargarVideosProyecto(proyectoId);
   const recursos = await listarRecursosProyecto(crearProyectoBibliotecaEtapas(proyectoId));
-  const imagenesSugeridas = await cargarImagenesSugeridasProyecto({ proyectoId });
   const habilitada = Boolean(entendimiento?.resultado || entendimiento);
+  let imagenesSugeridas = await cargarImagenesSugeridasProyecto({ proyectoId });
+  if (habilitada && (!imagenesSugeridas.existe || Number(imagenesSugeridas.totalAutomaticas || 0) === 0)) {
+    imagenesSugeridas = await actualizarImagenesSugeridasDesdeEntendimiento({
+      proyectoId,
+      resultadoEntendimiento: extraerResultadoEtapaApi(entendimiento)
+    }).catch((error) => {
+      console.warn('[API etapas] No se pudieron autoactualizar imágenes sugeridas:', error.message);
+      return imagenesSugeridas;
+    });
+  }
   return {
     proyectoId,
     habilitada,
@@ -189,7 +198,16 @@ async function guardarBibliotecaProyecto(req, res, aplicarCabeceras) {
 async function obtenerImagenesSugeridas(req, res, aplicarCabeceras) {
   try {
     aplicarCabeceras(res);
-    const imagenesSugeridas = await cargarImagenesSugeridasProyecto({ proyectoId: req.params.proyectoId });
+    let imagenesSugeridas = await cargarImagenesSugeridasProyecto({ proyectoId: req.params.proyectoId });
+    if (!imagenesSugeridas.existe || Number(imagenesSugeridas.totalAutomaticas || 0) === 0) {
+      const entendimiento = await cargarResultadoEtapa({ proyectoId: req.params.proyectoId, etapa: ETAPAS_AUTOVIDEO.ENTENDIMIENTO, valorPorDefecto: null });
+      if (entendimiento) {
+        imagenesSugeridas = await actualizarImagenesSugeridasDesdeEntendimiento({
+          proyectoId: req.params.proyectoId,
+          resultadoEntendimiento: extraerResultadoEtapaApi(entendimiento)
+        }).catch(() => imagenesSugeridas);
+      }
+    }
     return responderOk(res, { imagenesSugeridas });
   } catch (error) { return responderError(res, error, 400); }
 }
