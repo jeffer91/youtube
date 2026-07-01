@@ -10,6 +10,7 @@ import { crearDiagnosticoAutomatico, diagnosticoEsBloqueante } from './diagnosti
 import { crearTrabajoProgreso, crearJobId, suscribirClienteProgreso, emitirEventoProgreso } from './progreso/progreso-registro.js';
 import { crearReporteroProgreso, reportarErrorProgreso, reportarFinalizadoProgreso } from './progreso/progreso.conexion.js';
 import { registrarRutasModulares } from './server/rutas-modulares.service.js';
+import { registrarControlFuncionalidades } from './server/control-funcionalidades.middleware.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -231,6 +232,7 @@ function crearAplicacionExpress({ modoElectron = false } = {}) {
     res.status(diagnosticoEsBloqueante(diagnostico) ? 503 : 200).json({ ok: !diagnosticoEsBloqueante(diagnostico), diagnostico, fecha: new Date().toISOString() });
   });
 
+  registrarControlFuncionalidades(app, { aplicarCabecerasSinCache });
   registrarRutasModulares(app, { rutasBase, aplicarCabecerasSinCache, upload });
 
   app.get('/api/progreso/:jobId', (req, res) => {
