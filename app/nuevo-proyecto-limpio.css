@@ -1,6 +1,6 @@
 /*
   Bloque 4: Nuevo Proyecto limpio
-  Función: dejar la primera pantalla enfocada solo en nombre, videos y primer procesado.
+  Función: dejar la primera pantalla enfocada solo en nombre, estilo, videos y primer procesado.
 */
 
 .clean-project-screen {
@@ -96,6 +96,7 @@
 }
 
 .clean-project-name,
+.clean-project-style,
 .clean-project-upload-zone,
 .clean-project-process-zone {
   display: grid;
@@ -107,6 +108,7 @@
 }
 
 .clean-project-name.is-current-zone,
+.clean-project-style.is-current-zone,
 .clean-project-upload-zone.is-current-zone,
 .clean-project-process-zone.is-current-zone {
   border-color: #bfdbfe;
@@ -114,24 +116,45 @@
 }
 
 .clean-project-name.is-soft-zone,
+.clean-project-style.is-soft-zone,
 .clean-project-upload-zone.is-soft-zone,
 .clean-project-process-zone.is-soft-zone {
   opacity: .78;
 }
 
 .clean-project-name span,
+.clean-project-style span,
 .clean-project-side-card h2 {
   color: #0f172a;
   font-weight: 950;
 }
 
 .clean-project-name small,
+.clean-project-style small,
 .clean-project-process-zone small,
 .clean-project-note span,
 .clean-stage-list span {
   color: #64748b;
   font-weight: 800;
   line-height: 1.35;
+}
+
+.clean-project-style select {
+  width: 100%;
+  min-height: 48px;
+  border: 1px solid #cbd5e1;
+  border-radius: 16px;
+  background: #fff;
+  color: #0f172a;
+  padding: 0 14px;
+  font-weight: 900;
+  outline: none;
+  box-shadow: inset 0 1px 0 rgba(15, 23, 42, .02);
+}
+
+.clean-project-style select:focus {
+  border-color: #2563eb;
+  box-shadow: 0 0 0 4px rgba(37, 99, 235, .12);
 }
 
 .clean-file-picker {
