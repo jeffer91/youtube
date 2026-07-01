@@ -32,6 +32,19 @@ async function cargarVideosOriginalesProyecto(proyectoId) {
   return await leerJsonSiExiste(ruta, { ok: true, proyectoId, total: 0, totalValidos: 0, modo: 'sin-videos', esMultivideo: false, videos: [] });
 }
 
+async function registrarProgresoEntendimiento({ proyectoId, mensaje, detalle = '' } = {}) {
+  if (!proyectoId || !mensaje) return null;
+  return await avanzarEstadoProyectoEtapas({
+    proyectoId,
+    etapaDestino: ETAPAS_AUTOVIDEO.ENTENDIMIENTO,
+    estadoDestino: ESTADOS_PROYECTO_ETAPAS.ENTENDIENDO,
+    mensaje: detalle ? `${mensaje} ${detalle}` : mensaje
+  }).catch((error) => {
+    console.warn('[Entendimiento] No se pudo guardar progreso:', error.message);
+    return null;
+  });
+}
+
 function crearResumenEntendimiento(resultado, videosNormalizados = null, lineaTiempoGlobal = null, entendimientoGlobal = null) {
   const transcripcionesPorMotor = Array.isArray(resultado?.transcripcionesPorMotor) ? resultado.transcripcionesPorMotor : [];
   const resumenTranscripcion = resultado?.resumenTranscripcion || resultado?.transcripcion?.resumenTranscripcion || resultado?.transcripcion?.resumen || null;
@@ -119,17 +132,18 @@ export async function procesarEntendimientoProyectoEtapa({ proyectoId, opciones 
   const estadoInicial = await cargarEstadoProyectoEtapas({ proyectoId, crearSiFalta: false });
   if (!estadoInicial) throw new Error('No existe estado-proyecto.json. Primero crea el proyecto.');
 
+  const reportarProgreso = async (evento = {}) => {
+    const mensaje = evento.mensaje || evento.detalle || 'Procesando entendimiento del proyecto.';
+    return await registrarProgresoEntendimiento({ proyectoId, mensaje });
+  };
+
   try {
-    await avanzarEstadoProyectoEtapas({
-      proyectoId,
-      etapaDestino: ETAPAS_AUTOVIDEO.ENTENDIMIENTO,
-      estadoDestino: ESTADOS_PROYECTO_ETAPAS.ENTENDIENDO,
-      mensaje: 'Iniciando entendimiento global multivideo.'
-    });
+    await registrarProgresoEntendimiento({ proyectoId, mensaje: 'Iniciando entendimiento global del proyecto.' });
 
     const videosGuardados = await cargarVideosOriginalesProyecto(proyectoId);
     const videosNormalizados = normalizarVideosEntendimiento(videosGuardados);
     if (!videosNormalizados.ok) throw new Error(videosNormalizados.mensaje);
+    await reportarProgreso({ mensaje: `Videos detectados: ${videosNormalizados.totalValidos}/${videosNormalizados.total} válido(s).` });
 
     const estadoProcesando = await cargarEstadoProyectoEtapas({ proyectoId, crearSiFalta: false });
     const entradaBase = {
@@ -138,23 +152,29 @@ export async function procesarEntendimientoProyectoEtapa({ proyectoId, opciones 
         nombre: estadoProcesando?.nombre || estadoInicial?.nombre || 'Proyecto AutoVideoJeff'
       }
     };
+
+    await reportarProgreso({ mensaje: 'Leyendo duración, audio, formato y línea de tiempo de los videos.' });
     const lineaTiempoGlobal = await crearLineaTiempoMultivideo({
       entrada: entradaBase,
       videosNormalizados,
       carpetaProyecto
     });
+    await reportarProgreso({ mensaje: `Línea de tiempo lista: ${lineaTiempoGlobal?.resumen?.videosAnalizados || videosNormalizados.totalValidos} video(s), ${lineaTiempoGlobal?.resumen?.duracionTotalSegundos || 0} segundos.` });
 
+    await reportarProgreso({ mensaje: 'Procesando transcripción, fotogramas y análisis por video.' });
     const resultadoPorVideo = await procesarEntendimientoMultivideo({
       proyectoId,
       estado: estadoProcesando,
       carpetaProyecto,
       videosNormalizados,
       lineaTiempoGlobal,
-      opciones,
+      opciones: { ...opciones, onProgreso: reportarProgreso },
       solicitud,
       etapa: ETAPAS_AUTOVIDEO.ENTENDIMIENTO
     });
 
+    await reportarProgreso({ mensaje: `Entendimiento por video listo: ${resultadoPorVideo?.resumen?.videosProcesados || 0}/${videosNormalizados.totalValidos} procesado(s).` });
+    await reportarProgreso({ mensaje: 'Uniendo transcripciones, fotogramas y momentos en un entendimiento global.' });
     const entendimientoGlobal = await unirEntendimientoMultivideo({
       proyectoId,
       carpetaProyecto,
@@ -165,6 +185,7 @@ export async function procesarEntendimientoProyectoEtapa({ proyectoId, opciones 
     const resultadoEntendimiento = aplicarUnionGlobal(resultadoPorVideo, entendimientoGlobal);
     const resumen = crearResumenEntendimiento(resultadoEntendimiento, videosNormalizados, lineaTiempoGlobal, entendimientoGlobal);
 
+    await reportarProgreso({ mensaje: 'Guardando resultado final de entendimiento del proyecto.' });
     const guardado = await guardarResultadoEtapa({
       proyectoId,
       etapa: ETAPAS_AUTOVIDEO.ENTENDIMIENTO,
