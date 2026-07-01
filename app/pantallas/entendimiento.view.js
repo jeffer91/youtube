@@ -1,6 +1,44 @@
 export function renderEntendimientoView() {
   return `
     <section class="aj-view-card entendimiento-view" data-entendimiento-root data-proceso-root="entendimiento" data-proceso-paso-activo="cargar-proyecto">
+      <style>
+        .entendimiento-floating-next {
+          position: fixed;
+          right: 34px;
+          bottom: 28px;
+          z-index: 120;
+          min-height: 52px;
+          padding: 0 22px;
+          border: 0;
+          border-radius: 999px;
+          background: linear-gradient(135deg, #2563eb, #1d4ed8);
+          color: #fff;
+          box-shadow: 0 18px 38px rgba(37, 99, 235, .28);
+          font-size: 14px;
+          font-weight: 950;
+          letter-spacing: .01em;
+          cursor: pointer;
+        }
+
+        .entendimiento-floating-next:hover {
+          transform: translateY(-1px);
+          box-shadow: 0 22px 44px rgba(37, 99, 235, .34);
+        }
+
+        .entendimiento-floating-next:active {
+          transform: translateY(0);
+        }
+
+        @media (max-width: 720px) {
+          .entendimiento-floating-next {
+            left: 18px;
+            right: 18px;
+            bottom: 18px;
+            width: calc(100% - 36px);
+          }
+        }
+      </style>
+
       <section id="entendimientoMensaje" class="entendimiento-message" hidden></section>
 
       <section class="entendimiento-wizard">
@@ -101,6 +139,10 @@ export function renderEntendimientoView() {
         <article><span>Motores</span><strong id="entendimientoMotores">—</strong></article>
         <article><span>Listo para biblioteca</span><strong id="entendimientoListo">—</strong></article>
       </section>
+
+      <button id="entendimientoContinuarBibliotecaBtn" class="entendimiento-floating-next" type="button" data-pantalla-destino="biblioteca" title="Continuar a Biblioteca">
+        Continuar a Biblioteca →
+      </button>
     </section>
   `;
 }
