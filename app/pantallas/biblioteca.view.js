@@ -159,35 +159,5 @@ function renderBibliotecaGeneralPanel() {
 }
 
 export function renderBibliotecaView() {
-  return `
-    <section class="aj-view-card library-page library-unified-page" data-library-unified-root>
-      <div class="library-hero">
-        <div>
-          <p class="eyebrow">Biblioteca</p>
-          <h2>Recursos para el Plan de edición</h2>
-          <p>Administra en un solo lugar la biblioteca general permanente y la biblioteca temporal del proyecto actual.</p>
-        </div>
-        <span class="aj-status-chip">General + Proyecto</span>
-      </div>
-
-      <nav class="library-area-tabs" aria-label="Biblioteca general y proyecto">
-        <button class="library-area-tab is-active" type="button" data-biblioteca-area-tab="general">
-          <strong>General</strong>
-          <span>Recursos permanentes</span>
-        </button>
-        <button class="library-area-tab" type="button" data-biblioteca-area-tab="proyecto">
-          <strong>Proyecto</strong>
-          <span>Recursos temporales del video</span>
-        </button>
-      </nav>
-
-      <section class="library-area-panel is-active" data-biblioteca-area-panel="general">
-        ${renderBibliotecaGeneralPanel()}
-      </section>
-
-      <section class="library-area-panel" data-biblioteca-area-panel="proyecto" hidden>
-        ${renderBibliotecaProyectoView()}
-      </section>
-    </section>
-  `;
+  return renderBibliotecaProyectoView();
 }
