@@ -5,6 +5,7 @@ Funciones principales:
 - Mantener el estado global mínimo de la app.
 - Guardar la pantalla actual.
 - Guardar el proyecto activo en memoria.
+- Guardar el estado de la base principal Google Sheets.
 - Permitir escuchar cambios de estado.
 - Evitar mezclar lógica propia de pantallas.
 ========================================================= */
@@ -13,7 +14,16 @@ const ESTADO_INICIAL = {
   pantallaActual: "01-cargar-proyecto",
   proyectoActivo: null,
   rutaProyectoActivo: null,
-  pantallas: []
+  pantallas: [],
+  basePrincipal: {
+    proveedor: "GOOGLE_SHEETS",
+    nombreVisible: "Google Sheets",
+    rol: "BASE_PRINCIPAL",
+    configurado: false,
+    conectado: false,
+    estado: "SIN_VERIFICAR",
+    mensaje: "Google Sheets pendiente de verificar."
+  }
 };
 
 function clonarSeguro(valor) {
@@ -78,6 +88,19 @@ export function crearEstadoApp(configuracionInicial = {}) {
     return obtenerValor("proyectoActivo");
   }
 
+  function establecerEstadoBasePrincipal(basePrincipal) {
+    return actualizar({
+      basePrincipal: {
+        ...estado.basePrincipal,
+        ...(basePrincipal || {})
+      }
+    });
+  }
+
+  function obtenerEstadoBasePrincipal() {
+    return obtenerValor("basePrincipal");
+  }
+
   function limpiarProyectoActivo() {
     return actualizar({
       proyectoActivo: null,
@@ -104,6 +127,8 @@ export function crearEstadoApp(configuracionInicial = {}) {
     establecerPantallaActual,
     establecerProyectoActivo,
     obtenerProyectoActivo,
+    establecerEstadoBasePrincipal,
+    obtenerEstadoBasePrincipal,
     limpiarProyectoActivo,
     escuchar
   };
