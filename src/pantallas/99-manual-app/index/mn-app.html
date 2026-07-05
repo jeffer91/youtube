@@ -5,11 +5,12 @@ Funciones principales:
 - Mostrar dentro del programa el manual general de uso de la app.
 - Explicar el flujo completo por pantallas.
 - Indicar qué partes ya funcionan y qué partes están pendientes.
-- Explicar que Google Sheets será la base principal.
+- Configurar y diagnosticar Google Sheets como base principal.
 Con qué se conecta:
 - mn-app.css
 - mn-app.js
 - router.js
+- gs-estado-db.service.js
 ========================================================= -->
 
 <section class="mn-screen" id="mnRoot">
@@ -17,7 +18,7 @@ Con qué se conecta:
     <div>
       <p class="mn-eyebrow">Manual interno</p>
       <h2>Cómo funciona Video Editor</h2>
-      <span>Guía rápida para entender el flujo completo de la app por pasos y capas.</span>
+      <span>Guía rápida para entender el flujo completo de la app por pasos, capas y base principal.</span>
     </div>
   </div>
 
@@ -35,15 +36,47 @@ Con qué se conecta:
     <article class="mn-card app-card">
       <h3>2. Base principal</h3>
       <p>
-        La base principal oficial será Google Sheets. Cada proyecto, video, capa, audio, transcripción, subtítulo y exportación debe terminar guardado en sus hojas correspondientes.
+        La base principal oficial es Google Sheets. Cada proyecto, video, capa, audio, transcripción, subtítulo y exportación debe terminar guardado en sus hojas correspondientes.
       </p>
       <p>
         El JSON local queda solo como respaldo temporal si no hay internet o si la sincronización falla.
       </p>
     </article>
 
+    <article class="mn-card app-card mn-card--wide">
+      <h3>3. Configuración de Google Sheets</h3>
+      <p>
+        Aquí puedes registrar la hoja principal y probar la conexión sin salir del programa.
+      </p>
+
+      <div class="mn-db-panel">
+        <div id="mnGsEstado" class="mn-db-status">
+          Revisando estado de Google Sheets...
+        </div>
+
+        <label class="mn-field">
+          <span>ID del Google Sheets</span>
+          <input id="mnGsSpreadsheetId" type="text" placeholder="Pega aquí el ID de la hoja" />
+        </label>
+
+        <label class="mn-field">
+          <span>URL de conexión</span>
+          <input id="mnGsWebAppUrl" type="text" placeholder="Pega aquí la URL https://... del puente de conexión" />
+        </label>
+
+        <div class="mn-actions">
+          <button id="mnGsGuardarConfig" class="mn-btn" type="button">Guardar configuración</button>
+          <button id="mnGsProbarConexion" class="mn-btn mn-btn--primary" type="button">Probar conexión</button>
+        </div>
+
+        <small class="mn-note">
+          La URL no se guarda en GitHub. Se guarda localmente dentro de la carpeta de datos del programa.
+        </small>
+      </div>
+    </article>
+
     <article class="mn-card app-card">
-      <h3>3. Flujo recomendado</h3>
+      <h3>4. Flujo recomendado</h3>
       <ol>
         <li>Cargar proyecto y videos.</li>
         <li>Mejorar audio.</li>
@@ -58,37 +91,37 @@ Con qué se conecta:
     </article>
 
     <article class="mn-card app-card">
-      <h3>4. Pantalla 01: Cargar</h3>
+      <h3>5. Pantalla 01: Cargar</h3>
       <p>
         Sirve para seleccionar uno o varios videos, ordenarlos, elegir un estilo y guardar el proyecto base.
       </p>
       <p>
-        Al guardar, el registro principal debe ir a Google Sheets y el JSON local queda como respaldo.
+        Al guardar, el registro principal va a Google Sheets y el JSON local queda como respaldo.
       </p>
     </article>
 
     <article class="mn-card app-card">
-      <h3>5. Pantalla 02: Audio</h3>
+      <h3>6. Pantalla 02: Audio</h3>
       <p>
         Permite mejorar voz, reducir ruido y nivelar volumen con FFmpeg desde Electron.
       </p>
       <p>
-        El resultado se compara con el original antes de guardarlo como capa o descargarlo.
+        El audio mejorado y su capa se envían a Google Sheets como avance del proyecto.
       </p>
     </article>
 
     <article class="mn-card app-card">
-      <h3>6. Pantalla 03: Transcribir</h3>
+      <h3>7. Pantalla 03: Transcribir</h3>
       <p>
         Convierte la voz del video en texto limpio, segmentos con tiempo y subtítulos SRT.
       </p>
       <p>
-        Puede trabajar con texto manual TXT, SRT manual o Whisper local cuando esté instalado.
+        Al guardar, la transcripción se envía a Google Sheets como avance del proyecto.
       </p>
     </article>
 
     <article class="mn-card app-card">
-      <h3>7. Motores de transcripción</h3>
+      <h3>8. Motores de transcripción</h3>
       <ul>
         <li><strong>Manual TXT:</strong> pegar texto simple para pruebas o correcciones rápidas.</li>
         <li><strong>Manual SRT:</strong> pegar subtítulos con tiempos.</li>
@@ -100,7 +133,7 @@ Con qué se conecta:
     </article>
 
     <article class="mn-card app-card">
-      <h3>8. Pantallas 04 a 18</h3>
+      <h3>9. Pantallas 04 a 18</h3>
       <p>
         Estas pantallas están planificadas para subtítulos, silencios, plan IA, cortes, audios, efectos, textos, música, estilo, imágenes, animaciones, transiciones, color, formato cuadrado y limpieza.
       </p>
@@ -110,7 +143,7 @@ Con qué se conecta:
     </article>
 
     <article class="mn-card app-card">
-      <h3>9. Reglas de uso</h3>
+      <h3>10. Reglas de uso</h3>
       <ul>
         <li>Primero carga un proyecto antes de usar las demás pantallas.</li>
         <li>No borres los videos originales mientras el proyecto esté abierto.</li>
@@ -121,13 +154,14 @@ Con qué se conecta:
     </article>
 
     <article class="mn-card app-card mn-card--wide">
-      <h3>10. Estado actual del desarrollo</h3>
+      <h3>11. Estado actual del desarrollo</h3>
       <div class="mn-status-grid">
         <span>01 Cargar: activo</span>
         <span>02 Audio: activo</span>
         <span>03 Transcribir: activo</span>
-        <span>Base principal: Google Sheets en contrato</span>
+        <span>Base principal: Google Sheets</span>
         <span>JSON local: respaldo</span>
+        <span>Diagnóstico: manual interno</span>
         <span>04 a 18: pendientes por bloques</span>
       </div>
     </article>
