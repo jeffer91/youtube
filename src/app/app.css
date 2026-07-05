@@ -1,0 +1,381 @@
+/* =========================================================
+Nombre completo: app.css
+Ruta o ubicación: /src/app/app.css
+Funciones principales:
+- Definir el diseño global de la app.
+- Crear el shell principal con menú lateral.
+- Definir botones, tarjetas y estados base.
+- Mantener una interfaz clara, simple y con poco texto.
+========================================================= */
+
+:root {
+  --color-bg: #f4f6fb;
+  --color-surface: #ffffff;
+  --color-surface-soft: #f8fafc;
+  --color-primary: #1e4ed8;
+  --color-primary-soft: #e8efff;
+  --color-primary-dark: #153ca8;
+  --color-text: #111827;
+  --color-muted: #6b7280;
+  --color-border: #dce2ea;
+  --color-danger: #dc2626;
+  --color-success: #16a34a;
+  --shadow-soft: 0 18px 45px rgba(15, 23, 42, 0.08);
+  --radius-lg: 22px;
+  --radius-md: 16px;
+  --radius-sm: 10px;
+  --sidebar-width: 280px;
+  --font-main: Arial, Helvetica, sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  width: 100%;
+  min-height: 100%;
+  margin: 0;
+}
+
+body {
+  background: var(--color-bg);
+  color: var(--color-text);
+  font-family: var(--font-main);
+  overflow: hidden;
+}
+
+button,
+input,
+select,
+textarea {
+  font-family: inherit;
+}
+
+button {
+  cursor: pointer;
+}
+
+.app-root {
+  width: 100vw;
+  height: 100vh;
+}
+
+.app-loading {
+  display: grid;
+  width: 100%;
+  height: 100%;
+  place-items: center;
+}
+
+.app-loading__card {
+  width: min(420px, calc(100% - 40px));
+  padding: 28px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-soft);
+  text-align: center;
+}
+
+.app-loading__card h1 {
+  margin: 0 0 8px;
+  font-size: 28px;
+}
+
+.app-loading__card p {
+  margin: 0;
+  color: var(--color-muted);
+}
+
+.app-shell {
+  display: grid;
+  width: 100%;
+  height: 100%;
+  grid-template-columns: var(--sidebar-width) 1fr;
+}
+
+.app-sidebar {
+  display: flex;
+  min-width: 0;
+  min-height: 0;
+  padding: 18px;
+  background: #0f172a;
+  color: #ffffff;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.app-brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+}
+
+.app-brand__icon {
+  display: grid;
+  width: 44px;
+  height: 44px;
+  border-radius: 14px;
+  background: #ffffff;
+  color: #0f172a;
+  font-weight: 800;
+  place-items: center;
+}
+
+.app-brand h1 {
+  margin: 0;
+  font-size: 18px;
+  line-height: 1.1;
+}
+
+.app-brand p {
+  margin: 3px 0 0;
+  color: #cbd5e1;
+  font-size: 12px;
+}
+
+.app-menu {
+  display: flex;
+  min-height: 0;
+  padding-right: 4px;
+  overflow-y: auto;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.app-menu::-webkit-scrollbar {
+  width: 8px;
+}
+
+.app-menu::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.18);
+  border-radius: 999px;
+}
+
+.app-menu__item {
+  display: grid;
+  width: 100%;
+  min-height: 54px;
+  padding: 10px;
+  border: 0;
+  border-radius: 14px;
+  background: transparent;
+  color: #e5e7eb;
+  grid-template-columns: 38px 1fr;
+  align-items: center;
+  gap: 10px;
+  text-align: left;
+}
+
+.app-menu__item:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.app-menu__item.is-active {
+  background: #ffffff;
+  color: #0f172a;
+}
+
+.app-menu__number {
+  display: grid;
+  width: 34px;
+  height: 34px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.12);
+  font-size: 12px;
+  font-weight: 800;
+  place-items: center;
+}
+
+.app-menu__item.is-active .app-menu__number {
+  background: var(--color-primary-soft);
+  color: var(--color-primary);
+}
+
+.app-menu__text {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.app-menu__text strong {
+  overflow: hidden;
+  font-size: 14px;
+  line-height: 1.1;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.app-menu__text small {
+  overflow: hidden;
+  color: currentColor;
+  font-size: 11px;
+  opacity: 0.68;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.app-main {
+  display: grid;
+  min-width: 0;
+  min-height: 0;
+  padding: 20px;
+  grid-template-rows: auto 1fr;
+  gap: 16px;
+}
+
+.app-header {
+  display: flex;
+  min-height: 78px;
+  padding: 18px 22px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-soft);
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+}
+
+.app-header__eyebrow {
+  margin: 0 0 4px;
+  color: var(--color-muted);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.app-header h2 {
+  margin: 0;
+  font-size: 24px;
+  line-height: 1.1;
+}
+
+.app-header__actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.screen-root {
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.app-btn {
+  min-height: 42px;
+  padding: 0 16px;
+  border: 1px solid transparent;
+  border-radius: 12px;
+  background: var(--color-primary);
+  color: #ffffff;
+  font-size: 14px;
+  font-weight: 800;
+}
+
+.app-btn:hover {
+  background: var(--color-primary-dark);
+}
+
+.app-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.app-btn--ghost {
+  background: var(--color-primary-soft);
+  color: var(--color-primary);
+}
+
+.app-btn--ghost:hover {
+  background: #dbe6ff;
+}
+
+.app-btn--danger {
+  background: #fee2e2;
+  color: var(--color-danger);
+}
+
+.app-btn--danger:hover {
+  background: #fecaca;
+}
+
+.app-card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-soft);
+}
+
+.app-empty {
+  display: grid;
+  min-height: 300px;
+  padding: 28px;
+  background: var(--color-surface);
+  border: 1px dashed var(--color-border);
+  border-radius: var(--radius-lg);
+  place-items: center;
+  text-align: center;
+}
+
+.app-empty h3 {
+  margin: 0 0 8px;
+  font-size: 22px;
+}
+
+.app-empty p {
+  max-width: 520px;
+  margin: 0;
+  color: var(--color-muted);
+  line-height: 1.5;
+}
+
+.app-alert {
+  padding: 12px 14px;
+  border-radius: 14px;
+  font-size: 14px;
+  line-height: 1.4;
+}
+
+.app-alert--danger {
+  background: #fef2f2;
+  color: #991b1b;
+  border: 1px solid #fecaca;
+}
+
+.app-alert--success {
+  background: #f0fdf4;
+  color: #166534;
+  border: 1px solid #bbf7d0;
+}
+
+.app-alert--info {
+  background: #eff6ff;
+  color: #1d4ed8;
+  border: 1px solid #bfdbfe;
+}
+
+@media (max-width: 1050px) {
+  :root {
+    --sidebar-width: 230px;
+  }
+
+  .app-main {
+    padding: 14px;
+  }
+
+  .app-header {
+    min-height: 70px;
+    padding: 16px;
+  }
+
+  .app-header h2 {
+    font-size: 20px;
+  }
+}

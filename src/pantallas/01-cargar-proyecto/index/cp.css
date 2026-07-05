@@ -1,0 +1,477 @@
+/* =========================================================
+Nombre completo: cp.css
+Ruta o ubicación: /src/pantallas/01-cargar-proyecto/index/cp.css
+Funciones principales:
+- Diseñar la pantalla Cargar proyecto.
+- Diseñar pasos, carga, lista, formulario y botones.
+- Mantener una interfaz limpia y con poco texto.
+- Importar el estilo del popup propio de esta pantalla.
+========================================================= */
+
+@import url("../popup/cp-popup.css");
+
+.cp-screen {
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+}
+
+.cp-layout {
+  display: grid;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  grid-template-columns: 330px 1fr;
+  gap: 16px;
+}
+
+.cp-left,
+.cp-right {
+  min-width: 0;
+  min-height: 0;
+}
+
+.cp-left {
+  padding: 22px;
+  overflow-y: auto;
+}
+
+.cp-right {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto auto;
+  gap: 12px;
+  overflow-x: hidden;
+  overflow-y: auto;
+  padding-bottom: 14px;
+}
+
+.cp-title {
+  margin-bottom: 22px;
+}
+
+.cp-title p {
+  margin: 0 0 8px;
+  color: #6b7280;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.cp-title h2 {
+  margin: 0;
+  color: #111827;
+  font-size: 28px;
+  line-height: 1.05;
+}
+
+.cp-title span {
+  display: block;
+  margin-top: 8px;
+  color: #6b7280;
+  font-size: 14px;
+}
+
+.cp-steps {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.cp-step {
+  display: grid;
+  width: 100%;
+  min-height: 74px;
+  padding: 12px;
+  border: 1px solid #e5e7eb;
+  border-radius: 18px;
+  background: #ffffff;
+  color: #111827;
+  grid-template-columns: 42px 1fr;
+  gap: 12px;
+  align-items: center;
+  text-align: left;
+}
+
+.cp-step:hover {
+  background: #f8fafc;
+}
+
+.cp-step.is-active {
+  border-color: #1e4ed8;
+  background: #eff6ff;
+}
+
+.cp-step.is-done {
+  border-color: #bbf7d0;
+  background: #f0fdf4;
+}
+
+.cp-step__number {
+  display: grid;
+  width: 42px;
+  height: 42px;
+  border-radius: 14px;
+  background: #f1f5f9;
+  color: #1e4ed8;
+  font-size: 14px;
+  font-weight: 900;
+  place-items: center;
+}
+
+.cp-step.is-active .cp-step__number {
+  background: #1e4ed8;
+  color: #ffffff;
+}
+
+.cp-step.is-done .cp-step__number {
+  background: #16a34a;
+  color: #ffffff;
+}
+
+.cp-step__info {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.cp-step__info strong {
+  font-size: 15px;
+}
+
+.cp-step__info small {
+  color: #6b7280;
+  font-size: 12px;
+}
+
+.cp-panel {
+  height: 100%;
+  min-height: 0;
+  padding: 22px;
+  overflow-y: auto;
+  background: #ffffff;
+  border: 1px solid #dce2ea;
+  border-radius: 22px;
+  box-shadow: 0 18px 45px rgba(15, 23, 42, 0.08);
+}
+
+.cp-panel__head {
+  display: flex;
+  margin-bottom: 18px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.cp-panel__head h3 {
+  margin: 0;
+  color: #111827;
+  font-size: 24px;
+}
+
+.cp-panel__head p {
+  margin: 6px 0 0;
+  color: #6b7280;
+  font-size: 14px;
+}
+
+.cp-upload {
+  display: grid;
+  min-height: 420px;
+  padding: 28px;
+  border: 2px dashed #cbd5e1;
+  border-radius: 22px;
+  background: #f8fafc;
+  place-items: center;
+  align-content: center;
+  text-align: center;
+}
+
+.cp-upload__icon {
+  display: grid;
+  width: 72px;
+  height: 72px;
+  margin-bottom: 14px;
+  border-radius: 24px;
+  background: #e8efff;
+  color: #1e4ed8;
+  font-size: 42px;
+  font-weight: 500;
+  place-items: center;
+}
+
+.cp-upload h4 {
+  margin: 0 0 8px;
+  color: #111827;
+  font-size: 22px;
+}
+
+.cp-upload p {
+  margin: 0 0 18px;
+  color: #6b7280;
+  font-size: 14px;
+}
+
+.cp-form {
+  display: grid;
+  max-width: 520px;
+  gap: 16px;
+}
+
+.cp-field {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.cp-field span {
+  color: #111827;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.cp-input {
+  width: 100%;
+  min-height: 48px;
+  padding: 0 14px;
+  border: 1px solid #dce2ea;
+  border-radius: 14px;
+  background: #ffffff;
+  color: #111827;
+  font-size: 15px;
+  outline: none;
+}
+
+.cp-input:focus {
+  border-color: #1e4ed8;
+  box-shadow: 0 0 0 4px rgba(30, 78, 216, 0.12);
+}
+
+.cp-video-list {
+  min-height: 300px;
+}
+
+.cp-video-list__items {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.cp-video-card {
+  display: grid;
+  min-height: 92px;
+  padding: 10px;
+  border: 1px solid #e5e7eb;
+  border-radius: 18px;
+  background: #f8fafc;
+  grid-template-columns: 34px 128px 1fr auto;
+  gap: 12px;
+  align-items: center;
+}
+
+.cp-video-card.is-dragging {
+  opacity: 0.45;
+}
+
+.cp-video-card.is-over {
+  border-color: #1e4ed8;
+  background: #eff6ff;
+}
+
+.cp-video-card__drag {
+  display: grid;
+  width: 30px;
+  height: 54px;
+  color: #94a3b8;
+  font-size: 18px;
+  font-weight: 800;
+  place-items: center;
+  cursor: grab;
+}
+
+.cp-video-card__thumb {
+  width: 128px;
+  height: 72px;
+  overflow: hidden;
+  background: #e5e7eb;
+  border-radius: 14px;
+}
+
+.cp-video-card__thumb-img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.cp-video-card__thumb-empty {
+  display: grid;
+  width: 100%;
+  height: 100%;
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 800;
+  place-items: center;
+}
+
+.cp-video-card__body {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.cp-video-card__body strong {
+  overflow: hidden;
+  color: #111827;
+  font-size: 14px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cp-video-card__body span {
+  color: #6b7280;
+  font-size: 13px;
+}
+
+.cp-video-card__controls {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.cp-icon-btn {
+  display: grid;
+  width: 34px;
+  height: 34px;
+  border: 0;
+  border-radius: 10px;
+  background: #e8efff;
+  color: #1e4ed8;
+  font-size: 16px;
+  font-weight: 900;
+  place-items: center;
+}
+
+.cp-icon-btn:hover {
+  background: #dbe6ff;
+}
+
+.cp-icon-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.35;
+}
+
+.cp-icon-btn--danger {
+  background: #fee2e2;
+  color: #dc2626;
+}
+
+.cp-icon-btn--danger:hover {
+  background: #fecaca;
+}
+
+.cp-list-empty {
+  display: grid;
+  min-height: 260px;
+  padding: 24px;
+  border: 1px dashed #cbd5e1;
+  border-radius: 18px;
+  background: #f8fafc;
+  place-items: center;
+  text-align: center;
+}
+
+.cp-list-empty h4 {
+  margin: 0 0 6px;
+  color: #111827;
+  font-size: 18px;
+}
+
+.cp-list-empty p {
+  margin: 0;
+  color: #6b7280;
+  font-size: 14px;
+}
+
+.cp-summary {
+  min-height: 76px;
+  padding: 14px 18px;
+}
+
+.cp-summary__grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 14px;
+}
+
+.cp-summary__item {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.cp-summary__item span {
+  color: #6b7280;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.cp-summary__item strong {
+  overflow: hidden;
+  color: #111827;
+  font-size: 14px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cp-actions {
+  display: flex;
+  padding: 14px 0 0;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.cp-messages {
+  display: grid;
+  gap: 8px;
+}
+
+.cp-alert {
+  padding: 10px 12px;
+  border-radius: 14px;
+  font-size: 13px;
+  line-height: 1.35;
+}
+
+.cp-alert--error {
+  background: #fef2f2;
+  color: #991b1b;
+  border: 1px solid #fecaca;
+}
+
+.cp-alert--success {
+  background: #f0fdf4;
+  color: #166534;
+  border: 1px solid #bbf7d0;
+}
+
+@media (max-width: 1100px) {
+  .cp-layout {
+    grid-template-columns: 280px 1fr;
+  }
+
+  .cp-video-card {
+    grid-template-columns: 30px 112px 1fr;
+  }
+
+  .cp-video-card__controls {
+    grid-column: 2 / 4;
+    justify-content: flex-end;
+  }
+}

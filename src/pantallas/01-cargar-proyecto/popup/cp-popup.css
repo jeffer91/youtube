@@ -1,0 +1,166 @@
+/* =========================================================
+Nombre completo: cp-popup.css
+Ruta o ubicación: /src/pantallas/01-cargar-proyecto/popup/cp-popup.css
+Funciones principales:
+- Diseñar el popup de videos cargados.
+- Mostrar videos en tarjetas pequeñas.
+- Mostrar errores de forma clara.
+- Mantener diseño limpio y corto.
+========================================================= */
+
+.cp-popup-backdrop {
+  position: fixed;
+  z-index: 1000;
+  inset: 0;
+  display: grid;
+  padding: 24px;
+  background: rgba(15, 23, 42, 0.48);
+  place-items: center;
+}
+
+.cp-popup {
+  width: min(720px, 100%);
+  max-height: min(680px, calc(100vh - 48px));
+  overflow: hidden;
+  background: #ffffff;
+  border-radius: 22px;
+  box-shadow: 0 24px 80px rgba(15, 23, 42, 0.28);
+}
+
+.cp-popup__head {
+  display: flex;
+  padding: 20px 22px;
+  border-bottom: 1px solid #e5e7eb;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.cp-popup__head h3 {
+  margin: 0;
+  color: #111827;
+  font-size: 22px;
+}
+
+.cp-popup__head p {
+  margin: 4px 0 0;
+  color: #6b7280;
+  font-size: 14px;
+}
+
+.cp-popup__close {
+  display: grid;
+  width: 38px;
+  height: 38px;
+  border: 0;
+  border-radius: 12px;
+  background: #f3f4f6;
+  color: #111827;
+  font-size: 24px;
+  line-height: 1;
+  place-items: center;
+}
+
+.cp-popup__close:hover {
+  background: #e5e7eb;
+}
+
+.cp-popup__body {
+  max-height: 560px;
+  padding: 18px 22px 22px;
+  overflow-y: auto;
+}
+
+.cp-popup-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.cp-popup-video {
+  display: grid;
+  min-height: 82px;
+  padding: 10px;
+  background: #f8fafc;
+  border: 1px solid #e5e7eb;
+  border-radius: 16px;
+  grid-template-columns: 112px 1fr;
+  gap: 12px;
+  align-items: center;
+}
+
+.cp-popup-video__thumb {
+  width: 112px;
+  height: 63px;
+  overflow: hidden;
+  background: #e5e7eb;
+  border-radius: 12px;
+}
+
+.cp-popup-video__img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.cp-popup-video__empty {
+  display: grid;
+  width: 100%;
+  height: 100%;
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 800;
+  place-items: center;
+}
+
+.cp-popup-video__info {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.cp-popup-video__info strong {
+  overflow: hidden;
+  color: #111827;
+  font-size: 14px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cp-popup-video__info span {
+  color: #6b7280;
+  font-size: 13px;
+}
+
+.cp-popup-errors {
+  margin-top: 14px;
+  padding: 14px;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  border-radius: 16px;
+}
+
+.cp-popup-errors h4 {
+  margin: 0 0 8px;
+  color: #991b1b;
+  font-size: 14px;
+}
+
+.cp-popup-errors ul {
+  margin: 0;
+  padding-left: 18px;
+  color: #991b1b;
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.cp-popup-empty {
+  padding: 16px;
+  background: #f8fafc;
+  border: 1px dashed #cbd5e1;
+  border-radius: 16px;
+  color: #64748b;
+  text-align: center;
+}

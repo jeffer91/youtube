@@ -1,0 +1,40 @@
+<!-- =========================================================
+Nombre completo: index.html
+Ruta o ubicación: /src/index.html
+Funciones principales:
+- Contener la raíz visual de la app.
+- Cargar estilos globales.
+- Cargar el archivo principal app.js.
+- Servir como entrada principal de la interfaz.
+========================================================= -->
+
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+
+  <meta
+    http-equiv="Content-Security-Policy"
+    content="default-src 'self' file: blob: data:; script-src 'self'; style-src 'self' 'unsafe-inline'; media-src 'self' file: blob: data:;"
+  />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <title>Editor de Video</title>
+
+  <link rel="stylesheet" href="./app/app.css" />
+</head>
+
+<body>
+  <main id="appRoot" class="app-root">
+    <section class="app-loading">
+      <div class="app-loading__card">
+        <h1>Editor de Video</h1>
+        <p>Cargando app...</p>
+      </div>
+    </section>
+  </main>
+
+  <script type="module" src="./app/app.js"></script>
+</body>
+</html>

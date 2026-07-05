@@ -1,0 +1,45 @@
+<!-- =========================================================
+Nombre completo: tr.html
+Ruta o ubicación: /src/pantallas/03-transcribir-video/index/tr.html
+Funciones principales:
+- Crear la estructura visual base de Transcribir video.
+- Mantener contenedores separados para pasos, videos, opciones y resultado.
+- Evitar lógica dentro del HTML.
+- Servir como pantalla 03 de la app.
+Con qué se conecta:
+- tr.js
+- tr.css
+- tr-ui-layout.js
+========================================================= -->
+
+<section class="tr-screen" id="trRoot">
+  <div class="tr-layout">
+    <aside class="tr-left app-card">
+      <div class="tr-title">
+        <p>Pantalla 03</p>
+        <h2>Transcribir video</h2>
+        <span>Convierte la voz del video en texto.</span>
+      </div>
+
+      <div id="trPasos"></div>
+    </aside>
+
+    <section class="tr-right">
+      <div id="trMensajes"></div>
+
+      <div class="tr-top app-card">
+        <div id="trSelectorVideos"></div>
+        <div id="trResumenVideo"></div>
+      </div>
+
+      <div class="tr-grid">
+        <div id="trOpciones" class="tr-panel app-card"></div>
+        <div id="trProgreso" class="tr-panel app-card"></div>
+      </div>
+
+      <div id="trResultado" class="tr-result app-card"></div>
+
+      <div id="trAcciones"></div>
+    </section>
+  </div>
+</section>

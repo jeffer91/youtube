@@ -1,0 +1,442 @@
+/* =========================================================
+Nombre completo: tr.css
+Ruta o ubicación: /src/pantallas/03-transcribir-video/index/tr.css
+Funciones principales:
+- Diseñar la pantalla Transcribir video.
+- Organizar pasos, selector de videos, opciones, progreso y resultado.
+- Mantener un diseño claro y parecido al resto de la app.
+- Evitar estilos globales fuera del módulo.
+Con qué se conecta:
+- tr.html
+- tr.js
+- tr-ui-layout.js
+========================================================= */
+
+.tr-screen {
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+}
+
+.tr-layout {
+  display: grid;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  grid-template-columns: 330px 1fr;
+  gap: 16px;
+}
+
+.tr-left,
+.tr-right {
+  min-width: 0;
+  min-height: 0;
+}
+
+.tr-left {
+  padding: 22px;
+  overflow-y: auto;
+}
+
+.tr-right {
+  display: grid;
+  grid-template-rows: auto auto auto minmax(0, 1fr) auto;
+  gap: 12px;
+  overflow-x: hidden;
+  overflow-y: auto;
+  padding-bottom: 14px;
+}
+
+.tr-title {
+  margin-bottom: 22px;
+}
+
+.tr-title p {
+  margin: 0 0 8px;
+  color: #6b7280;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.tr-title h2 {
+  margin: 0;
+  color: #111827;
+  font-size: 28px;
+  line-height: 1.05;
+}
+
+.tr-title span {
+  display: block;
+  margin-top: 8px;
+  color: #6b7280;
+  font-size: 14px;
+}
+
+.tr-steps {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.tr-step {
+  display: grid;
+  width: 100%;
+  min-height: 74px;
+  padding: 12px;
+  border: 1px solid #e5e7eb;
+  border-radius: 18px;
+  background: #ffffff;
+  color: #111827;
+  grid-template-columns: 42px 1fr;
+  gap: 12px;
+  align-items: center;
+  text-align: left;
+}
+
+.tr-step.is-active {
+  border-color: #1e4ed8;
+  background: #eff6ff;
+}
+
+.tr-step.is-done {
+  border-color: #bbf7d0;
+  background: #f0fdf4;
+}
+
+.tr-step__number {
+  display: grid;
+  width: 42px;
+  height: 42px;
+  border-radius: 14px;
+  background: #f1f5f9;
+  color: #1e4ed8;
+  font-size: 14px;
+  font-weight: 900;
+  place-items: center;
+}
+
+.tr-step.is-active .tr-step__number {
+  background: #1e4ed8;
+  color: #ffffff;
+}
+
+.tr-step.is-done .tr-step__number {
+  background: #16a34a;
+  color: #ffffff;
+}
+
+.tr-step__info {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.tr-step__info strong {
+  font-size: 15px;
+}
+
+.tr-step__info small {
+  color: #6b7280;
+  font-size: 12px;
+}
+
+.tr-messages {
+  display: grid;
+  gap: 8px;
+}
+
+.tr-alert {
+  padding: 10px 12px;
+  border-radius: 14px;
+  font-size: 13px;
+  line-height: 1.35;
+}
+
+.tr-alert--error {
+  background: #fef2f2;
+  color: #991b1b;
+  border: 1px solid #fecaca;
+}
+
+.tr-alert--success {
+  background: #f0fdf4;
+  color: #166534;
+  border: 1px solid #bbf7d0;
+}
+
+.tr-alert--info {
+  background: #eff6ff;
+  color: #1d4ed8;
+  border: 1px solid #bfdbfe;
+}
+
+.tr-top {
+  display: grid;
+  padding: 16px;
+  grid-template-columns: minmax(260px, 420px) 1fr;
+  gap: 14px;
+  align-items: stretch;
+}
+
+.tr-field {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.tr-field span {
+  color: #111827;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.tr-input,
+.tr-select {
+  width: 100%;
+  min-height: 46px;
+  padding: 0 14px;
+  border: 1px solid #dce2ea;
+  border-radius: 14px;
+  background: #ffffff;
+  color: #111827;
+  font-size: 14px;
+  outline: none;
+}
+
+.tr-input:focus,
+.tr-select:focus {
+  border-color: #1e4ed8;
+  box-shadow: 0 0 0 4px rgba(30, 78, 216, 0.12);
+}
+
+.tr-video-summary {
+  display: grid;
+  min-height: 90px;
+  padding: 12px;
+  border: 1px solid #e5e7eb;
+  border-radius: 18px;
+  background: #f8fafc;
+  grid-template-columns: 128px 1fr;
+  gap: 12px;
+  align-items: center;
+}
+
+.tr-video-summary__thumb {
+  width: 128px;
+  height: 72px;
+  overflow: hidden;
+  background: #e5e7eb;
+  border-radius: 14px;
+}
+
+.tr-video-summary__thumb img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.tr-video-summary__thumb-empty {
+  display: grid;
+  width: 100%;
+  height: 100%;
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 800;
+  place-items: center;
+}
+
+.tr-video-summary__body {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.tr-video-summary__body strong {
+  overflow: hidden;
+  color: #111827;
+  font-size: 15px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tr-video-summary__body span {
+  color: #6b7280;
+  font-size: 13px;
+}
+
+.tr-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.tr-panel {
+  min-height: 190px;
+  padding: 18px;
+}
+
+.tr-panel__head {
+  margin-bottom: 16px;
+}
+
+.tr-panel__head h3 {
+  margin: 0;
+  color: #111827;
+  font-size: 20px;
+}
+
+.tr-panel__head p {
+  margin: 6px 0 0;
+  color: #6b7280;
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.tr-options {
+  display: grid;
+  gap: 12px;
+}
+
+.tr-progress {
+  display: grid;
+  gap: 12px;
+}
+
+.tr-progress__bar {
+  width: 100%;
+  height: 14px;
+  overflow: hidden;
+  background: #e5e7eb;
+  border-radius: 999px;
+}
+
+.tr-progress__fill {
+  width: 0%;
+  height: 100%;
+  background: #1e4ed8;
+  border-radius: 999px;
+  transition: width 0.25s ease;
+}
+
+.tr-progress__text {
+  color: #6b7280;
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.tr-result {
+  min-height: 220px;
+  padding: 18px;
+}
+
+.tr-result__head {
+  display: flex;
+  margin-bottom: 14px;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.tr-result__head h3 {
+  margin: 0;
+  color: #111827;
+  font-size: 20px;
+}
+
+.tr-result__head p {
+  margin: 6px 0 0;
+  color: #6b7280;
+  font-size: 13px;
+}
+
+.tr-result__box {
+  min-height: 130px;
+  padding: 14px;
+  border: 1px solid #e5e7eb;
+  border-radius: 16px;
+  background: #f8fafc;
+  color: #111827;
+  font-size: 14px;
+  line-height: 1.55;
+  white-space: pre-wrap;
+}
+
+.tr-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.tr-btn {
+  min-height: 44px;
+  padding: 0 16px;
+  border: 1px solid #dce2ea;
+  border-radius: 14px;
+  background: #ffffff;
+  color: #111827;
+  font-size: 14px;
+  font-weight: 800;
+}
+
+.tr-btn:hover {
+  background: #f8fafc;
+}
+
+.tr-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.tr-btn--primary {
+  border-color: #1e4ed8;
+  background: #1e4ed8;
+  color: #ffffff;
+}
+
+.tr-btn--primary:hover {
+  background: #153ca8;
+}
+
+.tr-empty {
+  display: grid;
+  min-height: 180px;
+  padding: 24px;
+  border: 1px dashed #dce2ea;
+  border-radius: 18px;
+  background: #f8fafc;
+  place-items: center;
+  text-align: center;
+}
+
+.tr-empty h3 {
+  margin: 0 0 8px;
+  color: #111827;
+  font-size: 20px;
+}
+
+.tr-empty p {
+  max-width: 520px;
+  margin: 0;
+  color: #6b7280;
+  font-size: 14px;
+  line-height: 1.45;
+}
+
+@media (max-width: 1100px) {
+  .tr-layout {
+    grid-template-columns: 280px 1fr;
+  }
+
+  .tr-top {
+    grid-template-columns: 1fr;
+  }
+
+  .tr-grid {
+    grid-template-columns: 1fr;
+  }
+}
