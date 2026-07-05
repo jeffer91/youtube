@@ -4,6 +4,7 @@ Ruta o ubicación: /src/pantallas/03-transcribir-video/services/tr-service.js
 Funciones principales:
 - Mantener el estado interno de la pantalla Transcribir video.
 - Seleccionar video, motor, idioma y texto manual.
+- Verificar Whisper local antes de usar transcripción real.
 - Ejecutar transcripción sin fingir resultados.
 - Guardar transcripción en el proyecto activo.
 - Preparar exportaciones TXT, SRT y JSON.
@@ -117,9 +118,12 @@ function crearEstadoInicialTR({ proyectoActivo }) {
     textoManual: "",
     transcripcionActual,
     exportacionActual: null,
+    whisperDisponible: null,
+    ultimoDiagnosticoWhisper: null,
     procesando: false,
     guardando: false,
     exportando: false,
+    verificandoWhisper: false,
     progreso: 0,
     estadoProceso: adaptado.ok ? "Listo para transcribir." : adaptado.mensaje,
     mensajes: adaptado.ok ? [] : [],
@@ -129,6 +133,18 @@ function crearEstadoInicialTR({ proyectoActivo }) {
 
 function calcularPasoDespuesDeTranscripcionTR(transcripcion) {
   return transcripcion ? "guardar" : "configurar";
+}
+
+async function consultarWhisperElectronTR() {
+  if (!window.videoEditorAPI?.verificarWhisperTranscripcion) {
+    return {
+      ok: false,
+      disponible: false,
+      mensaje: "La verificación de Whisper no está disponible. Abre la app con Electron usando npm start."
+    };
+  }
+
+  return await window.videoEditorAPI.verificarWhisperTranscripcion();
 }
 
 export function crearTranscripcionService({ proyectoActivo, estadoApp } = {}) {
@@ -236,11 +252,51 @@ export function crearTranscripcionService({ proyectoActivo, estadoApp } = {}) {
   }
 
   function cambiarTextoManual(textoManual) {
-    return actualizar({
+    estado = {
+      ...estado,
       textoManual: String(textoManual || ""),
-      mensajes: [],
+      errores: []
+    };
+
+    return obtenerEstado();
+  }
+
+  async function verificarWhisperActual() {
+    actualizar({
+      verificandoWhisper: true,
+      mensajes: ["Verificando Whisper local..."],
       errores: []
     });
+
+    try {
+      const resultado = await consultarWhisperElectronTR();
+
+      if (!resultado.ok) {
+        return actualizar({
+          verificandoWhisper: false,
+          whisperDisponible: false,
+          ultimoDiagnosticoWhisper: resultado,
+          mensajes: [],
+          errores: [resultado.mensaje || "Whisper local no está disponible."]
+        });
+      }
+
+      return actualizar({
+        verificandoWhisper: false,
+        whisperDisponible: true,
+        ultimoDiagnosticoWhisper: resultado,
+        mensajes: [resultado.mensaje || "Whisper local está disponible."],
+        errores: []
+      });
+    } catch (error) {
+      return actualizar({
+        verificandoWhisper: false,
+        whisperDisponible: false,
+        ultimoDiagnosticoWhisper: null,
+        mensajes: [],
+        errores: [error?.message || "No se pudo verificar Whisper local."]
+      });
+    }
   }
 
   async function transcribirActual() {
@@ -387,6 +443,7 @@ export function crearTranscripcionService({ proyectoActivo, estadoApp } = {}) {
     cambiarMotor,
     cambiarIdioma,
     cambiarTextoManual,
+    verificarWhisperActual,
     transcribirActual,
     guardarActual,
     prepararExportacion,
