@@ -8,6 +8,7 @@ Funciones principales:
 - Permitir guardar el proyecto base.
 - Permitir consultar la carpeta de proyectos.
 - Permitir mejorar audio desde la pantalla 02-mejorar-audio.
+- Permitir transcribir video desde la pantalla 03-transcribir-video.
 - Permitir descargar/copiar el video mejorado.
 ========================================================= */
 
@@ -40,6 +41,14 @@ contextBridge.exposeInMainWorld("videoEditorAPI", {
 
   descargarVideoMejorado: async (datosDescarga) => {
     return ipcRenderer.invoke("audio:descargar-video-mejorado", datosDescarga);
+  },
+
+  verificarWhisperTranscripcion: async () => {
+    return ipcRenderer.invoke("transcripcion:verificar-whisper");
+  },
+
+  transcribirVideo: async (datosTranscripcion) => {
+    return ipcRenderer.invoke("transcripcion:transcribir-video", datosTranscripcion);
   },
 
   plataforma: process.platform
