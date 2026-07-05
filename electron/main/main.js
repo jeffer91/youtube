@@ -126,9 +126,21 @@ function limpiarNombreCarpeta(texto) {
     .slice(0, 60) || "proyecto";
 }
 
-function crearCarpetaProyecto(nombreProyecto) {
+function limpiarIdProyecto(texto) {
+  return String(texto || "")
+    .trim()
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9_-]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 100);
+}
+
+function crearCarpetaProyecto(nombreProyecto, idProyectoExistente = "") {
   const marcaTiempo = new Date().toISOString().replace(/[:.]/g, "-").replace("T", "_").slice(0, 19);
-  const idProyecto = `${marcaTiempo}_${limpiarNombreCarpeta(nombreProyecto)}`;
+  const idSeguro = limpiarIdProyecto(idProyectoExistente);
+  const idProyecto = idSeguro || `${marcaTiempo}_${limpiarNombreCarpeta(nombreProyecto)}`;
   const rutaProyecto = path.join(obtenerRutaProyectos(), idProyecto);
   asegurarCarpeta(rutaProyecto);
   return { idProyecto, rutaProyecto };
@@ -192,16 +204,18 @@ ipcMain.handle("proyecto:guardar-json", async (_evento, proyecto) => {
       return { ok: false, mensaje: "Faltan datos obligatorios del proyecto." };
     }
 
-    const { idProyecto, rutaProyecto } = crearCarpetaProyecto(proyecto.nombre);
+    const { idProyecto, rutaProyecto } = crearCarpetaProyecto(proyecto.nombre, proyecto.id);
     const rutaArchivoProyecto = path.join(rutaProyecto, "proyecto.json");
     const proyectoFinal = {
       id: idProyecto,
       nombre: proyecto.nombre,
       estilo: proyecto.estilo,
       videos: Array.isArray(proyecto.videos) ? proyecto.videos : [],
-      pantallaActual: "02-mejorar-audio",
-      capas: [],
-      creadoEn: new Date().toISOString(),
+      pantallaActual: proyecto.pantallaActual || "02-mejorar-audio",
+      capas: Array.isArray(proyecto.capas) ? proyecto.capas : [],
+      basePrincipal: proyecto.basePrincipal || "GOOGLE_SHEETS",
+      respaldoLocal: "JSON_LOCAL_RESPALDO",
+      creadoEn: proyecto.creadoEn || new Date().toISOString(),
       actualizadoEn: new Date().toISOString()
     };
 
