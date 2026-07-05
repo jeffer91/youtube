@@ -9,7 +9,7 @@ Funciones principales:
 Con qué se conecta:
 - tr.html
 - tr.js
-- tr-ui-layout.js
+- Archivos render de la carpeta 03-transcribir-video
 ========================================================= */
 
 .tr-screen {
@@ -72,6 +72,7 @@ Con qué se conecta:
   margin-top: 8px;
   color: #6b7280;
   font-size: 14px;
+  line-height: 1.45;
 }
 
 .tr-steps {
@@ -141,6 +142,7 @@ Con qué se conecta:
 .tr-step__info small {
   color: #6b7280;
   font-size: 12px;
+  line-height: 1.35;
 }
 
 .tr-messages {
@@ -150,6 +152,7 @@ Con qué se conecta:
 
 .tr-alert {
   padding: 10px 12px;
+  border: 1px solid transparent;
   border-radius: 14px;
   font-size: 13px;
   line-height: 1.35;
@@ -158,19 +161,19 @@ Con qué se conecta:
 .tr-alert--error {
   background: #fef2f2;
   color: #991b1b;
-  border: 1px solid #fecaca;
+  border-color: #fecaca;
 }
 
 .tr-alert--success {
   background: #f0fdf4;
   color: #166534;
-  border: 1px solid #bbf7d0;
+  border-color: #bbf7d0;
 }
 
 .tr-alert--info {
   background: #eff6ff;
   color: #1d4ed8;
-  border: 1px solid #bfdbfe;
+  border-color: #bfdbfe;
 }
 
 .tr-top {
@@ -187,17 +190,23 @@ Con qué se conecta:
   gap: 8px;
 }
 
-.tr-field span {
+.tr-field span,
+.tr-label {
   color: #111827;
   font-size: 13px;
   font-weight: 800;
 }
 
+.tr-help {
+  color: #6b7280;
+  font-size: 12px;
+  line-height: 1.4;
+}
+
 .tr-input,
-.tr-select {
+.tr-select,
+.tr-textarea {
   width: 100%;
-  min-height: 46px;
-  padding: 0 14px;
   border: 1px solid #dce2ea;
   border-radius: 14px;
   background: #ffffff;
@@ -206,8 +215,22 @@ Con qué se conecta:
   outline: none;
 }
 
+.tr-input,
+.tr-select {
+  min-height: 46px;
+  padding: 0 14px;
+}
+
+.tr-textarea {
+  min-height: 160px;
+  padding: 12px 14px;
+  resize: vertical;
+  line-height: 1.5;
+}
+
 .tr-input:focus,
-.tr-select:focus {
+.tr-select:focus,
+.tr-textarea:focus {
   border-color: #1e4ed8;
   box-shadow: 0 0 0 4px rgba(30, 78, 216, 0.12);
 }
@@ -232,6 +255,7 @@ Con qué se conecta:
   border-radius: 14px;
 }
 
+.tr-video-summary__thumb video,
 .tr-video-summary__thumb img {
   display: block;
   width: 100%;
@@ -302,6 +326,46 @@ Con qué se conecta:
   gap: 12px;
 }
 
+.tr-option-card {
+  display: grid;
+  padding: 12px;
+  border: 1px solid #e5e7eb;
+  border-radius: 16px;
+  background: #ffffff;
+  gap: 8px;
+}
+
+.tr-option-card.is-active {
+  border-color: #1e4ed8;
+  background: #eff6ff;
+}
+
+.tr-option-card strong {
+  color: #111827;
+  font-size: 14px;
+}
+
+.tr-option-card span {
+  color: #6b7280;
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.tr-radio-line,
+.tr-check-line {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  color: #111827;
+  font-size: 14px;
+  line-height: 1.4;
+}
+
+.tr-radio-line input,
+.tr-check-line input {
+  margin-top: 2px;
+}
+
 .tr-progress {
   display: grid;
   gap: 12px;
@@ -327,6 +391,31 @@ Con qué se conecta:
   color: #6b7280;
   font-size: 13px;
   line-height: 1.4;
+}
+
+.tr-progress__details {
+  display: grid;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.tr-chip-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.tr-chip {
+  display: inline-flex;
+  min-height: 30px;
+  padding: 0 10px;
+  border: 1px solid #e5e7eb;
+  border-radius: 999px;
+  background: #ffffff;
+  color: #334155;
+  font-size: 12px;
+  font-weight: 800;
+  align-items: center;
 }
 
 .tr-result {
@@ -356,6 +445,8 @@ Con qué se conecta:
 
 .tr-result__box {
   min-height: 130px;
+  max-height: 360px;
+  overflow-y: auto;
   padding: 14px;
   border: 1px solid #e5e7eb;
   border-radius: 16px;
@@ -364,6 +455,55 @@ Con qué se conecta:
   font-size: 14px;
   line-height: 1.55;
   white-space: pre-wrap;
+}
+
+.tr-result__tabs {
+  display: flex;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+  gap: 8px;
+}
+
+.tr-tab {
+  min-height: 36px;
+  padding: 0 12px;
+  border: 1px solid #dce2ea;
+  border-radius: 999px;
+  background: #ffffff;
+  color: #334155;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.tr-tab.is-active {
+  border-color: #1e4ed8;
+  background: #1e4ed8;
+  color: #ffffff;
+}
+
+.tr-segment-list {
+  display: grid;
+  gap: 8px;
+}
+
+.tr-segment {
+  display: grid;
+  padding: 10px 12px;
+  border: 1px solid #e5e7eb;
+  border-radius: 14px;
+  background: #ffffff;
+  gap: 4px;
+}
+
+.tr-segment strong {
+  color: #1e4ed8;
+  font-size: 12px;
+}
+
+.tr-segment span {
+  color: #111827;
+  font-size: 13px;
+  line-height: 1.45;
 }
 
 .tr-actions {
@@ -381,6 +521,7 @@ Con qué se conecta:
   color: #111827;
   font-size: 14px;
   font-weight: 800;
+  cursor: pointer;
 }
 
 .tr-btn:hover {
@@ -400,6 +541,12 @@ Con qué se conecta:
 
 .tr-btn--primary:hover {
   background: #153ca8;
+}
+
+.tr-btn--danger {
+  border-color: #fecaca;
+  background: #fef2f2;
+  color: #991b1b;
 }
 
 .tr-empty {
@@ -427,6 +574,14 @@ Con qué se conecta:
   line-height: 1.45;
 }
 
+.tr-muted {
+  color: #6b7280;
+}
+
+.tr-hidden {
+  display: none !important;
+}
+
 @media (max-width: 1100px) {
   .tr-layout {
     grid-template-columns: 280px 1fr;
@@ -438,5 +593,24 @@ Con qué se conecta:
 
   .tr-grid {
     grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 860px) {
+  .tr-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .tr-left {
+    max-height: 320px;
+  }
+
+  .tr-video-summary {
+    grid-template-columns: 1fr;
+  }
+
+  .tr-video-summary__thumb {
+    width: 100%;
+    height: 160px;
   }
 }
