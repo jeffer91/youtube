@@ -6,7 +6,7 @@ Funciones principales:
 - Controlar pasos de la pantalla.
 - Cargar, quitar y ordenar videos.
 - Actualizar nombre y estilo.
-- Guardar el proyecto final.
+- Guardar el proyecto final en Google Sheets como base principal.
 ========================================================= */
 
 import {
@@ -25,11 +25,31 @@ const ESTADO_INICIAL_CP = {
   videos: [],
   errores: [],
   mensajes: [],
-  guardando: false
+  guardando: false,
+  basePrincipal: "GOOGLE_SHEETS",
+  pendienteSync: null
 };
 
 function clonar(valor) {
   return JSON.parse(JSON.stringify(valor));
+}
+
+function crearMensajesGuardado(resultado) {
+  const mensajes = Array.isArray(resultado.mensajes) ? resultado.mensajes : [];
+
+  if (mensajes.length) {
+    return mensajes;
+  }
+
+  if (resultado.guardadoEnGoogleSheets) {
+    return ["Proyecto guardado en Google Sheets."];
+  }
+
+  if (resultado.respaldoLocal) {
+    return ["Proyecto guardado como respaldo local. Google Sheets queda pendiente."];
+  }
+
+  return ["Proyecto guardado correctamente."];
 }
 
 export function crearCargarProyectoService() {
@@ -152,16 +172,21 @@ export function crearCargarProyectoService() {
       return actualizar({
         guardando: false,
         errores: resultado.errores,
-        mensajes: []
+        mensajes: [],
+        pendienteSync: resultado.pendienteSync || null
       });
     }
 
     return actualizar({
       guardando: false,
-      mensajes: ["Proyecto guardado correctamente."],
-      errores: [],
+      mensajes: crearMensajesGuardado(resultado),
+      errores: resultado.errores || [],
       proyectoGuardado: resultado.proyecto,
-      rutaProyecto: resultado.rutaProyecto
+      rutaProyecto: resultado.rutaProyecto,
+      basePrincipal: resultado.basePrincipal || "GOOGLE_SHEETS",
+      guardadoEnGoogleSheets: Boolean(resultado.guardadoEnGoogleSheets),
+      respaldoLocal: Boolean(resultado.respaldoLocal),
+      pendienteSync: resultado.pendienteSync || null
     });
   }
 
