@@ -5,12 +5,13 @@ Funciones principales:
 - Guardar proyectos usando Google Sheets como base principal.
 - Mantener JSON local solo como respaldo temporal.
 - Crear un ID único antes de guardar para que Sheets y JSON usen el mismo proyecto.
-- Devolver estados claros: guardado principal, respaldo local o pendiente de sincronización.
+- Usar PendientesSync real cuando Google Sheets no responde.
 Con qué se conecta:
 - gs-registros.mapper.js
 - gs-operaciones.factory.js
 - cp-guardar.js
 - electron/preload/preload.js
+- electron/services/sync
 ========================================================= */
 
 import {
@@ -68,15 +69,21 @@ function apiRespaldoLocalDisponibleGS() {
 }
 
 async function enviarProyectoAGoogleSheetsGS(proyecto) {
+  const payload = crearPayloadProyectoCompletoGS(proyecto);
+  const operacion = crearOperacionGuardarProyectoGS(payload);
+
   if (!apiGoogleSheetsDisponibleGS()) {
     return {
       ok: false,
-      mensaje: "Google Sheets no está disponible desde la app. Abre el programa con Electron."
+      mensaje: "Google Sheets no está disponible desde la app. Abre el programa con Electron.",
+      pendienteSync: crearOperacionPendienteSyncGS({
+        operacion,
+        error: "API de Google Sheets no disponible."
+      }),
+      pendienteSyncGuardado: false
     };
   }
 
-  const payload = crearPayloadProyectoCompletoGS(proyecto);
-  const operacion = crearOperacionGuardarProyectoGS(payload);
   const resultado = await window.videoEditorAPI.enviarOperacionGoogleSheets(operacion);
 
   if (!resultado?.ok) {
@@ -86,10 +93,11 @@ async function enviarProyectoAGoogleSheetsGS(proyecto) {
       detalle: resultado?.detalle || "",
       errores: resultado?.errores || [],
       operacion,
-      pendienteSync: crearOperacionPendienteSyncGS({
+      pendienteSync: resultado?.pendienteSync || crearOperacionPendienteSyncGS({
         operacion,
         error: resultado?.mensaje || resultado?.detalle || "Error al guardar en Google Sheets."
-      })
+      }),
+      pendienteSyncGuardado: Boolean(resultado?.pendienteSyncGuardado)
     };
   }
 
@@ -97,7 +105,9 @@ async function enviarProyectoAGoogleSheetsGS(proyecto) {
     ok: true,
     mensaje: resultado.mensaje || "Proyecto guardado en Google Sheets.",
     respuesta: resultado,
-    operacion
+    operacion,
+    pendienteSync: null,
+    pendienteSyncGuardado: false
   };
 }
 
@@ -127,6 +137,7 @@ export async function guardarProyectoBasePrincipalGS(proyectoEntrada) {
       guardadoEnGoogleSheets: true,
       respaldoLocal: Boolean(resultadoLocal?.ok),
       pendienteSync: null,
+      pendienteSyncGuardado: false,
       mensajes: [resultadoSheets.mensaje].filter(Boolean),
       errores: resultadoLocal?.ok ? [] : [resultadoLocal?.mensaje || "El respaldo local no se pudo guardar."].filter(Boolean)
     };
@@ -142,9 +153,12 @@ export async function guardarProyectoBasePrincipalGS(proyectoEntrada) {
       guardadoEnGoogleSheets: false,
       respaldoLocal: true,
       pendienteSync: resultadoSheets.pendienteSync || null,
+      pendienteSyncGuardado: Boolean(resultadoSheets.pendienteSyncGuardado),
       mensajes: [
         "Proyecto guardado como respaldo local.",
-        "Google Sheets queda pendiente de sincronización."
+        resultadoSheets.pendienteSyncGuardado
+          ? "Google Sheets queda en PendientesSync para reintentar."
+          : "Google Sheets queda pendiente de sincronización."
       ],
       errores: [resultadoSheets.mensaje || "No se pudo guardar en Google Sheets."]
     };
@@ -159,6 +173,7 @@ export async function guardarProyectoBasePrincipalGS(proyectoEntrada) {
     guardadoEnGoogleSheets: false,
     respaldoLocal: false,
     pendienteSync: resultadoSheets.pendienteSync || null,
+    pendienteSyncGuardado: Boolean(resultadoSheets.pendienteSyncGuardado),
     mensajes: [],
     errores: [
       resultadoSheets.mensaje || "No se pudo guardar en Google Sheets.",
