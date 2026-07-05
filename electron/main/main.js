@@ -2,13 +2,11 @@
 Nombre completo: main.js
 Ruta o ubicación: /electron/main/main.js
 Funciones principales:
-- Crear la ventana principal de Electron.
-- Cargar la interfaz principal desde /src/index.html.
-- Crear carpetas base de datos del proyecto.
-- Permitir seleccionar videos desde el sistema.
-- Guardar el archivo JSON base del proyecto.
-- Exponer funciones generales mediante IPC.
-- Registrar módulos Electron específicos de cada pantalla sin inflar main.js.
+- Crear ventana principal de Electron.
+- Cargar /src/index.html.
+- Crear carpetas base del proyecto.
+- Seleccionar videos y guardar proyecto base.
+- Registrar procesos de Audio y Transcripción.
 ========================================================= */
 
 const { app, BrowserWindow, ipcMain, dialog, shell } = require("electron");
@@ -21,8 +19,11 @@ const {
   registrarMejorarAudioElectron
 } = require("../../src/pantallas/02-mejorar-audio/electron/ma-audio-electron.js");
 
-const VIDEO_EXTENSIONS = new Set([".mp4", ".mov", ".avi", ".mkv", ".webm"]);
+const {
+  registrarTranscripcionElectron
+} = require("../../src/pantallas/03-transcribir-video/electron/tr-electron.js");
 
+const VIDEO_EXTENSIONS = new Set([".mp4", ".mov", ".avi", ".mkv", ".webm"]);
 let ventanaPrincipal = null;
 
 function crearVentanaPrincipal() {
@@ -41,13 +42,8 @@ function crearVentanaPrincipal() {
     }
   });
 
-  const rutaIndex = path.join(__dirname, "../../src/index.html");
-  ventanaPrincipal.loadFile(rutaIndex);
-
-  ventanaPrincipal.once("ready-to-show", () => {
-    ventanaPrincipal.show();
-  });
-
+  ventanaPrincipal.loadFile(path.join(__dirname, "../../src/index.html"));
+  ventanaPrincipal.once("ready-to-show", () => ventanaPrincipal.show());
   ventanaPrincipal.on("closed", () => {
     ventanaPrincipal = null;
   });
@@ -58,9 +54,7 @@ function obtenerVentanaPrincipal() {
 }
 
 function obtenerRutaData() {
-  const estaEmpaquetado = app.isPackaged;
-
-  if (estaEmpaquetado) {
+  if (app.isPackaged) {
     return path.join(app.getPath("userData"), "data");
   }
 
@@ -82,16 +76,11 @@ function asegurarCarpeta(carpeta) {
 }
 
 function asegurarCarpetasBase() {
-  [
-    obtenerRutaData(),
-    obtenerRutaProyectos(),
-    obtenerRutaConfiguracion()
-  ].forEach(asegurarCarpeta);
+  [obtenerRutaData(), obtenerRutaProyectos(), obtenerRutaConfiguracion()].forEach(asegurarCarpeta);
 }
 
 function crearIdArchivo(rutaArchivo, stat) {
-  const base = `${rutaArchivo}-${stat.size}-${stat.mtimeMs}`;
-  return crypto.createHash("sha1").update(base).digest("hex");
+  return crypto.createHash("sha1").update(`${rutaArchivo}-${stat.size}-${stat.mtimeMs}`).digest("hex");
 }
 
 function normalizarVideo(rutaArchivo) {
@@ -99,17 +88,11 @@ function normalizarVideo(rutaArchivo) {
   const nombre = path.basename(rutaArchivo);
 
   if (!VIDEO_EXTENSIONS.has(extension)) {
-    return {
-      ok: false,
-      error: `Formato no compatible: ${nombre}`
-    };
+    return { ok: false, error: `Formato no compatible: ${nombre}` };
   }
 
   if (!fs.existsSync(rutaArchivo)) {
-    return {
-      ok: false,
-      error: `No se encontró el archivo: ${nombre}`
-    };
+    return { ok: false, error: `No se encontró el archivo: ${nombre}` };
   }
 
   const stat = fs.statSync(rutaArchivo);
@@ -136,27 +119,15 @@ function limpiarNombreCarpeta(texto) {
     .replace(/[\u0300-\u036f]/g, "")
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-+|-+$/g, "")
-    .slice(0, 60);
+    .slice(0, 60) || "proyecto";
 }
 
 function crearCarpetaProyecto(nombreProyecto) {
-  const nombreSeguro = limpiarNombreCarpeta(nombreProyecto) || "proyecto";
-
-  const marcaTiempo = new Date()
-    .toISOString()
-    .replace(/[:.]/g, "-")
-    .replace("T", "_")
-    .slice(0, 19);
-
-  const idProyecto = `${marcaTiempo}_${nombreSeguro}`;
+  const marcaTiempo = new Date().toISOString().replace(/[:.]/g, "-").replace("T", "_").slice(0, 19);
+  const idProyecto = `${marcaTiempo}_${limpiarNombreCarpeta(nombreProyecto)}`;
   const rutaProyecto = path.join(obtenerRutaProyectos(), idProyecto);
-
   asegurarCarpeta(rutaProyecto);
-
-  return {
-    idProyecto,
-    rutaProyecto
-  };
+  return { idProyecto, rutaProyecto };
 }
 
 ipcMain.handle("dialog:seleccionar-videos", async () => {
@@ -164,21 +135,11 @@ ipcMain.handle("dialog:seleccionar-videos", async () => {
     const resultado = await dialog.showOpenDialog(ventanaPrincipal, {
       title: "Cargar videos",
       properties: ["openFile", "multiSelections"],
-      filters: [
-        {
-          name: "Videos",
-          extensions: ["mp4", "mov", "avi", "mkv", "webm"]
-        }
-      ]
+      filters: [{ name: "Videos", extensions: ["mp4", "mov", "avi", "mkv", "webm"] }]
     });
 
     if (resultado.canceled) {
-      return {
-        ok: true,
-        cancelado: true,
-        videos: [],
-        errores: []
-      };
+      return { ok: true, cancelado: true, videos: [], errores: [] };
     }
 
     const videos = [];
@@ -186,75 +147,36 @@ ipcMain.handle("dialog:seleccionar-videos", async () => {
 
     resultado.filePaths.forEach((rutaArchivo) => {
       const normalizado = normalizarVideo(rutaArchivo);
-
-      if (normalizado.ok) {
-        videos.push(normalizado.video);
-      } else {
-        errores.push(normalizado.error);
-      }
+      if (normalizado.ok) videos.push(normalizado.video);
+      else errores.push(normalizado.error);
     });
 
-    return {
-      ok: true,
-      cancelado: false,
-      videos,
-      errores
-    };
+    return { ok: true, cancelado: false, videos, errores };
   } catch (error) {
-    return {
-      ok: false,
-      mensaje: "No se pudieron cargar los videos.",
-      detalle: error.message,
-      videos: [],
-      errores: [error.message]
-    };
+    return { ok: false, mensaje: "No se pudieron cargar los videos.", detalle: error.message, videos: [], errores: [error.message] };
   }
 });
 
 ipcMain.handle("archivo:existe", async (_evento, rutaArchivo) => {
   try {
-    return {
-      ok: true,
-      existe: Boolean(rutaArchivo && fs.existsSync(rutaArchivo))
-    };
+    return { ok: true, existe: Boolean(rutaArchivo && fs.existsSync(rutaArchivo)) };
   } catch (error) {
-    return {
-      ok: false,
-      existe: false,
-      mensaje: error.message
-    };
+    return { ok: false, existe: false, mensaje: error.message };
   }
 });
 
 ipcMain.handle("app:ruta-proyectos", async () => {
-  try {
-    asegurarCarpetasBase();
-
-    return {
-      ok: true,
-      ruta: obtenerRutaProyectos()
-    };
-  } catch (error) {
-    return {
-      ok: false,
-      mensaje: error.message
-    };
-  }
+  asegurarCarpetasBase();
+  return { ok: true, ruta: obtenerRutaProyectos() };
 });
 
 ipcMain.handle("app:abrir-carpeta-proyectos", async () => {
   try {
     asegurarCarpetasBase();
     await shell.openPath(obtenerRutaProyectos());
-
-    return {
-      ok: true
-    };
+    return { ok: true };
   } catch (error) {
-    return {
-      ok: false,
-      mensaje: error.message
-    };
+    return { ok: false, mensaje: error.message };
   }
 });
 
@@ -263,15 +185,11 @@ ipcMain.handle("proyecto:guardar-json", async (_evento, proyecto) => {
     asegurarCarpetasBase();
 
     if (!proyecto || !proyecto.nombre || !proyecto.estilo) {
-      return {
-        ok: false,
-        mensaje: "Faltan datos obligatorios del proyecto."
-      };
+      return { ok: false, mensaje: "Faltan datos obligatorios del proyecto." };
     }
 
     const { idProyecto, rutaProyecto } = crearCarpetaProyecto(proyecto.nombre);
     const rutaArchivoProyecto = path.join(rutaProyecto, "proyecto.json");
-
     const proyectoFinal = {
       id: idProyecto,
       nombre: proyecto.nombre,
@@ -283,24 +201,10 @@ ipcMain.handle("proyecto:guardar-json", async (_evento, proyecto) => {
       actualizadoEn: new Date().toISOString()
     };
 
-    fs.writeFileSync(
-      rutaArchivoProyecto,
-      JSON.stringify(proyectoFinal, null, 2),
-      "utf8"
-    );
-
-    return {
-      ok: true,
-      proyecto: proyectoFinal,
-      rutaProyecto,
-      rutaArchivoProyecto
-    };
+    fs.writeFileSync(rutaArchivoProyecto, JSON.stringify(proyectoFinal, null, 2), "utf8");
+    return { ok: true, proyecto: proyectoFinal, rutaProyecto, rutaArchivoProyecto };
   } catch (error) {
-    return {
-      ok: false,
-      mensaje: "No se pudo guardar el proyecto.",
-      detalle: error.message
-    };
+    return { ok: false, mensaje: "No se pudo guardar el proyecto.", detalle: error.message };
   }
 });
 
@@ -312,19 +216,20 @@ registrarMejorarAudioElectron({
   asegurarCarpeta
 });
 
+registrarTranscripcionElectron({
+  ipcMain,
+  obtenerRutaData,
+  asegurarCarpeta
+});
+
 app.whenReady().then(() => {
   asegurarCarpetasBase();
   crearVentanaPrincipal();
-
   app.on("activate", () => {
-    if (BrowserWindow.getAllWindows().length === 0) {
-      crearVentanaPrincipal();
-    }
+    if (BrowserWindow.getAllWindows().length === 0) crearVentanaPrincipal();
   });
 });
 
 app.on("window-all-closed", () => {
-  if (process.platform !== "darwin") {
-    app.quit();
-  }
+  if (process.platform !== "darwin") app.quit();
 });
