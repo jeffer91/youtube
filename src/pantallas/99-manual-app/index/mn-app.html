@@ -5,7 +5,7 @@ Funciones principales:
 - Mostrar dentro del programa el manual general de uso de la app.
 - Explicar el flujo completo por pantallas.
 - Indicar qué partes ya funcionan y qué partes están pendientes.
-- Servir como guía rápida para usar el editor sin salir de Electron.
+- Explicar que Google Sheets será la base principal.
 Con qué se conecta:
 - mn-app.css
 - mn-app.js
@@ -33,7 +33,17 @@ Con qué se conecta:
     </article>
 
     <article class="mn-card app-card">
-      <h3>2. Flujo recomendado</h3>
+      <h3>2. Base principal</h3>
+      <p>
+        La base principal oficial será Google Sheets. Cada proyecto, video, capa, audio, transcripción, subtítulo y exportación debe terminar guardado en sus hojas correspondientes.
+      </p>
+      <p>
+        El JSON local queda solo como respaldo temporal si no hay internet o si la sincronización falla.
+      </p>
+    </article>
+
+    <article class="mn-card app-card">
+      <h3>3. Flujo recomendado</h3>
       <ol>
         <li>Cargar proyecto y videos.</li>
         <li>Mejorar audio.</li>
@@ -48,17 +58,17 @@ Con qué se conecta:
     </article>
 
     <article class="mn-card app-card">
-      <h3>3. Pantalla 01: Cargar</h3>
+      <h3>4. Pantalla 01: Cargar</h3>
       <p>
         Sirve para seleccionar uno o varios videos, ordenarlos, elegir un estilo y guardar el proyecto base.
       </p>
       <p>
-        Al guardar, la app crea un archivo de proyecto y pasa a la pantalla de audio.
+        Al guardar, el registro principal debe ir a Google Sheets y el JSON local queda como respaldo.
       </p>
     </article>
 
     <article class="mn-card app-card">
-      <h3>4. Pantalla 02: Audio</h3>
+      <h3>5. Pantalla 02: Audio</h3>
       <p>
         Permite mejorar voz, reducir ruido y nivelar volumen con FFmpeg desde Electron.
       </p>
@@ -68,7 +78,7 @@ Con qué se conecta:
     </article>
 
     <article class="mn-card app-card">
-      <h3>5. Pantalla 03: Transcribir</h3>
+      <h3>6. Pantalla 03: Transcribir</h3>
       <p>
         Convierte la voz del video en texto limpio, segmentos con tiempo y subtítulos SRT.
       </p>
@@ -78,7 +88,7 @@ Con qué se conecta:
     </article>
 
     <article class="mn-card app-card">
-      <h3>6. Motores de transcripción</h3>
+      <h3>7. Motores de transcripción</h3>
       <ul>
         <li><strong>Manual TXT:</strong> pegar texto simple para pruebas o correcciones rápidas.</li>
         <li><strong>Manual SRT:</strong> pegar subtítulos con tiempos.</li>
@@ -90,7 +100,7 @@ Con qué se conecta:
     </article>
 
     <article class="mn-card app-card">
-      <h3>7. Pantallas 04 a 18</h3>
+      <h3>8. Pantallas 04 a 18</h3>
       <p>
         Estas pantallas están planificadas para subtítulos, silencios, plan IA, cortes, audios, efectos, textos, música, estilo, imágenes, animaciones, transiciones, color, formato cuadrado y limpieza.
       </p>
@@ -100,21 +110,24 @@ Con qué se conecta:
     </article>
 
     <article class="mn-card app-card">
-      <h3>8. Reglas de uso</h3>
+      <h3>9. Reglas de uso</h3>
       <ul>
         <li>Primero carga un proyecto antes de usar las demás pantallas.</li>
         <li>No borres los videos originales mientras el proyecto esté abierto.</li>
         <li>Guarda cada mejora antes de pasar al siguiente paso.</li>
+        <li>Google Sheets manda como base principal.</li>
         <li>Revisa el resultado antes de exportar o continuar.</li>
       </ul>
     </article>
 
     <article class="mn-card app-card mn-card--wide">
-      <h3>9. Estado actual del desarrollo</h3>
+      <h3>10. Estado actual del desarrollo</h3>
       <div class="mn-status-grid">
         <span>01 Cargar: activo</span>
         <span>02 Audio: activo</span>
         <span>03 Transcribir: activo</span>
+        <span>Base principal: Google Sheets en contrato</span>
+        <span>JSON local: respaldo</span>
         <span>04 a 18: pendientes por bloques</span>
       </div>
     </article>
