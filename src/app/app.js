@@ -7,6 +7,7 @@ Funciones principales:
 - Conectar el estado global mínimo.
 - Iniciar el router de pantallas.
 - Cargar por defecto la pantalla 01 Cargar proyecto.
+- Mostrar el manual interno de uso de la app.
 ========================================================= */
 
 import { crearEstadoApp } from "./app-state.js";
@@ -122,6 +123,12 @@ const PANTALLAS_BASE = [
     numero: "18",
     nombre: "Limpiar",
     descripcion: "Imagen clara"
+  },
+  {
+    id: "99-manual-app",
+    numero: "M",
+    nombre: "Manual",
+    descripcion: "Cómo funciona"
   }
 ];
 
