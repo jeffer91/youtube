@@ -9,6 +9,7 @@ Funciones principales:
 - Permitir consultar la carpeta de proyectos.
 - Permitir mejorar audio desde la pantalla 02-mejorar-audio.
 - Permitir transcribir video desde la pantalla 03-transcribir-video.
+- Permitir conectar Google Sheets como base principal.
 - Permitir descargar/copiar el video mejorado.
 ========================================================= */
 
@@ -49,6 +50,22 @@ contextBridge.exposeInMainWorld("videoEditorAPI", {
 
   transcribirVideo: async (datosTranscripcion) => {
     return ipcRenderer.invoke("transcripcion:transcribir-video", datosTranscripcion);
+  },
+
+  obtenerConfigGoogleSheets: async () => {
+    return ipcRenderer.invoke("google-sheets:obtener-configuracion");
+  },
+
+  guardarConfigGoogleSheets: async (config) => {
+    return ipcRenderer.invoke("google-sheets:guardar-configuracion", config);
+  },
+
+  probarConexionGoogleSheets: async () => {
+    return ipcRenderer.invoke("google-sheets:probar-conexion");
+  },
+
+  enviarOperacionGoogleSheets: async (operacion) => {
+    return ipcRenderer.invoke("google-sheets:enviar-operacion", operacion);
   },
 
   plataforma: process.platform
