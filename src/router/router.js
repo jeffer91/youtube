@@ -30,11 +30,11 @@ const RUTAS = {
 
   "03-transcribir-video": {
     id: "03-transcribir-video",
-    html: null,
-    cssId: null,
-    css: null,
-    js: null,
-    init: null
+    html: "./pantallas/03-transcribir-video/index/tr.html",
+    cssId: "css-03-transcribir-video",
+    css: "./pantallas/03-transcribir-video/index/tr.css",
+    js: "../pantallas/03-transcribir-video/index/tr.js",
+    init: "iniciarPantallaTranscribirVideo"
   },
 
   "04-subtitulos-automaticos": {
@@ -170,6 +170,15 @@ const RUTAS = {
     css: null,
     js: null,
     init: null
+  },
+
+  "99-manual-app": {
+    id: "99-manual-app",
+    html: "./pantallas/99-manual-app/index/mn-app.html",
+    cssId: "css-99-manual-app",
+    css: "./pantallas/99-manual-app/index/mn-app.css",
+    js: "../pantallas/99-manual-app/index/mn-app.js",
+    init: "iniciarPantallaManualApp"
   }
 };
 
