@@ -4,9 +4,16 @@ Ruta o ubicación: /electron/main/main.js
 Funciones principales:
 - Crear ventana principal de Electron.
 - Cargar /src/index.html.
-- Crear carpetas base del proyecto.
-- Seleccionar videos y guardar proyecto base.
-- Registrar procesos de Audio, Transcripción, Google Sheets y PendientesSync.
+- Crear carpetas base generales del programa.
+- Seleccionar videos.
+- Registrar módulos Electron de Proyecto local, Audio, Transcripción, Google Sheets y PendientesSync.
+Con qué se conecta:
+- proyecto-electron.js
+- ma-audio-electron.js
+- tr-electron.js
+- gs-electron.js
+- sync-electron.js
+- preload.js
 ========================================================= */
 
 const { app, BrowserWindow, ipcMain, dialog, shell } = require("electron");
@@ -14,6 +21,10 @@ const fs = require("fs");
 const path = require("path");
 const crypto = require("crypto");
 const { pathToFileURL } = require("url");
+
+const {
+  registrarProyectoLocalElectron
+} = require("../services/proyectos/proyecto-electron.js");
 
 const {
   registrarMejorarAudioElectron
@@ -69,10 +80,6 @@ function obtenerRutaData() {
   return path.join(process.cwd(), "data");
 }
 
-function obtenerRutaProyectos() {
-  return path.join(obtenerRutaData(), "proyectos");
-}
-
 function obtenerRutaConfiguracion() {
   return path.join(obtenerRutaData(), "configuracion");
 }
@@ -84,7 +91,7 @@ function asegurarCarpeta(carpeta) {
 }
 
 function asegurarCarpetasBase() {
-  [obtenerRutaData(), obtenerRutaProyectos(), obtenerRutaConfiguracion()].forEach(asegurarCarpeta);
+  [obtenerRutaData(), obtenerRutaConfiguracion()].forEach(asegurarCarpeta);
 }
 
 function crearIdArchivo(rutaArchivo, stat) {
@@ -117,37 +124,6 @@ function normalizarVideo(rutaArchivo) {
       fechaModificacion: stat.mtimeMs
     }
   };
-}
-
-function limpiarNombreCarpeta(texto) {
-  return String(texto || "")
-    .trim()
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "")
-    .slice(0, 60) || "proyecto";
-}
-
-function limpiarIdProyecto(texto) {
-  return String(texto || "")
-    .trim()
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .replace(/[^a-z0-9_-]+/g, "-")
-    .replace(/^-+|-+$/g, "")
-    .slice(0, 100);
-}
-
-function crearCarpetaProyecto(nombreProyecto, idProyectoExistente = "") {
-  const marcaTiempo = new Date().toISOString().replace(/[:.]/g, "-").replace("T", "_").slice(0, 19);
-  const idSeguro = limpiarIdProyecto(idProyectoExistente);
-  const idProyecto = idSeguro || `${marcaTiempo}_${limpiarNombreCarpeta(nombreProyecto)}`;
-  const rutaProyecto = path.join(obtenerRutaProyectos(), idProyecto);
-  asegurarCarpeta(rutaProyecto);
-  return { idProyecto, rutaProyecto };
 }
 
 ipcMain.handle("dialog:seleccionar-videos", async () => {
@@ -185,49 +161,11 @@ ipcMain.handle("archivo:existe", async (_evento, rutaArchivo) => {
   }
 });
 
-ipcMain.handle("app:ruta-proyectos", async () => {
-  asegurarCarpetasBase();
-  return { ok: true, ruta: obtenerRutaProyectos() };
-});
-
-ipcMain.handle("app:abrir-carpeta-proyectos", async () => {
-  try {
-    asegurarCarpetasBase();
-    await shell.openPath(obtenerRutaProyectos());
-    return { ok: true };
-  } catch (error) {
-    return { ok: false, mensaje: error.message };
-  }
-});
-
-ipcMain.handle("proyecto:guardar-json", async (_evento, proyecto) => {
-  try {
-    asegurarCarpetasBase();
-
-    if (!proyecto || !proyecto.nombre || !proyecto.estilo) {
-      return { ok: false, mensaje: "Faltan datos obligatorios del proyecto." };
-    }
-
-    const { idProyecto, rutaProyecto } = crearCarpetaProyecto(proyecto.nombre, proyecto.id);
-    const rutaArchivoProyecto = path.join(rutaProyecto, "proyecto.json");
-    const proyectoFinal = {
-      id: idProyecto,
-      nombre: proyecto.nombre,
-      estilo: proyecto.estilo,
-      videos: Array.isArray(proyecto.videos) ? proyecto.videos : [],
-      pantallaActual: proyecto.pantallaActual || "02-mejorar-audio",
-      capas: Array.isArray(proyecto.capas) ? proyecto.capas : [],
-      basePrincipal: proyecto.basePrincipal || "GOOGLE_SHEETS",
-      respaldoLocal: "JSON_LOCAL_RESPALDO",
-      creadoEn: proyecto.creadoEn || new Date().toISOString(),
-      actualizadoEn: new Date().toISOString()
-    };
-
-    fs.writeFileSync(rutaArchivoProyecto, JSON.stringify(proyectoFinal, null, 2), "utf8");
-    return { ok: true, proyecto: proyectoFinal, rutaProyecto, rutaArchivoProyecto };
-  } catch (error) {
-    return { ok: false, mensaje: "No se pudo guardar el proyecto.", detalle: error.message };
-  }
+registrarProyectoLocalElectron({
+  ipcMain,
+  obtenerRutaData,
+  asegurarCarpeta,
+  shell
 });
 
 registrarMejorarAudioElectron({
