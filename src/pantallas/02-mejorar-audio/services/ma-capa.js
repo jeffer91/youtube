@@ -6,13 +6,30 @@ Funciones principales:
 - Agregar o actualizar la capa en el proyecto.
 - Mantener el video original intacto.
 - Guardar relación entre video y audio mejorado.
+- Enviar el avance de audio a Google Sheets como base principal.
+Con qué se conecta:
+- ma-service.js
+- ma-data.js
+- ma-video.js
+- gs-avances.repository.js
 ========================================================= */
 
 import { MA_CAPA_AUDIO } from "../data/ma-data.js";
 import { videoTieneMejora } from "../helpers/ma-video.js";
 
+import {
+  guardarAudioMejoradoEnGoogleSheetsGS
+} from "../../../shared/google-sheets/gs-avances.repository.js";
+
 function crearIdCapa(videoId) {
   return `${MA_CAPA_AUDIO.id}-${videoId}`;
+}
+
+function enviarAudioGoogleSheetsEnSegundoPlano({ proyecto, video, capa }) {
+  guardarAudioMejoradoEnGoogleSheetsGS({ proyecto, video, capa })
+    .catch((error) => {
+      console.warn("Google Sheets: audio pendiente de sincronización:", error.message);
+    });
 }
 
 export function crearCapaAudioMejorado(video) {
@@ -79,11 +96,17 @@ export function guardarCapaAudioEnProyecto({ proyecto, video }) {
 
   const proyectoActualizado = agregarOActualizarCapa(proyecto, capa);
 
+  enviarAudioGoogleSheetsEnSegundoPlano({
+    proyecto: proyectoActualizado,
+    video,
+    capa
+  });
+
   return {
     ok: true,
     proyecto: proyectoActualizado,
     capa,
-    mensaje: "Capa guardada."
+    mensaje: "Capa guardada. Google Sheets se actualiza como base principal."
   };
 }
 
