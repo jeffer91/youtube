@@ -3,143 +3,140 @@ Nombre completo: tr.js
 Ruta o ubicación: /src/pantallas/03-transcribir-video/index/tr.js
 Funciones principales:
 - Iniciar la pantalla Transcribir video.
-- Recibir el proyecto activo desde el estado global.
-- Crear el estado local de transcripción.
-- Renderizar la estructura visual base.
-- Conectar eventos principales sin procesar archivos pesados.
+- Crear el servicio de transcripción.
+- Renderizar pasos, videos, controles, progreso, resultado y acciones.
+- Conectar eventos de usuario sin duplicarlos.
 Con qué se conecta:
 - tr.html
 - tr.css
-- tr-estado.js
-- tr-selectores.js
-- tr-api-electron.js
-- tr-ui-layout.js
+- tr-service.js
+- Archivos render de 03-transcribir-video
 ========================================================= */
 
 import {
-  crearEstadoTranscripcion,
-  actualizarVideoSeleccionadoTR,
-  actualizarOpcionesTR,
-  limpiarMensajesTR,
-  agregarMensajeTR,
-  agregarErrorTR
-} from "../estado/tr-estado.js";
+  crearTranscripcionService
+} from "../services/tr-service.js";
 
 import {
-  obtenerProyectoActivoSeguroTR,
-  proyectoTieneVideosTR,
-  obtenerElementosPantallaTR
-} from "../estado/tr-selectores.js";
-
-import { crearApiElectronTR } from "../adaptadores/tr-api-electron.js";
+  renderPasosTR,
+  conectarPasosTR,
+  renderSelectorVideosTR,
+  conectarSelectorVideosTR,
+  renderResumenVideoTR
+} from "../render/tr-videos.js";
 
 import {
-  renderPantallaTR,
-  renderSinProyectoTR,
-  conectarEventosLayoutTR
-} from "../ui/tr-ui-layout.js";
+  renderOpcionesTranscripcionTR,
+  conectarControlesTranscripcionTR,
+  renderProgresoTranscripcionTR
+} from "../render/tr-controles.js";
 
-let routerActual = null;
-let estadoAppActual = null;
-let estadoTR = null;
-let apiElectronTR = null;
+import {
+  renderResultadoTranscripcionTR,
+  conectarResultadoTranscripcionTR
+} from "../render/tr-resultado.js";
 
-async function cargarHtmlTR() {
-  const respuesta = await fetch(new URL("./tr.html", import.meta.url));
+import {
+  renderMensajesTranscripcionTR,
+  renderAccionesTranscripcionTR,
+  conectarAccionesTranscripcionTR
+} from "../render/tr-botones.js";
 
-  if (!respuesta.ok) {
-    throw new Error("No se pudo cargar tr.html.");
+let serviceActualTR = null;
+let routerActualTR = null;
+let estadoAppActualTR = null;
+
+function obtenerElementosTR() {
+  return {
+    pasos: document.getElementById("trPasos"),
+    mensajes: document.getElementById("trMensajes"),
+    selectorVideos: document.getElementById("trSelectorVideos"),
+    resumenVideo: document.getElementById("trResumenVideo"),
+    opciones: document.getElementById("trOpciones"),
+    progreso: document.getElementById("trProgreso"),
+    resultado: document.getElementById("trResultado"),
+    acciones: document.getElementById("trAcciones")
+  };
+}
+
+function obtenerProyectoActivoTR(estadoApp) {
+  if (!estadoApp?.obtenerProyectoActivo) {
+    return null;
   }
 
-  return await respuesta.text();
+  return estadoApp.obtenerProyectoActivo();
 }
 
-function pantallaExisteEnRootTR(root) {
-  return Boolean(root?.querySelector?.("#trRoot"));
-}
+function renderizarTR(service) {
+  const estado = service.obtenerEstado();
+  const elementos = obtenerElementosTR();
+  const videoActual = service.obtenerVideoActual();
 
-function renderizarTR() {
-  const elementos = obtenerElementosPantallaTR();
+  renderPasosTR({
+    contenedor: elementos.pasos,
+    pasos: estado.pasos,
+    pasoActual: estado.pasoActual
+  });
 
-  renderPantallaTR({
-    elementos,
-    estado: estadoTR
+  renderMensajesTranscripcionTR({
+    contenedor: elementos.mensajes,
+    estado
+  });
+
+  renderSelectorVideosTR({
+    contenedor: elementos.selectorVideos,
+    videos: estado.videos,
+    videoActualId: estado.videoActualId
+  });
+
+  renderResumenVideoTR({
+    contenedor: elementos.resumenVideo,
+    video: videoActual,
+    transcripcion: estado.transcripcionActual
+  });
+
+  renderOpcionesTranscripcionTR({
+    contenedor: elementos.opciones,
+    estado
+  });
+
+  renderProgresoTranscripcionTR({
+    contenedor: elementos.progreso,
+    estado
+  });
+
+  renderResultadoTranscripcionTR({
+    contenedor: elementos.resultado,
+    estado
+  });
+
+  renderAccionesTranscripcionTR({
+    contenedor: elementos.acciones,
+    estado
+  });
+
+  conectarPasosTR({ service });
+  conectarSelectorVideosTR({ service });
+  conectarControlesTranscripcionTR({ service });
+  conectarResultadoTranscripcionTR({ service });
+  conectarAccionesTranscripcionTR({
+    service,
+    router: routerActualTR
   });
 }
 
-function seleccionarVideoTR(videoId) {
-  estadoTR = actualizarVideoSeleccionadoTR(estadoTR, videoId);
-  estadoTR = limpiarMensajesTR(estadoTR);
-  renderizarTR();
-}
+export async function iniciarPantallaTranscribirVideo({ router, estadoApp }) {
+  routerActualTR = router;
+  estadoAppActualTR = estadoApp;
 
-function cambiarOpcionTR(nombre, valor) {
-  estadoTR = actualizarOpcionesTR(estadoTR, {
-    [nombre]: valor
+  serviceActualTR = crearTranscripcionService({
+    proyectoActivo: obtenerProyectoActivoTR(estadoAppActualTR),
+    estadoApp: estadoAppActualTR
   });
 
-  renderizarTR();
-}
-
-async function probarConexionTR() {
-  estadoTR = limpiarMensajesTR(estadoTR);
-
-  const resultado = apiElectronTR.verificarDisponibilidad();
-
-  if (!resultado.ok) {
-    estadoTR = agregarErrorTR(estadoTR, resultado.mensaje);
-    renderizarTR();
-    return;
-  }
-
-  estadoTR = agregarMensajeTR(
-    estadoTR,
-    "La pantalla está lista. En el siguiente bloque conectaremos Electron para procesar transcripciones."
-  );
-
-  renderizarTR();
-}
-
-function irAMejorarAudioTR() {
-  if (!routerActual?.irA) {
-    return;
-  }
-
-  routerActual.irA("02-mejorar-audio");
-}
-
-function conectarEventosTR() {
-  conectarEventosLayoutTR({
-    onSeleccionarVideo: seleccionarVideoTR,
-    onCambiarOpcion: cambiarOpcionTR,
-    onProbarConexion: probarConexionTR,
-    onIrAMejorarAudio: irAMejorarAudioTR
-  });
-}
-
-export async function iniciarPantallaTranscribirVideo({ root, router, estadoApp }) {
-  routerActual = router;
-  estadoAppActual = estadoApp;
-  apiElectronTR = crearApiElectronTR();
-
-  const proyectoActivo = obtenerProyectoActivoSeguroTR(estadoAppActual);
-
-  if (!proyectoTieneVideosTR(proyectoActivo)) {
-    renderSinProyectoTR(root, [
-      "Primero carga un proyecto con videos.",
-      "La transcripción necesita un video seleccionado para poder trabajar."
-    ]);
-    return;
-  }
-
-  if (!pantallaExisteEnRootTR(root)) {
-    root.innerHTML = await cargarHtmlTR();
-  }
-
-  estadoTR = crearEstadoTranscripcion({
-    proyectoActivo
+  serviceActualTR.escuchar(() => {
+    renderizarTR(serviceActualTR);
   });
 
-  renderizarTR();
-  conectarEventosTR();
+  renderizarTR(serviceActualTR);
 }
