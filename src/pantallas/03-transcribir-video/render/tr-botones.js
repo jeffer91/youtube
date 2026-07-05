@@ -3,7 +3,7 @@ Nombre completo: tr-botones.js
 Ruta o ubicación: /src/pantallas/03-transcribir-video/render/tr-botones.js
 Funciones principales:
 - Renderizar mensajes y acciones principales de Transcribir video.
-- Conectar botones de transcribir, guardar y exportar.
+- Conectar botones de verificar Whisper, transcribir, guardar y exportar.
 - Mantener botones bloqueados durante procesos.
 Con qué se conecta:
 - tr.js
@@ -44,13 +44,23 @@ export function renderAccionesTranscripcionTR({ contenedor, estado }) {
     return;
   }
 
-  const bloqueado = Boolean(estado.procesando || estado.guardando || estado.exportando);
+  const bloqueado = Boolean(
+    estado.procesando ||
+    estado.guardando ||
+    estado.exportando ||
+    estado.verificandoWhisper
+  );
+
   const tieneTranscripcion = Boolean(estado.transcripcionActual?.texto);
   const proyectoValido = Boolean(estado.proyectoValido);
 
   contenedor.innerHTML = `
     <button id="trBtnVolverAudio" class="tr-btn" type="button" ${bloqueado ? "disabled" : ""}>
       Volver a audio
+    </button>
+
+    <button id="trBtnVerificarWhisper" class="tr-btn" type="button" ${bloqueado ? "disabled" : ""}>
+      ${estado.verificandoWhisper ? "Verificando..." : "Verificar Whisper"}
     </button>
 
     <button id="trBtnExportarTxt" class="tr-btn" type="button" ${bloqueado || !tieneTranscripcion ? "disabled" : ""}>
@@ -77,6 +87,7 @@ export function renderAccionesTranscripcionTR({ contenedor, estado }) {
 
 export function conectarAccionesTranscripcionTR({ service, router }) {
   const btnVolverAudio = document.getElementById("trBtnVolverAudio");
+  const btnVerificarWhisper = document.getElementById("trBtnVerificarWhisper");
   const btnTranscribir = document.getElementById("trBtnTranscribir");
   const btnGuardar = document.getElementById("trBtnGuardar");
   const btnTxt = document.getElementById("trBtnExportarTxt");
@@ -88,6 +99,12 @@ export function conectarAccionesTranscripcionTR({ service, router }) {
       if (router?.irA) {
         router.irA("02-mejorar-audio");
       }
+    });
+  }
+
+  if (btnVerificarWhisper) {
+    btnVerificarWhisper.addEventListener("click", () => {
+      service.verificarWhisperActual();
     });
   }
 
