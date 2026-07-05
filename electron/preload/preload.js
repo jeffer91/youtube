@@ -7,6 +7,7 @@ Funciones principales:
 - Permitir verificar archivos.
 - Permitir guardar el proyecto base.
 - Permitir consultar la carpeta de proyectos.
+- Permitir usar respaldo local JSON de proyectos.
 - Permitir mejorar audio desde la pantalla 02-mejorar-audio.
 - Permitir transcribir video desde la pantalla 03-transcribir-video.
 - Permitir conectar Google Sheets como base principal.
@@ -35,6 +36,18 @@ contextBridge.exposeInMainWorld("videoEditorAPI", {
 
   guardarProyecto: async (proyecto) => {
     return ipcRenderer.invoke("proyecto:guardar-json", proyecto);
+  },
+
+  guardarProyectoLocal: async (proyecto) => {
+    return ipcRenderer.invoke("proyecto-local:guardar", proyecto);
+  },
+
+  leerProyectoLocal: async (rutaArchivoProyecto) => {
+    return ipcRenderer.invoke("proyecto-local:leer", rutaArchivoProyecto);
+  },
+
+  listarProyectosLocales: async () => {
+    return ipcRenderer.invoke("proyecto-local:listar");
   },
 
   mejorarAudio: async (datosMejora) => {
