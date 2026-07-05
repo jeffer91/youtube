@@ -4,13 +4,14 @@ Ruta o ubicación: /src/shared/google-sheets/gs-avances.repository.js
 Funciones principales:
 - Guardar avances de pantallas en Google Sheets como base principal.
 - Enviar audio mejorado, capas y transcripciones a Google Sheets.
-- Devolver pendienteSync cuando Google Sheets no responda.
+- Usar PendientesSync real cuando Google Sheets no responde.
 - No detener el flujo si el respaldo local ya fue actualizado.
 Con qué se conecta:
 - gs-registros.mapper.js
 - gs-operaciones.factory.js
 - ma-service.js
 - tr-service.js
+- electron/services/sync
 ========================================================= */
 
 import {
@@ -34,7 +35,8 @@ function crearRespuestaNoDisponibleGS(operacion) {
     pendienteSync: crearOperacionPendienteSyncGS({
       operacion,
       error: "API de Google Sheets no disponible."
-    })
+    }),
+    pendienteSyncGuardado: false
   };
 }
 
@@ -51,10 +53,11 @@ async function enviarOperacionAvanceGS(operacion) {
       mensaje: resultado?.mensaje || "No se pudo guardar el avance en Google Sheets.",
       detalle: resultado?.detalle || "",
       errores: resultado?.errores || [],
-      pendienteSync: crearOperacionPendienteSyncGS({
+      pendienteSync: resultado?.pendienteSync || crearOperacionPendienteSyncGS({
         operacion,
         error: resultado?.mensaje || resultado?.detalle || "Error al enviar avance a Google Sheets."
-      })
+      }),
+      pendienteSyncGuardado: Boolean(resultado?.pendienteSyncGuardado)
     };
   }
 
@@ -62,7 +65,8 @@ async function enviarOperacionAvanceGS(operacion) {
     ok: true,
     mensaje: resultado.mensaje || "Avance guardado en Google Sheets.",
     respuesta: resultado,
-    pendienteSync: null
+    pendienteSync: null,
+    pendienteSyncGuardado: false
   };
 }
 
