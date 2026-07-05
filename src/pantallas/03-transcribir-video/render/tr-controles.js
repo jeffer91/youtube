@@ -4,6 +4,7 @@ Ruta o ubicación: /src/pantallas/03-transcribir-video/render/tr-controles.js
 Funciones principales:
 - Renderizar opciones de motor, idioma y texto manual.
 - Renderizar progreso y estado del proceso de transcripción.
+- Mostrar disponibilidad de Whisper local.
 - Conectar controles con el servicio de transcripción.
 Con qué se conecta:
 - tr.js
@@ -109,6 +110,22 @@ export function conectarControlesTranscripcionTR({ service }) {
   }
 }
 
+function crearEstadoWhisperTextoTR(estado) {
+  if (estado.verificandoWhisper) {
+    return "Whisper: verificando";
+  }
+
+  if (estado.whisperDisponible === true) {
+    return "Whisper: disponible";
+  }
+
+  if (estado.whisperDisponible === false) {
+    return "Whisper: no disponible";
+  }
+
+  return "Whisper: sin verificar";
+}
+
 export function renderProgresoTranscripcionTR({ contenedor, estado }) {
   if (!contenedor) {
     return;
@@ -139,6 +156,7 @@ export function renderProgresoTranscripcionTR({ contenedor, estado }) {
         <div class="tr-chip-row">
           <span class="tr-chip">Motor: ${escaparHtmlTR(motor?.nombre || "Sin motor")}</span>
           <span class="tr-chip">Idioma: ${escaparHtmlTR(estado.idioma || "es")}</span>
+          <span class="tr-chip">${escaparHtmlTR(crearEstadoWhisperTextoTR(estado))}</span>
           <span class="tr-chip">Palabras: ${escaparHtmlTR(String(totalPalabras))}</span>
           <span class="tr-chip">Segmentos: ${escaparHtmlTR(String(totalSegmentos))}</span>
         </div>
