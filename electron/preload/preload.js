@@ -10,6 +10,7 @@ Funciones principales:
 - Permitir mejorar audio desde la pantalla 02-mejorar-audio.
 - Permitir transcribir video desde la pantalla 03-transcribir-video.
 - Permitir conectar Google Sheets como base principal.
+- Permitir consultar y reintentar PendientesSync.
 - Permitir descargar/copiar el video mejorado.
 ========================================================= */
 
@@ -66,6 +67,22 @@ contextBridge.exposeInMainWorld("videoEditorAPI", {
 
   enviarOperacionGoogleSheets: async (operacion) => {
     return ipcRenderer.invoke("google-sheets:enviar-operacion", operacion);
+  },
+
+  listarPendientesSync: async () => {
+    return ipcRenderer.invoke("sync:pendientes-listar");
+  },
+
+  obtenerResumenPendientesSync: async () => {
+    return ipcRenderer.invoke("sync:pendientes-resumen");
+  },
+
+  guardarPendienteSync: async (pendiente) => {
+    return ipcRenderer.invoke("sync:pendientes-guardar", pendiente);
+  },
+
+  reintentarPendientesSync: async () => {
+    return ipcRenderer.invoke("sync:pendientes-reintentar");
   },
 
   plataforma: process.platform
