@@ -6,7 +6,7 @@ Funciones principales:
 - Cargar /src/index.html.
 - Crear carpetas base del proyecto.
 - Seleccionar videos y guardar proyecto base.
-- Registrar procesos de Audio, Transcripción y Google Sheets.
+- Registrar procesos de Audio, Transcripción, Google Sheets y PendientesSync.
 ========================================================= */
 
 const { app, BrowserWindow, ipcMain, dialog, shell } = require("electron");
@@ -26,6 +26,10 @@ const {
 const {
   registrarGoogleSheetsElectron
 } = require("../services/google-sheets/gs-electron.js");
+
+const {
+  registrarPendientesSyncElectron
+} = require("../services/sync/sync-electron.js");
 
 const VIDEO_EXTENSIONS = new Set([".mp4", ".mov", ".avi", ".mkv", ".webm"]);
 let ventanaPrincipal = null;
@@ -241,6 +245,12 @@ registrarTranscripcionElectron({
 });
 
 registrarGoogleSheetsElectron({
+  ipcMain,
+  obtenerRutaData,
+  asegurarCarpeta
+});
+
+registrarPendientesSyncElectron({
   ipcMain,
   obtenerRutaData,
   asegurarCarpeta
