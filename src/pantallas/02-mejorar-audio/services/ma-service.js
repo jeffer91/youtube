@@ -5,13 +5,14 @@ Funciones principales:
 - Mantener el estado interno de Mejorar audio.
 - Cambiar páginas internas.
 - Manejar perfiles inteligentes de audio.
-- Mejorar audio del video seleccionado.
+- Mejorar audio de todos los videos cargados.
 - Guardar en estado el video mejorado real.
 - Guardar diagnóstico, modo usado y filtros usados.
 - Comparar original y mejorado.
 - Guardar capa y descargar video mejorado.
 Con qué se conecta:
 - ma-audio.js
+- ma-lote.js
 - ma-capa.js
 - ma-descarga.js
 - ma-data.js
@@ -20,10 +21,14 @@ Con qué se conecta:
 ========================================================= */
 
 import {
-  mejorarAudioVideo,
   crearControlesSoloRuido,
   crearControlesPerfilAudio
 } from "./ma-audio.js";
+
+import {
+  procesarLoteAudioVideos,
+  crearProgresoLoteVacio
+} from "./ma-lote.js";
 
 import {
   obtenerPerfilInicialMA,
@@ -72,6 +77,14 @@ function videoTieneMejora(video) {
   return Boolean(video?.audioMejorado?.url || video?.audioMejorado?.ruta);
 }
 
+function obtenerPrimerVideoConMejora(videos) {
+  if (!Array.isArray(videos)) {
+    return null;
+  }
+
+  return videos.find((video) => videoTieneMejora(video)) || videos[0] || null;
+}
+
 function actualizarVideoEnLista(videos, videoActualizado) {
   if (!Array.isArray(videos)) {
     return [];
@@ -97,6 +110,18 @@ function actualizarVideoEnProyecto(proyecto, videoActualizado) {
   return {
     ...proyecto,
     videos: actualizarVideoEnLista(proyecto.videos, videoActualizado),
+    actualizadoEn: new Date().toISOString()
+  };
+}
+
+function actualizarVideosEnProyecto(proyecto, videosActualizados) {
+  if (!proyecto || !Array.isArray(videosActualizados)) {
+    return proyecto;
+  }
+
+  return {
+    ...proyecto,
+    videos: videosActualizados,
     actualizadoEn: new Date().toISOString()
   };
 }
@@ -157,6 +182,11 @@ function crearEstadoInicial({ proyectoActivo }) {
     ultimoModoProcesamiento: "",
     ultimosFiltrosUsados: [],
     ultimosErroresProcesamiento: [],
+    progresoGlobal: crearProgresoLoteVacio(),
+    resultadosLoteAudio: [],
+    loteCompletado: false,
+    loteConErrores: false,
+    puedeAvanzarTranscripcion: false,
     mensajes: [],
     errores: []
   };
@@ -176,6 +206,17 @@ function crearResumenResultado(resultado) {
     analisisAudio: resultado?.analisisAudio || resultado?.audioMejorado?.analisisAudio || null,
     erroresProcesamiento: resultado?.erroresProcesamiento || resultado?.audioMejorado?.erroresProcesamiento || []
   };
+}
+
+function crearResumenDesdeAudioMejorado(audioMejorado) {
+  return crearResumenResultado({
+    audioMejorado,
+    diagnostico: null,
+    decisionAudio: audioMejorado?.decisionAudio || null,
+    capacidadesIA: audioMejorado?.capacidadesIA || null,
+    analisisAudio: audioMejorado?.analisisAudio || null,
+    erroresProcesamiento: audioMejorado?.erroresProcesamiento || []
+  });
 }
 
 function crearMensajeMotor(audioMejorado) {
@@ -206,6 +247,31 @@ function crearMensajeMotor(audioMejorado) {
   return "Audio mejorado correctamente.";
 }
 
+function crearMensajeLoteExitoso(resultadoLote) {
+  if (!resultadoLote) {
+    return "Audio mejorado correctamente en todos los videos.";
+  }
+
+  if (resultadoLote.total === 1) {
+    return "Audio mejorado correctamente en 1 video.";
+  }
+
+  return `Audio mejorado correctamente en ${resultadoLote.total} videos.`;
+}
+
+function crearErroresLote(resultadoLote) {
+  const errores = Array.isArray(resultadoLote?.errores) ? resultadoLote.errores : [];
+
+  if (!errores.length) {
+    return ["No se pudo completar la mejora de audio de todos los videos."];
+  }
+
+  return [
+    "No se pudo completar la mejora de audio de todos los videos.",
+    ...errores.slice(0, 4)
+  ];
+}
+
 function validarVideoActual(estado) {
   const video = obtenerVideoPorId(estado.videos, estado.videoActualId);
 
@@ -228,6 +294,36 @@ function validarVideoActual(estado) {
   return {
     ok: true,
     video,
+    errores: []
+  };
+}
+
+function validarVideosLote(estado) {
+  const videos = Array.isArray(estado.videos) ? estado.videos : [];
+
+  if (!videos.length) {
+    return {
+      ok: false,
+      videos: [],
+      errores: ["No hay videos cargados para mejorar audio."]
+    };
+  }
+
+  const videosSinRuta = videos.filter((video) => !video?.ruta && !video?.url);
+
+  if (videosSinRuta.length) {
+    return {
+      ok: false,
+      videos,
+      errores: [
+        `Hay ${videosSinRuta.length} video(s) sin ruta válida. Vuelve a cargar el proyecto.`
+      ]
+    };
+  }
+
+  return {
+    ok: true,
+    videos,
     errores: []
   };
 }
@@ -297,6 +393,29 @@ function obtenerPaginaAnterior(paginaActual) {
   return PAGINAS_VALIDAS[Math.max(index - 1, 0)];
 }
 
+function obtenerMensajeProgreso(progreso) {
+  if (!progreso?.mensaje) {
+    return "Mejorando audio de todos los videos...";
+  }
+
+  return progreso.mensaje;
+}
+
+function obtenerEstadoDiagnosticoDesdeVideo(video) {
+  const resumen = crearResumenDesdeAudioMejorado(video?.audioMejorado || null);
+
+  return {
+    resultadoActual: resumen.audioMejorado,
+    ultimoAnalisisAudio: resumen.analisisAudio,
+    ultimoDiagnosticoAudio: resumen.diagnostico,
+    ultimaDecisionAudio: resumen.decisionAudio,
+    ultimasCapacidadesIA: resumen.capacidadesIA,
+    ultimoModoProcesamiento: resumen.audioMejorado?.modoProcesamiento || "",
+    ultimosFiltrosUsados: resumen.audioMejorado?.filtrosAudio || [],
+    ultimosErroresProcesamiento: resumen.erroresProcesamiento
+  };
+}
+
 export function crearMejorarAudioService({ proyectoActivo, estadoApp }) {
   let proyecto = proyectoActivo;
   let estado = crearEstadoInicial({ proyectoActivo: proyecto });
@@ -324,6 +443,12 @@ export function crearMejorarAudioService({ proyectoActivo, estadoApp }) {
 
     notificar();
     return obtenerEstado();
+  }
+
+  function sincronizarProyectoActivo() {
+    if (estadoApp?.establecerProyectoActivo) {
+      estadoApp.establecerProyectoActivo(proyecto);
+    }
   }
 
   function limpiarMensajes() {
@@ -376,19 +501,14 @@ export function crearMejorarAudioService({ proyectoActivo, estadoApp }) {
       });
     }
 
+    const diagnosticoVideo = obtenerEstadoDiagnosticoDesdeVideo(video);
+
     return actualizar({
       videoActualId: video.id,
       paginaActual: "controles",
       modoComparacion: "mejorado",
       capaGuardada: false,
-      resultadoActual: video.audioMejorado || null,
-      ultimoAnalisisAudio: video.audioMejorado?.analisisAudio || null,
-      ultimoDiagnosticoAudio: null,
-      ultimaDecisionAudio: video.audioMejorado?.decisionAudio || null,
-      ultimasCapacidadesIA: video.audioMejorado?.capacidadesIA || null,
-      ultimoModoProcesamiento: video.audioMejorado?.modoProcesamiento || "",
-      ultimosFiltrosUsados: video.audioMejorado?.filtrosAudio || [],
-      ultimosErroresProcesamiento: video.audioMejorado?.erroresProcesamiento || [],
+      ...diagnosticoVideo,
       mensajes: [],
       errores: []
     });
@@ -408,6 +528,8 @@ export function crearMejorarAudioService({ proyectoActivo, estadoApp }) {
           activo: Boolean(activo)
         }
       },
+      loteCompletado: false,
+      puedeAvanzarTranscripcion: false,
       mensajes: [],
       errores: []
     });
@@ -427,6 +549,8 @@ export function crearMejorarAudioService({ proyectoActivo, estadoApp }) {
           nivel: limpiarNivel(nivel)
         }
       },
+      loteCompletado: false,
+      puedeAvanzarTranscripcion: false,
       mensajes: [],
       errores: []
     });
@@ -439,6 +563,8 @@ export function crearMejorarAudioService({ proyectoActivo, estadoApp }) {
     return actualizar({
       perfilAudio: perfil.id,
       controles: normalizarControles(controles),
+      loteCompletado: false,
+      puedeAvanzarTranscripcion: false,
       mensajes: [crearMensajePerfil(perfil.id)],
       errores: []
     });
@@ -450,6 +576,8 @@ export function crearMejorarAudioService({ proyectoActivo, estadoApp }) {
     return actualizar({
       perfilAudio: "personalizado",
       controles: normalizarControles(controles),
+      loteCompletado: false,
+      puedeAvanzarTranscripcion: false,
       mensajes: ["Modo limpiar ruido aplicado."],
       errores: []
     });
@@ -467,12 +595,12 @@ export function crearMejorarAudioService({ proyectoActivo, estadoApp }) {
     });
   }
 
-  async function mejorarAudioActual() {
-    const validadoVideo = validarVideoActual(estado);
+  async function mejorarAudioTodos() {
+    const validadoVideos = validarVideosLote(estado);
 
-    if (!validadoVideo.ok) {
+    if (!validadoVideos.ok) {
       return actualizar({
-        errores: validadoVideo.errores,
+        errores: validadoVideos.errores,
         mensajes: []
       });
     }
@@ -486,63 +614,108 @@ export function crearMejorarAudioService({ proyectoActivo, estadoApp }) {
       });
     }
 
+    let videosTrabajo = clonar(validadoVideos.videos);
+
     actualizar({
       procesando: true,
-      mensajes: ["Mejorando audio. Espera un momento..."],
+      guardando: false,
+      descargando: false,
+      capaGuardada: false,
+      resultadoActual: null,
+      resultadosLoteAudio: [],
+      loteCompletado: false,
+      loteConErrores: false,
+      puedeAvanzarTranscripcion: false,
+      progresoGlobal: {
+        ...crearProgresoLoteVacio(),
+        activo: true,
+        estado: "INICIANDO",
+        total: videosTrabajo.length,
+        mensaje: `Preparando ${videosTrabajo.length} video(s) para mejorar audio.`
+      },
+      mensajes: ["Mejorando audio de todos los videos..."],
       errores: []
     });
 
-    const resultado = await mejorarAudioVideo({
-      video: validadoVideo.video,
+    const resultadoLote = await procesarLoteAudioVideos({
+      videos: videosTrabajo,
       controles: validadoControles.controles,
-      perfilAudio: estado.perfilAudio
+      perfilAudio: estado.perfilAudio,
+
+      onProgreso: async (progreso) => {
+        actualizar({
+          progresoGlobal: progreso,
+          mensajes: [obtenerMensajeProgreso(progreso)],
+          errores: []
+        });
+      },
+
+      onVideoProcesado: async ({ videoActualizado, resultadoVideo }) => {
+        videosTrabajo = actualizarVideoEnLista(videosTrabajo, videoActualizado);
+        proyecto = actualizarVideoEnProyecto(proyecto, videoActualizado);
+        sincronizarProyectoActivo();
+
+        const diagnosticoVideo = resultadoVideo?.ok
+          ? obtenerEstadoDiagnosticoDesdeVideo(videoActualizado)
+          : {};
+
+        actualizar({
+          videos: videosTrabajo,
+          videoActualId: videoActualizado.id,
+          ...diagnosticoVideo,
+          resultadosLoteAudio: [
+            ...estado.resultadosLoteAudio.filter((item) => item.videoId !== resultadoVideo.videoId),
+            resultadoVideo
+          ]
+        });
+      }
     });
 
-    if (!resultado.ok) {
+    proyecto = actualizarVideosEnProyecto(proyecto, videosTrabajo);
+    sincronizarProyectoActivo();
+
+    const primerVideoMejorado = obtenerPrimerVideoConMejora(videosTrabajo);
+    const diagnosticoFinal = obtenerEstadoDiagnosticoDesdeVideo(primerVideoMejorado);
+
+    if (!resultadoLote.ok) {
       return actualizar({
+        videos: videosTrabajo,
         procesando: false,
-        errores: [resultado.mensaje || "No se pudo mejorar el audio."],
+        paginaActual: "controles",
+        videoActualId: primerVideoMejorado?.id || estado.videoActualId,
+        ...diagnosticoFinal,
+        progresoGlobal: resultadoLote.progreso || crearProgresoLoteVacio(),
+        resultadosLoteAudio: resultadoLote.resultados || [],
+        loteCompletado: false,
+        loteConErrores: true,
+        puedeAvanzarTranscripcion: false,
         mensajes: [],
-        resultadoActual: null,
-        ultimoDiagnosticoAudio: resultado.diagnostico || null,
-        ultimaDecisionAudio: resultado.decisionAudio || null,
-        ultimasCapacidadesIA: resultado.capacidadesIA || null,
-        ultimosErroresProcesamiento: resultado.erroresProcesamiento || []
+        errores: crearErroresLote(resultadoLote)
       });
     }
 
-    const resumen = crearResumenResultado(resultado);
-    const videoActualizado = {
-      ...validadoVideo.video,
-      audioMejorado: resumen.audioMejorado
-    };
-
-    const videosActualizados = actualizarVideoEnLista(estado.videos, videoActualizado);
-    proyecto = actualizarVideoEnProyecto(proyecto, videoActualizado);
-
-    if (estadoApp?.establecerProyectoActivo) {
-      estadoApp.establecerProyectoActivo(proyecto);
-    }
-
-    const mensajeMotor = crearMensajeMotor(resumen.audioMejorado);
-
     return actualizar({
-      videos: videosActualizados,
+      videos: videosTrabajo,
       procesando: false,
       paginaActual: "comparar",
       modoComparacion: "mejorado",
-      capaGuardada: false,
-      resultadoActual: resumen.audioMejorado,
-      ultimoAnalisisAudio: resumen.analisisAudio,
-      ultimoDiagnosticoAudio: resumen.diagnostico,
-      ultimaDecisionAudio: resumen.decisionAudio,
-      ultimasCapacidadesIA: resumen.capacidadesIA,
-      ultimoModoProcesamiento: resumen.audioMejorado?.modoProcesamiento || "",
-      ultimosFiltrosUsados: resumen.audioMejorado?.filtrosAudio || [],
-      ultimosErroresProcesamiento: resumen.erroresProcesamiento,
-      mensajes: [mensajeMotor],
+      videoActualId: primerVideoMejorado?.id || estado.videoActualId,
+      ...diagnosticoFinal,
+      progresoGlobal: resultadoLote.progreso || crearProgresoLoteVacio(),
+      resultadosLoteAudio: resultadoLote.resultados || [],
+      loteCompletado: true,
+      loteConErrores: false,
+      puedeAvanzarTranscripcion: true,
+      mensajes: [
+        crearMensajeLoteExitoso(resultadoLote),
+        crearMensajeMotor(primerVideoMejorado?.audioMejorado)
+      ],
       errores: []
     });
+  }
+
+  async function mejorarAudioActual() {
+    return await mejorarAudioTodos();
   }
 
   async function descargarActual() {
@@ -608,10 +781,7 @@ export function crearMejorarAudioService({ proyectoActivo, estadoApp }) {
     }
 
     proyecto = resultado.proyecto || proyecto;
-
-    if (estadoApp?.establecerProyectoActivo) {
-      estadoApp.establecerProyectoActivo(proyecto);
-    }
+    sincronizarProyectoActivo();
 
     return actualizar({
       guardando: false,
@@ -651,6 +821,7 @@ export function crearMejorarAudioService({ proyectoActivo, estadoApp }) {
     aplicarSoloLimpiarRuido,
     cambiarModoComparacion,
     mejorarAudioActual,
+    mejorarAudioTodos,
     descargarActual,
     guardarCapaActual,
     obtenerProyectoActualizado,
