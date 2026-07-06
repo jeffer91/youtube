@@ -4,7 +4,7 @@ Ruta o ubicación: /src/pantallas/02-mejorar-audio/index/ma.js
 Funciones principales:
 - Iniciar la pantalla Mejorar audio.
 - Recibir los videos cargados desde Cargar proyecto.
-- Renderizar páginas, controles, comparación y guardado.
+- Renderizar páginas, controles, progreso, comparación y guardado.
 - Conectar botones y acciones de audio inteligente.
 - Guardar la mejora como capa sin dañar el video original.
 Con qué se conecta:
@@ -14,6 +14,7 @@ Con qué se conecta:
 - ma-pasos.js
 - ma-videos.js
 - ma-controles.js
+- ma-progreso.js
 - ma-comparar.js
 ========================================================= */
 
@@ -36,6 +37,8 @@ import {
   renderControlesMA,
   conectarControlesMA
 } from "../render/ma-controles.js";
+
+import { renderProgresoMA } from "../render/ma-progreso.js";
 
 import {
   renderComparadorMA,
@@ -66,6 +69,7 @@ function obtenerElementosMA() {
     mensajes: document.getElementById("maMensajes"),
     selectorVideos: document.getElementById("maSelectorVideos"),
     resumenVideo: document.getElementById("maResumenVideo"),
+    progreso: document.getElementById("maProgreso"),
     contenido: document.getElementById("maContenido"),
     acciones: document.getElementById("maAcciones")
   };
@@ -195,7 +199,8 @@ function renderizarMA(service) {
 
   renderPaginasMA({
     contenedor: elementos.paginas,
-    paginaActual: estado.paginaActual
+    paginaActual: estado.paginaActual,
+    procesando: estado.procesando
   });
 
   renderMensajesMA(elementos.mensajes, estado);
@@ -209,6 +214,11 @@ function renderizarMA(service) {
   renderResumenVideoMA({
     contenedor: elementos.resumenVideo,
     video: videoActual
+  });
+
+  renderProgresoMA({
+    contenedor: elementos.progreso,
+    progreso: estado.progresoGlobal
   });
 
   renderContenidoPaginaMA({
