@@ -7,7 +7,8 @@ Funciones principales:
 - Asegurar que el reproductor mejorado use el archivo nuevo.
 - Mostrar modo real usado: principal, respaldo DSP o ultra seguro.
 - Mostrar filtros usados en diagnóstico visible simple.
-- Mostrar guardar capa cuando exista mejora.
+- Mostrar descarga como botón pequeño superior.
+- Mostrar estado de guardado sin duplicar botoneras.
 Con qué se conecta:
 - ma-service.js
 - ma-video.js
@@ -118,6 +119,24 @@ function formatearPeso(bytes) {
   return `${(numero / 1024 / 1024).toFixed(2)} MB`;
 }
 
+function crearBotonDescargaSuperior({ id, tieneMejora }) {
+  if (!tieneMejora) {
+    return "";
+  }
+
+  return `
+    <button
+      id="${escaparHtml(id)}"
+      class="ma-download-mini"
+      type="button"
+      title="Descargar video mejorado"
+      aria-label="Descargar video mejorado"
+    >
+      ↓
+    </button>
+  `;
+}
+
 function crearReproductorComparacion({ titulo, url, subtitulo, mensajeVacio }) {
   return `
     <article class="ma-player-card">
@@ -169,6 +188,18 @@ function crearPestanasComparacion(modoComparacion, tieneMejora) {
       >
         Escuchar mejorado
       </button>
+    </div>
+  `;
+}
+
+function crearAccionesSuperioresComparacion(modoComparacion, tieneMejora) {
+  return `
+    <div class="ma-compare__top-actions">
+      ${crearPestanasComparacion(modoComparacion, tieneMejora)}
+      ${crearBotonDescargaSuperior({
+        id: "maBtnDescargarInline",
+        tieneMejora
+      })}
     </div>
   `;
 }
@@ -273,7 +304,7 @@ export function renderComparadorMA({ contenedor, video, modoComparacion = "mejor
           <p>${escaparHtml(nombreVideo)}</p>
         </div>
 
-        ${crearPestanasComparacion(modoComparacion, tieneMejora)}
+        ${crearAccionesSuperioresComparacion(modoComparacion, tieneMejora)}
       </div>
 
       ${crearAvisoResultado(video)}
@@ -297,22 +328,6 @@ export function renderComparadorMA({ contenedor, video, modoComparacion = "mejor
       </div>
 
       ${crearDiagnosticoAudio(video)}
-
-      <div class="ma-actions">
-        ${
-          tieneMejora
-            ? `
-              <button id="maBtnDescargarInline" class="app-btn app-btn--ghost" type="button">
-                Descargar video mejorado
-              </button>
-            `
-            : `
-              <div class="ma-note">
-                Primero usa Mejorar audio inteligente.
-              </div>
-            `
-        }
-      </div>
     </section>
   `;
 }
@@ -348,15 +363,22 @@ export function renderGuardarCapaMA({ contenedor, video, capaGuardada }) {
 
   contenedor.innerHTML = `
     <section class="ma-save">
-      <div>
-        <h3>${capaGuardada ? "Capa guardada" : "Guardar capa de audio"}</h3>
-        <p>
-          ${
-            tieneMejora
-              ? "Guarda el audio mejorado como una capa del proyecto sin dañar el video original."
-              : "Primero mejora el audio para poder guardar la capa."
-          }
-        </p>
+      <div class="ma-save__head">
+        <div>
+          <h3>${capaGuardada ? "Capa guardada" : "Guardar capa de audio"}</h3>
+          <p>
+            ${
+              tieneMejora
+                ? "Guarda el audio mejorado como una capa del proyecto sin dañar el video original."
+                : "Primero mejora el audio para poder guardar la capa."
+            }
+          </p>
+        </div>
+
+        ${crearBotonDescargaSuperior({
+          id: "maBtnDescargarGuardar",
+          tieneMejora
+        })}
       </div>
 
       <div class="ma-save-card">
@@ -371,11 +393,21 @@ export function renderGuardarCapaMA({ contenedor, video, capaGuardada }) {
         capaGuardada
           ? `
             <div class="ma-alert ma-alert--success">
-              La capa de audio mejorado fue guardada correctamente.
+              La capa de audio mejorado fue guardada correctamente. Ya puedes pasar a transcripción.
             </div>
           `
           : ""
       }
     </section>
   `;
+}
+
+export function conectarGuardarCapaMA({ service }) {
+  const btnDescargar = document.getElementById("maBtnDescargarGuardar");
+
+  if (btnDescargar) {
+    btnDescargar.addEventListener("click", () => {
+      service.descargarActual();
+    });
+  }
 }
