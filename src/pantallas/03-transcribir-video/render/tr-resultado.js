@@ -4,7 +4,8 @@ Ruta o ubicación: /src/pantallas/03-transcribir-video/render/tr-resultado.js
 Funciones principales:
 - Renderizar resultado de transcripción.
 - Mostrar texto limpio, segmentos y exportación preparada.
-- Mantener HTML seguro al pintar texto generado o pegado.
+- Mostrar nombre del motor automático usado.
+- Mantener HTML seguro al pintar texto generado.
 Con qué se conecta:
 - tr.js
 - tr-service.js
@@ -61,6 +62,10 @@ function renderExportacionTR(exportacion) {
   `;
 }
 
+function obtenerNombreMotorResultadoTR(transcripcion) {
+  return transcripcion?.motorNombre || transcripcion?.motor || "Whisper automático";
+}
+
 export function renderResultadoTranscripcionTR({ contenedor, estado }) {
   if (!contenedor) {
     return;
@@ -70,6 +75,7 @@ export function renderResultadoTranscripcionTR({ contenedor, estado }) {
   const texto = transcripcion?.texto || "";
   const segmentos = transcripcion?.segmentos || [];
   const resumen = transcripcion?.resumen || {};
+  const motor = obtenerNombreMotorResultadoTR(transcripcion);
 
   if (!transcripcion) {
     contenedor.innerHTML = `
@@ -83,7 +89,7 @@ export function renderResultadoTranscripcionTR({ contenedor, estado }) {
       <div class="tr-empty">
         <div>
           <h3>Sin transcripción</h3>
-          <p>Selecciona un video, elige un motor y presiona Transcribir.</p>
+          <p>Selecciona un video, elige un motor automático y presiona Transcribir.</p>
         </div>
       </div>
     `;
@@ -94,7 +100,7 @@ export function renderResultadoTranscripcionTR({ contenedor, estado }) {
     <div class="tr-result__head">
       <div>
         <h3>Resultado</h3>
-        <p>${escaparHtmlTR(resumen.totalPalabras || 0)} palabras · ${escaparHtmlTR(segmentos.length)} segmentos · Motor ${escaparHtmlTR(transcripcion.motor || "manual")}</p>
+        <p>${escaparHtmlTR(resumen.totalPalabras || 0)} palabras · ${escaparHtmlTR(segmentos.length)} segmentos · Motor ${escaparHtmlTR(motor)}</p>
       </div>
     </div>
 
@@ -131,7 +137,7 @@ export function conectarResultadoTranscripcionTR() {
       });
 
       contenidos.forEach((contenido) => {
-        contenido.classList.toggle("tr-hidden", contenido.dataset.trContent !== id);
+        contenido.classList.toggle("tr-hidden", contenido.datasetContent !== id && contenido.dataset.trContent !== id);
       });
     });
   });
