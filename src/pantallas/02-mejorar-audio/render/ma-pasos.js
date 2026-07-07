@@ -5,7 +5,8 @@ Funciones principales:
 - Renderizar las páginas internas de Mejorar audio.
 - Marcar la página activa.
 - Conectar navegación por páginas.
-- Mostrar botones Atrás, Siguiente, Guardar capa y Descargar.
+- Mostrar una sola acción de guardar capa.
+- Mostrar el botón para avanzar a Transcribir cuando la capa ya fue guardada.
 - Bloquear acciones cuando el proceso está cargando.
 Con qué se conecta:
 - ma-data.js
@@ -126,14 +127,8 @@ function crearBotonesComparar({ ocupado, tieneMejora }) {
       deshabilitado: ocupado
     }),
     crearBoton({
-      id: "maBtnDescargar",
-      texto: "Descargar video mejorado",
-      variante: "ghost",
-      deshabilitado: ocupado || !tieneMejora
-    }),
-    crearBoton({
       id: "maBtnSiguiente",
-      texto: "Guardar capa",
+      texto: "Revisar y guardar",
       variante: "primary",
       deshabilitado: ocupado || !tieneMejora
     })
@@ -141,26 +136,38 @@ function crearBotonesComparar({ ocupado, tieneMejora }) {
 }
 
 function crearBotonesGuardar({ ocupado, tieneMejora, capaGuardada }) {
-  return [
+  const botones = [
     crearBoton({
       id: "maBtnAtras",
       texto: "Volver",
       variante: "ghost",
       deshabilitado: ocupado
-    }),
+    })
+  ];
+
+  if (capaGuardada) {
+    botones.push(
+      crearBoton({
+        id: "maBtnTranscribir",
+        texto: "Pasar a transcripción",
+        variante: "primary",
+        deshabilitado: ocupado
+      })
+    );
+
+    return botones.join("");
+  }
+
+  botones.push(
     crearBoton({
       id: "maBtnGuardarCapa",
-      texto: capaGuardada ? "Capa guardada" : "Guardar capa de audio",
+      texto: "Guardar capa de audio",
       variante: "primary",
-      deshabilitado: ocupado || !tieneMejora || capaGuardada
-    }),
-    crearBoton({
-      id: "maBtnDescargar",
-      texto: "Descargar video mejorado",
-      variante: "ghost",
       deshabilitado: ocupado || !tieneMejora
     })
-  ].join("");
+  );
+
+  return botones.join("");
 }
 
 export function renderBotonesMA({ contenedor, estado }) {
@@ -196,11 +203,11 @@ export function renderBotonesMA({ contenedor, estado }) {
   `;
 }
 
-export function conectarBotonesMA({ service }) {
+export function conectarBotonesMA({ service, router }) {
   const btnAtras = document.getElementById("maBtnAtras");
   const btnSiguiente = document.getElementById("maBtnSiguiente");
   const btnGuardarCapa = document.getElementById("maBtnGuardarCapa");
-  const btnDescargar = document.getElementById("maBtnDescargar");
+  const btnTranscribir = document.getElementById("maBtnTranscribir");
 
   if (btnAtras) {
     btnAtras.addEventListener("click", () => {
@@ -226,10 +233,10 @@ export function conectarBotonesMA({ service }) {
     });
   }
 
-  if (btnDescargar) {
-    btnDescargar.addEventListener("click", () => {
-      if (!btnDescargar.disabled) {
-        service.descargarActual();
+  if (btnTranscribir) {
+    btnTranscribir.addEventListener("click", () => {
+      if (!btnTranscribir.disabled && router?.irA) {
+        router.irA("03-transcribir-video");
       }
     });
   }
