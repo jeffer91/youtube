@@ -3,6 +3,8 @@ Nombre completo: tr-audio-extractor.js
 Ruta o ubicación: /src/pantallas/03-transcribir-video/electron/tr-audio-extractor.js
 Funciones principales:
 - Extraer audio WAV desde un video para transcripción.
+- Preferir el archivo con audio mejorado cuando exista.
+- Usar el video original solo como respaldo si no hay audio mejorado.
 - Usar FFmpeg desde Electron de forma controlada.
 - Validar que el archivo de audio generado exista y tenga peso.
 - Devolver errores claros sin mostrar detalles técnicos al usuario final.
@@ -60,9 +62,27 @@ function obtenerRutaAudiosTranscripcionTR({ obtenerRutaData, asegurarCarpeta }) 
   return ruta;
 }
 
-function crearRutaWavTR({ video, obtenerRutaData, asegurarCarpeta }) {
+function obtenerFuenteTranscripcionTR(video) {
+  const rutaMejorada = video?.audioMejorado?.ruta || "";
+
+  if (rutaMejorada && fs.existsSync(rutaMejorada)) {
+    return {
+      ruta: rutaMejorada,
+      nombre: video.audioMejorado.nombre || video.nombre || "video-mejorado.mp4",
+      tipo: "audio-mejorado"
+    };
+  }
+
+  return {
+    ruta: video?.ruta || "",
+    nombre: video?.nombre || "video.mp4",
+    tipo: "original"
+  };
+}
+
+function crearRutaWavTR({ video, fuente, obtenerRutaData, asegurarCarpeta }) {
   const carpeta = obtenerRutaAudiosTranscripcionTR({ obtenerRutaData, asegurarCarpeta });
-  const base = limpiarNombreArchivoTR(path.parse(video?.nombre || "video").name || "video");
+  const base = limpiarNombreArchivoTR(path.parse(fuente?.nombre || video?.nombre || "video").name || "video");
   const nombre = `${base}_transcripcion_${crearMarcaTiempoTR()}.wav`;
 
   return path.join(carpeta, nombre);
@@ -98,22 +118,25 @@ function validarVideoEntradaTR(video) {
     };
   }
 
-  if (!video.ruta) {
+  const fuente = obtenerFuenteTranscripcionTR(video);
+
+  if (!fuente.ruta) {
     return {
       ok: false,
-      mensaje: "El video no tiene una ruta local válida."
+      mensaje: "El video no tiene una ruta local válida para transcribir."
     };
   }
 
-  if (!fs.existsSync(video.ruta)) {
+  if (!fs.existsSync(fuente.ruta)) {
     return {
       ok: false,
-      mensaje: `No se encontró el video original: ${video.nombre || video.ruta}`
+      mensaje: `No se encontró el archivo para transcribir: ${fuente.nombre || fuente.ruta}`
     };
   }
 
   return {
-    ok: true
+    ok: true,
+    fuente
   };
 }
 
@@ -178,12 +201,13 @@ async function extraerAudioParaTranscripcionTR({ video, obtenerRutaData, asegura
 
   const rutaAudio = crearRutaWavTR({
     video,
+    fuente: validacion.fuente,
     obtenerRutaData,
     asegurarCarpeta
   });
 
   const extraccion = await ejecutarExtraccionWavTR({
-    rutaEntrada: video.ruta,
+    rutaEntrada: validacion.fuente.ruta,
     rutaSalida: rutaAudio
   });
 
@@ -205,14 +229,18 @@ async function extraerAudioParaTranscripcionTR({ video, obtenerRutaData, asegura
       nombre: path.basename(rutaAudio),
       extension: "wav",
       pesoBytes: audioValidado.pesoBytes,
+      fuente: validacion.fuente,
       creadoEn: new Date().toISOString()
     },
-    mensaje: "Audio preparado para transcripción."
+    mensaje: validacion.fuente.tipo === "audio-mejorado"
+      ? "Audio mejorado preparado para transcripción."
+      : "Audio original preparado para transcripción."
   };
 }
 
 module.exports = {
   extraerAudioParaTranscripcionTR,
   borrarArchivoSiExisteTR,
-  obtenerRutaAudiosTranscripcionTR
+  obtenerRutaAudiosTranscripcionTR,
+  obtenerFuenteTranscripcionTR
 };
