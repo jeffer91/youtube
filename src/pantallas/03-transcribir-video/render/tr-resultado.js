@@ -57,7 +57,9 @@ function renderExportacionTR(exportacion) {
 
   return `
     <div class="tr-result__box">
-      Archivo: ${escaparHtmlTR(exportacion.nombreArchivo)}\n\n${escaparHtmlTR(limitarTextoTR(exportacion.contenido, 2500))}
+      Archivo: ${escaparHtmlTR(exportacion.nombreArchivo)}
+
+${escaparHtmlTR(limitarTextoTR(exportacion.contenido, 2500))}
     </div>
   `;
 }
@@ -137,7 +139,7 @@ export function conectarResultadoTranscripcionTR() {
       });
 
       contenidos.forEach((contenido) => {
-        contenido.classList.toggle("tr-hidden", contenido.datasetContent !== id && contenido.dataset.trContent !== id);
+        contenido.classList.toggle("tr-hidden", contenido.dataset.trContent !== id);
       });
     });
   });
