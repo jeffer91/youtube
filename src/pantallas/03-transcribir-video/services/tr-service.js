@@ -3,9 +3,9 @@ Nombre completo: tr-service.js
 Ruta o ubicación: /src/pantallas/03-transcribir-video/services/tr-service.js
 Funciones principales:
 - Mantener el estado interno de la pantalla Transcribir video.
-- Seleccionar video, motor, idioma y texto manual.
+- Seleccionar video, motor automático e idioma.
 - Verificar Whisper local antes de usar transcripción real.
-- Ejecutar transcripción sin fingir resultados.
+- Ejecutar transcripción automática sin opciones manuales TXT/SRT.
 - Guardar transcripción en el proyecto activo.
 - Preparar exportaciones TXT, SRT y JSON.
 Con qué se conecta:
@@ -21,7 +21,7 @@ import {
 } from "../adaptadores/tr-proyecto-adapter.js";
 
 import {
-  MOTORES_TRANSCRIPCION_TR,
+  MOTOR_TRANSCRIPCION_DEFECTO_TR,
   obtenerMotoresTranscripcionTR,
   validarProyectoTranscripcionTR,
   validarVideoTranscripcionTR,
@@ -53,7 +53,7 @@ const PASOS_TR = Object.freeze([
     id: "configurar",
     numero: "02",
     titulo: "Configurar motor",
-    descripcion: "Usa Whisper local o transcripción manual."
+    descripcion: "Usa uno de los motores automáticos de Whisper."
   },
   {
     id: "transcribir",
@@ -112,7 +112,7 @@ function crearEstadoInicialTR({ proyectoActivo }) {
     videos,
     videoActualId,
     idioma: "es",
-    motorId: MOTORES_TRANSCRIPCION_TR.MANUAL_TXT,
+    motorId: MOTOR_TRANSCRIPCION_DEFECTO_TR,
     motores: obtenerMotoresTranscripcionTR(),
     formatosExportacion: obtenerFormatosExportacionTR(),
     textoManual: "",
@@ -237,7 +237,7 @@ export function crearTranscripcionService({ proyectoActivo, estadoApp } = {}) {
       motorId,
       pasoActual: "configurar",
       exportacionActual: null,
-      estadoProceso: "Motor seleccionado.",
+      estadoProceso: "Motor automático seleccionado.",
       mensajes: [],
       errores: []
     });
@@ -251,13 +251,7 @@ export function crearTranscripcionService({ proyectoActivo, estadoApp } = {}) {
     });
   }
 
-  function cambiarTextoManual(textoManual) {
-    estado = {
-      ...estado,
-      textoManual: String(textoManual || ""),
-      errores: []
-    };
-
+  function cambiarTextoManual() {
     return obtenerEstado();
   }
 
@@ -314,8 +308,8 @@ export function crearTranscripcionService({ proyectoActivo, estadoApp } = {}) {
       procesando: true,
       pasoActual: "transcribir",
       progreso: 15,
-      estadoProceso: "Preparando transcripción...",
-      mensajes: ["Iniciando transcripción."],
+      estadoProceso: "Preparando transcripción automática...",
+      mensajes: ["Iniciando transcripción automática."],
       errores: []
     });
 
@@ -323,7 +317,6 @@ export function crearTranscripcionService({ proyectoActivo, estadoApp } = {}) {
       proyecto: estado.proyecto,
       video,
       motorId: estado.motorId,
-      textoManual: estado.textoManual,
       idioma: estado.idioma
     });
 
