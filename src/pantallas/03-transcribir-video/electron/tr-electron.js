@@ -5,7 +5,7 @@ Funciones principales:
 - Registrar procesos Electron de la pantalla Transcribir video.
 - Verificar disponibilidad de Whisper local.
 - Extraer audio WAV desde el video seleccionado.
-- Ejecutar transcripción real sin fingir resultados.
+- Ejecutar transcripción real con el motor automático seleccionado.
 - Devolver mensajes claros a la interfaz.
 Con qué se conecta:
 - electron/main/main.js
@@ -33,6 +33,7 @@ function limpiarTextoTR(valor) {
 function validarDatosTranscripcionTR(datos) {
   const video = datos?.video || null;
   const idioma = limpiarTextoTR(datos?.idioma || "es") || "es";
+  const motorId = limpiarTextoTR(datos?.motor || datos?.motorId || "whisper-equilibrado") || "whisper-equilibrado";
 
   if (!video || typeof video !== "object") {
     return {
@@ -58,7 +59,8 @@ function validarDatosTranscripcionTR(datos) {
   return {
     ok: true,
     video,
-    idioma
+    idioma,
+    motorId
   };
 }
 
@@ -88,6 +90,7 @@ async function transcribirVideoElectronTR({ datosTranscripcion, obtenerRutaData,
       audio: audio.audio,
       video: validacion.video,
       idioma: validacion.idioma,
+      motorId: validacion.motorId,
       obtenerRutaData,
       asegurarCarpeta
     });
