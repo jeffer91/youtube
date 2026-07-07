@@ -2,7 +2,8 @@
 Nombre completo: tr-controles.js
 Ruta o ubicación: /src/pantallas/03-transcribir-video/render/tr-controles.js
 Funciones principales:
-- Renderizar opciones de motor, idioma y texto manual.
+- Renderizar opciones de motor automático e idioma.
+- Eliminar campos de transcripción manual TXT/SRT.
 - Renderizar progreso y estado del proceso de transcripción.
 - Mostrar disponibilidad de Whisper local.
 - Conectar controles con el servicio de transcripción.
@@ -16,11 +17,6 @@ Con qué se conecta:
 import {
   escaparHtmlTR
 } from "../helpers/tr-texto.js";
-
-function motorRequiereTextoManualTR(estado) {
-  const motor = (estado.motores || []).find((item) => item.id === estado.motorId);
-  return Boolean(motor?.requiereTextoManual);
-}
 
 function crearOpcionMotorTR(motor, motorActual) {
   const activo = motor.id === motorActual;
@@ -49,12 +45,11 @@ export function renderOpcionesTranscripcionTR({ contenedor, estado }) {
   }
 
   const motores = Array.isArray(estado.motores) ? estado.motores : [];
-  const requiereManual = motorRequiereTextoManualTR(estado);
 
   contenedor.innerHTML = `
     <div class="tr-panel__head">
       <h3>Opciones</h3>
-      <p>Elige cómo quieres obtener la transcripción.</p>
+      <p>Elige el idioma y el motor automático de transcripción.</p>
     </div>
 
     <div class="tr-options">
@@ -68,26 +63,15 @@ export function renderOpcionesTranscripcionTR({ contenedor, estado }) {
       </div>
 
       <div class="tr-field">
-        <span>Motor</span>
+        <span>Motor automático</span>
         ${motores.map((motor) => crearOpcionMotorTR(motor, estado.motorId)).join("")}
       </div>
-
-      <label class="tr-field ${requiereManual ? "" : "tr-hidden"}">
-        <span>Transcripción manual</span>
-        <textarea
-          id="trTextoManual"
-          class="tr-textarea"
-          spellcheck="true"
-        >${escaparHtmlTR(estado.textoManual || "")}</textarea>
-        <small class="tr-help">Pega texto simple si usas TXT, o subtítulos con tiempos si usas SRT.</small>
-      </label>
     </div>
   `;
 }
 
 export function conectarControlesTranscripcionTR({ service }) {
   const idioma = document.getElementById("trIdioma");
-  const textoManual = document.getElementById("trTextoManual");
 
   if (idioma) {
     idioma.addEventListener("change", () => {
@@ -102,12 +86,6 @@ export function conectarControlesTranscripcionTR({ service }) {
       }
     });
   });
-
-  if (textoManual) {
-    textoManual.addEventListener("input", () => {
-      service.cambiarTextoManual(textoManual.value);
-    });
-  }
 }
 
 function crearEstadoWhisperTextoTR(estado) {
