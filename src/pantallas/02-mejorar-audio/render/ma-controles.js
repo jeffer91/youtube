@@ -2,11 +2,10 @@
 Nombre completo: ma-controles.js
 Ruta o ubicación: /src/pantallas/02-mejorar-audio/render/ma-controles.js
 Funciones principales:
-- Renderizar perfiles inteligentes de mejora de audio.
-- Renderizar controles simples de mejora de audio.
+- Renderizar controles simples de mejora de audio sin mostrar perfiles visuales.
 - Mostrar interruptores y niveles bajo, medio, alto.
 - Conectar cambios con el servicio.
-- Mantener una interfaz corta y clara.
+- Mantener una interfaz corta y clara para la capa de audio.
 Con qué se conecta:
 - ma-data.js
 - ma-service.js
@@ -14,8 +13,7 @@ Con qué se conecta:
 
 import {
   obtenerControlesMA,
-  obtenerNivelesMA,
-  obtenerPerfilesAudioMA
+  obtenerNivelesMA
 } from "../data/ma-data.js";
 
 function escaparHtml(texto) {
@@ -74,45 +72,17 @@ function crearControl(control, estadoControl) {
   `;
 }
 
-function crearPerfil(perfil, perfilActual) {
-  const activo = perfil.id === perfilActual ? "is-active" : "";
-  const recomendado = perfil.recomendado
-    ? `<span class="ma-profile__badge">Recomendado</span>`
-    : "";
-
-  return `
-    <button
-      class="ma-profile ${activo}"
-      type="button"
-      data-ma-perfil="${escaparHtml(perfil.id)}"
-    >
-      <span class="ma-profile__title">
-        <strong>${escaparHtml(perfil.nombre)}</strong>
-        ${recomendado}
-      </span>
-      <small>${escaparHtml(perfil.descripcion)}</small>
-    </button>
-  `;
-}
-
-function crearPerfiles(perfilActual) {
-  return obtenerPerfilesAudioMA()
-    .map((perfil) => crearPerfil(perfil, perfilActual))
-    .join("");
-}
-
 function obtenerTextoBotonProcesar(procesando) {
   if (procesando) {
     return "Mejorando audio...";
   }
 
-  return "Mejorar audio inteligente";
+  return "Mejorar audio";
 }
 
 export function renderControlesMA({
   contenedor,
   controles,
-  perfilAudio = "automatico",
   procesando = false
 }) {
   if (!contenedor) {
@@ -127,12 +97,11 @@ export function renderControlesMA({
 
   contenedor.innerHTML = `
     <section class="ma-controls">
-      <div class="ma-controls__head">
-        <div>
-          <h3>Audio inteligente</h3>
-          <p>Elige un perfil o ajusta los controles manualmente.</p>
-        </div>
+      <div class="ma-controls__list">
+        ${controlesHtml}
+      </div>
 
+      <div class="ma-controls__footer">
         <button
           id="maBtnSoloRuido"
           class="app-btn app-btn--ghost"
@@ -141,17 +110,7 @@ export function renderControlesMA({
         >
           Limpiar ruido
         </button>
-      </div>
 
-      <div class="ma-profiles">
-        ${crearPerfiles(perfilAudio)}
-      </div>
-
-      <div class="ma-controls__list">
-        ${controlesHtml}
-      </div>
-
-      <div class="ma-controls__footer">
         <button
           id="maBtnMejorarAudio"
           class="app-btn"
@@ -168,7 +127,6 @@ export function renderControlesMA({
 export function conectarControlesMA({ service }) {
   const checks = document.querySelectorAll("[data-ma-control]");
   const niveles = document.querySelectorAll("[data-ma-nivel-control]");
-  const perfiles = document.querySelectorAll("[data-ma-perfil]");
   const btnMejorar = document.getElementById("maBtnMejorarAudio");
   const btnSoloRuido = document.getElementById("maBtnSoloRuido");
 
@@ -184,14 +142,6 @@ export function conectarControlesMA({ service }) {
         boton.dataset.maNivelControl,
         boton.dataset.maNivel
       );
-    });
-  });
-
-  perfiles.forEach((boton) => {
-    boton.addEventListener("click", () => {
-      if (typeof service.cambiarPerfilAudio === "function") {
-        service.cambiarPerfilAudio(boton.dataset.maPerfil);
-      }
     });
   });
 
