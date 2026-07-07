@@ -4,8 +4,9 @@ Ruta o ubicación: /src/pantallas/03-transcribir-video/validaciones/tr-validar.j
 Funciones principales:
 - Validar proyecto activo para transcripción.
 - Validar video seleccionado.
-- Validar motor de transcripción.
-- Validar texto manual y resultado de transcripción.
+- Validar motores automáticos de transcripción.
+- Validar resultado de transcripción.
+- Eliminar opciones manuales TXT/SRT del flujo visible.
 Con qué se conecta:
 - tr-service.js
 - tr-transcribir.js
@@ -18,31 +19,36 @@ import {
 } from "../helpers/tr-texto.js";
 
 export const MOTORES_TRANSCRIPCION_TR = Object.freeze({
-  MANUAL_TXT: "manual-txt",
-  MANUAL_SRT: "manual-srt",
-  WHISPER_LOCAL: "whisper-local"
+  WHISPER_RAPIDO: "whisper-rapido",
+  WHISPER_EQUILIBRADO: "whisper-equilibrado",
+  WHISPER_PRECISO: "whisper-preciso"
 });
+
+export const MOTOR_TRANSCRIPCION_DEFECTO_TR = MOTORES_TRANSCRIPCION_TR.WHISPER_EQUILIBRADO;
 
 export function obtenerMotoresTranscripcionTR() {
   return [
     {
-      id: MOTORES_TRANSCRIPCION_TR.MANUAL_TXT,
-      nombre: "Manual TXT",
-      descripcion: "Pegar texto de transcripción para pruebas o correcciones rápidas.",
-      requiereTextoManual: true,
-      requiereElectron: false
+      id: MOTORES_TRANSCRIPCION_TR.WHISPER_RAPIDO,
+      nombre: "Whisper rápido",
+      descripcion: "Transcripción automática más ligera para pruebas rápidas.",
+      modelo: "tiny",
+      requiereTextoManual: false,
+      requiereElectron: true
     },
     {
-      id: MOTORES_TRANSCRIPCION_TR.MANUAL_SRT,
-      nombre: "Manual SRT",
-      descripcion: "Pegar subtítulos SRT con tiempos.",
-      requiereTextoManual: true,
-      requiereElectron: false
+      id: MOTORES_TRANSCRIPCION_TR.WHISPER_EQUILIBRADO,
+      nombre: "Whisper equilibrado",
+      descripcion: "Transcripción automática recomendada por velocidad y calidad.",
+      modelo: "base",
+      requiereTextoManual: false,
+      requiereElectron: true
     },
     {
-      id: MOTORES_TRANSCRIPCION_TR.WHISPER_LOCAL,
-      nombre: "Whisper local",
-      descripcion: "Transcripción real desde Electron cuando el motor esté instalado.",
+      id: MOTORES_TRANSCRIPCION_TR.WHISPER_PRECISO,
+      nombre: "Whisper preciso",
+      descripcion: "Transcripción automática con mayor precisión para audios importantes.",
+      modelo: "small",
       requiereTextoManual: false,
       requiereElectron: true
     }
@@ -50,7 +56,7 @@ export function obtenerMotoresTranscripcionTR() {
 }
 
 export function obtenerMotorTranscripcionTR(motorId) {
-  const id = limpiarTextoTR(motorId) || MOTORES_TRANSCRIPCION_TR.MANUAL_TXT;
+  const id = limpiarTextoTR(motorId) || MOTOR_TRANSCRIPCION_DEFECTO_TR;
   return obtenerMotoresTranscripcionTR().find((motor) => motor.id === id) || null;
 }
 
@@ -114,50 +120,18 @@ export function validarMotorTranscripcionTR(motorId) {
   };
 }
 
-export function validarTextoManualTranscripcionTR({ motorId, textoManual }) {
-  const motor = obtenerMotorTranscripcionTR(motorId);
-  const texto = limpiarTextoVisibleTR(textoManual);
-
-  if (!motor?.requiereTextoManual) {
-    return {
-      ok: true,
-      errores: []
-    };
-  }
-
-  if (!texto) {
-    return {
-      ok: false,
-      errores: ["Pega una transcripción manual antes de continuar."]
-    };
-  }
-
-  if (texto.length < 3) {
-    return {
-      ok: false,
-      errores: ["La transcripción manual es demasiado corta."]
-    };
-  }
-
-  if (motor.id === MOTORES_TRANSCRIPCION_TR.MANUAL_SRT && !texto.includes("-->")) {
-    return {
-      ok: false,
-      errores: ["El contenido SRT debe incluir tiempos con -->."]
-    };
-  }
-
+export function validarTextoManualTranscripcionTR() {
   return {
     ok: true,
     errores: []
   };
 }
 
-export function validarAntesDeTranscribirTR({ proyecto, video, motorId, textoManual }) {
+export function validarAntesDeTranscribirTR({ proyecto, video, motorId }) {
   const errores = [];
   const proyectoValidado = validarProyectoTranscripcionTR(proyecto);
   const videoValidado = validarVideoTranscripcionTR(video);
   const motorValidado = validarMotorTranscripcionTR(motorId);
-  const textoValidado = validarTextoManualTranscripcionTR({ motorId, textoManual });
 
   if (!proyectoValidado.ok) {
     errores.push(...proyectoValidado.errores);
@@ -169,10 +143,6 @@ export function validarAntesDeTranscribirTR({ proyecto, video, motorId, textoMan
 
   if (!motorValidado.ok) {
     errores.push(...motorValidado.errores);
-  }
-
-  if (!textoValidado.ok) {
-    errores.push(...textoValidado.errores);
   }
 
   return {
