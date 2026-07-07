@@ -6,7 +6,6 @@ Funciones principales:
 - Validar video seleccionado.
 - Validar motores automáticos de transcripción.
 - Validar resultado de transcripción.
-- Eliminar opciones manuales TXT/SRT del flujo visible.
 Con qué se conecta:
 - tr-service.js
 - tr-transcribir.js
@@ -33,7 +32,6 @@ export function obtenerMotoresTranscripcionTR() {
       nombre: "Whisper rápido",
       descripcion: "Transcripción automática más ligera para pruebas rápidas.",
       modelo: "tiny",
-      requiereTextoManual: false,
       requiereElectron: true
     },
     {
@@ -41,7 +39,6 @@ export function obtenerMotoresTranscripcionTR() {
       nombre: "Whisper equilibrado",
       descripcion: "Transcripción automática recomendada por velocidad y calidad.",
       modelo: "base",
-      requiereTextoManual: false,
       requiereElectron: true
     },
     {
@@ -49,7 +46,6 @@ export function obtenerMotoresTranscripcionTR() {
       nombre: "Whisper preciso",
       descripcion: "Transcripción automática con mayor precisión para audios importantes.",
       modelo: "small",
-      requiereTextoManual: false,
       requiereElectron: true
     }
   ];
@@ -116,13 +112,6 @@ export function validarMotorTranscripcionTR(motorId) {
   return {
     ok: true,
     motor,
-    errores: []
-  };
-}
-
-export function validarTextoManualTranscripcionTR() {
-  return {
-    ok: true,
     errores: []
   };
 }
