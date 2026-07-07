@@ -7,6 +7,7 @@ Funciones principales:
 - Renderizar páginas, controles, progreso, comparación y guardado.
 - Conectar botones y acciones de audio inteligente.
 - Guardar la mejora como capa sin dañar el video original.
+- Permitir pasar a la pantalla Transcribir video cuando la capa ya fue guardada.
 Con qué se conecta:
 - ma.html
 - ma.css
@@ -43,7 +44,8 @@ import { renderProgresoMA } from "../render/ma-progreso.js";
 import {
   renderComparadorMA,
   conectarComparadorMA,
-  renderGuardarCapaMA
+  renderGuardarCapaMA,
+  conectarGuardarCapaMA
 } from "../render/ma-comparar.js";
 
 import { obtenerVideoActual } from "../helpers/ma-video.js";
@@ -190,6 +192,8 @@ function renderContenidoPaginaMA({ contenedor, estado, videoActual, service }) {
     video: videoActual,
     capaGuardada: estado.capaGuardada
   });
+
+  conectarGuardarCapaMA({ service });
 }
 
 function renderizarMA(service) {
@@ -235,7 +239,10 @@ function renderizarMA(service) {
 
   conectarPaginasMA({ service });
   conectarSelectorVideosMA({ service });
-  conectarBotonesMA({ service });
+  conectarBotonesMA({
+    service,
+    router: routerActual
+  });
 }
 
 function obtenerProyectoActivoSeguro(estadoApp) {
