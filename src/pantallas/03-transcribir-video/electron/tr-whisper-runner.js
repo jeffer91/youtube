@@ -4,6 +4,7 @@ Ruta o ubicación: /src/pantallas/03-transcribir-video/electron/tr-whisper-runne
 Funciones principales:
 - Verificar disponibilidad de Whisper local.
 - Ejecutar Whisper con un audio WAV preparado.
+- Elegir modelo según motor automático: rápido, equilibrado o preciso.
 - Leer salida JSON/TXT/SRT generada por Whisper.
 - Normalizar el resultado para la pantalla de transcripción.
 Con qué se conecta:
@@ -17,6 +18,12 @@ const path = require("path");
 const { spawn } = require("child_process");
 
 const WHISPER_TIMEOUT_MS_TR = 20 * 60 * 1000;
+
+const MOTORES_WHISPER_TR = Object.freeze({
+  RAPIDO: "whisper-rapido",
+  EQUILIBRADO: "whisper-equilibrado",
+  PRECISO: "whisper-preciso"
+});
 
 function limpiarTextoTR(valor) {
   return String(valor || "").trim();
@@ -46,8 +53,45 @@ function obtenerComandoWhisperTR() {
   return process.env.WHISPER_BIN || process.env.WHISPER_COMMAND || "whisper";
 }
 
-function obtenerRutaModeloWhisperTR() {
-  return limpiarTextoTR(process.env.WHISPER_MODEL || "base");
+function obtenerRutaModeloWhisperTR(motorId = MOTORES_WHISPER_TR.EQUILIBRADO) {
+  const motor = limpiarTextoTR(motorId) || MOTORES_WHISPER_TR.EQUILIBRADO;
+
+  if (motor === MOTORES_WHISPER_TR.RAPIDO) {
+    return limpiarTextoTR(
+      process.env.WHISPER_MODEL_FAST ||
+      process.env.WHISPER_MODEL_RAPIDO ||
+      "tiny"
+    );
+  }
+
+  if (motor === MOTORES_WHISPER_TR.PRECISO) {
+    return limpiarTextoTR(
+      process.env.WHISPER_MODEL_PRECISE ||
+      process.env.WHISPER_MODEL_PRECISO ||
+      "small"
+    );
+  }
+
+  return limpiarTextoTR(
+    process.env.WHISPER_MODEL_BALANCED ||
+    process.env.WHISPER_MODEL_EQUILIBRADO ||
+    process.env.WHISPER_MODEL ||
+    "base"
+  );
+}
+
+function obtenerNombreMotorWhisperTR(motorId = MOTORES_WHISPER_TR.EQUILIBRADO) {
+  const motor = limpiarTextoTR(motorId) || MOTORES_WHISPER_TR.EQUILIBRADO;
+
+  if (motor === MOTORES_WHISPER_TR.RAPIDO) {
+    return "Whisper rápido";
+  }
+
+  if (motor === MOTORES_WHISPER_TR.PRECISO) {
+    return "Whisper preciso";
+  }
+
+  return "Whisper equilibrado";
 }
 
 function obtenerRutaSalidaWhisperTR({ obtenerRutaData, asegurarCarpeta }) {
@@ -197,7 +241,7 @@ function contarPalabrasTR(texto) {
   return limpio.split(/\s+/).filter(Boolean).length;
 }
 
-function crearTranscripcionWhisperTR({ datosJson, textoTxt, audio, video, idioma, diagnostico }) {
+function crearTranscripcionWhisperTR({ datosJson, textoTxt, audio, video, idioma, motorId, modelo, diagnostico }) {
   const texto = limpiarTextoVisibleTR(datosJson?.text || datosJson?.texto || textoTxt || "");
   const segmentos = normalizarSegmentosWhisperTR(datosJson?.segments || datosJson?.segmentos || []);
 
@@ -205,7 +249,9 @@ function crearTranscripcionWhisperTR({ datosJson, textoTxt, audio, video, idioma
     id: crearIdTR(video?.id),
     videoId: video?.id || "",
     idioma: limpiarTextoTR(idioma) || "es",
-    motor: "whisper-local",
+    motor: motorId || MOTORES_WHISPER_TR.EQUILIBRADO,
+    motorNombre: obtenerNombreMotorWhisperTR(motorId),
+    modelo,
     modo: "real",
     texto,
     segmentos,
@@ -224,7 +270,7 @@ function crearTranscripcionWhisperTR({ datosJson, textoTxt, audio, video, idioma
   };
 }
 
-async function transcribirAudioConWhisperTR({ audio, video, idioma, obtenerRutaData, asegurarCarpeta }) {
+async function transcribirAudioConWhisperTR({ audio, video, idioma, motorId, obtenerRutaData, asegurarCarpeta }) {
   const disponible = await verificarWhisperLocalTR();
 
   if (!disponible.ok) {
@@ -240,7 +286,8 @@ async function transcribirAudioConWhisperTR({ audio, video, idioma, obtenerRutaD
 
   const carpetaSalida = obtenerRutaSalidaWhisperTR({ obtenerRutaData, asegurarCarpeta });
   const comando = obtenerComandoWhisperTR();
-  const modelo = obtenerRutaModeloWhisperTR();
+  const modelo = obtenerRutaModeloWhisperTR(motorId);
+  const nombreMotor = obtenerNombreMotorWhisperTR(motorId);
   const lenguaje = idioma === "auto" ? null : limpiarTextoTR(idioma || "es");
   const argumentos = [
     audio.ruta,
@@ -261,11 +308,14 @@ async function transcribirAudioConWhisperTR({ audio, video, idioma, obtenerRutaD
   if (!ejecucion.ok) {
     return {
       ok: false,
-      mensaje: "Whisper local no pudo completar la transcripción.",
+      mensaje: `${nombreMotor} no pudo completar la transcripción.`,
       detalle: ejecucion.stderr || ejecucion.mensaje,
       diagnostico: {
         comando,
         argumentos,
+        motorId,
+        nombreMotor,
+        modelo,
         salida: ejecucion.stdout,
         errores: ejecucion.stderr
       }
@@ -301,6 +351,9 @@ async function transcribirAudioConWhisperTR({ audio, video, idioma, obtenerRutaD
         rutaJson,
         rutaTxt,
         rutaSrt,
+        motorId,
+        nombreMotor,
+        modelo,
         stdout: ejecucion.stdout,
         stderr: ejecucion.stderr
       }
@@ -310,6 +363,8 @@ async function transcribirAudioConWhisperTR({ audio, video, idioma, obtenerRutaD
   const diagnostico = {
     comando,
     modelo,
+    motorId,
+    nombreMotor,
     carpetaSalida,
     rutaJson,
     rutaTxt,
@@ -320,13 +375,15 @@ async function transcribirAudioConWhisperTR({ audio, video, idioma, obtenerRutaD
 
   return {
     ok: true,
-    mensaje: "Transcripción real terminada con Whisper local.",
+    mensaje: `Transcripción terminada con ${nombreMotor}.`,
     transcripcion: crearTranscripcionWhisperTR({
       datosJson,
       textoTxt,
       audio,
       video,
       idioma,
+      motorId,
+      modelo,
       diagnostico
     }),
     diagnostico
