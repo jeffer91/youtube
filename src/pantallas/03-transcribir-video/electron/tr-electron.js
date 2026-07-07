@@ -4,7 +4,8 @@ Ruta o ubicación: /src/pantallas/03-transcribir-video/electron/tr-electron.js
 Funciones principales:
 - Registrar procesos Electron de la pantalla Transcribir video.
 - Verificar disponibilidad de Whisper local.
-- Extraer audio WAV desde el video seleccionado.
+- Extraer audio WAV desde la mejor fuente disponible.
+- Preferir audio mejorado y usar original como respaldo.
 - Ejecutar transcripción real con el motor automático seleccionado.
 - Devolver mensajes claros a la interfaz.
 Con qué se conecta:
@@ -14,11 +15,10 @@ Con qué se conecta:
 - tr-whisper-runner.js
 ========================================================= */
 
-const fs = require("fs");
-
 const {
   extraerAudioParaTranscripcionTR,
-  borrarArchivoSiExisteTR
+  borrarArchivoSiExisteTR,
+  obtenerFuenteTranscripcionTR
 } = require("./tr-audio-extractor.js");
 
 const {
@@ -42,23 +42,19 @@ function validarDatosTranscripcionTR(datos) {
     };
   }
 
-  if (!video.ruta) {
-    return {
-      ok: false,
-      mensaje: "El video no tiene una ruta local válida."
-    };
-  }
+  const fuente = obtenerFuenteTranscripcionTR(video);
 
-  if (!fs.existsSync(video.ruta)) {
+  if (!fuente.ruta) {
     return {
       ok: false,
-      mensaje: "No se encontró el archivo de video en el equipo."
+      mensaje: "El video no tiene una ruta local válida para transcribir."
     };
   }
 
   return {
     ok: true,
     video,
+    fuente,
     idioma,
     motorId
   };
@@ -104,6 +100,7 @@ async function transcribirVideoElectronTR({ datosTranscripcion, obtenerRutaData,
       mensaje: transcripcion.mensaje || "Transcripción terminada.",
       transcripcion: transcripcion.transcripcion,
       diagnostico: {
+        fuente: validacion.fuente,
         audio: audio.audio,
         whisper: transcripcion.diagnostico || null
       }
