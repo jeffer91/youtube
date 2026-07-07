@@ -5,7 +5,7 @@ Funciones principales:
 - Mantener el estado interno de la pantalla Transcribir video.
 - Seleccionar video, motor automático e idioma.
 - Verificar Whisper local antes de usar transcripción real.
-- Ejecutar transcripción automática sin opciones manuales TXT/SRT.
+- Ejecutar transcripción automática.
 - Guardar transcripción en el proyecto activo.
 - Preparar exportaciones TXT, SRT y JSON.
 Con qué se conecta:
@@ -115,7 +115,6 @@ function crearEstadoInicialTR({ proyectoActivo }) {
     motorId: MOTOR_TRANSCRIPCION_DEFECTO_TR,
     motores: obtenerMotoresTranscripcionTR(),
     formatosExportacion: obtenerFormatosExportacionTR(),
-    textoManual: "",
     transcripcionActual,
     exportacionActual: null,
     whisperDisponible: null,
@@ -249,10 +248,6 @@ export function crearTranscripcionService({ proyectoActivo, estadoApp } = {}) {
       mensajes: [],
       errores: []
     });
-  }
-
-  function cambiarTextoManual() {
-    return obtenerEstado();
   }
 
   async function verificarWhisperActual() {
@@ -435,7 +430,6 @@ export function crearTranscripcionService({ proyectoActivo, estadoApp } = {}) {
     cambiarVideo,
     cambiarMotor,
     cambiarIdioma,
-    cambiarTextoManual,
     verificarWhisperActual,
     transcribirActual,
     guardarActual,
