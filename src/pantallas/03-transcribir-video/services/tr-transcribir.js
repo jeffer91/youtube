@@ -2,30 +2,21 @@
 Nombre completo: tr-transcribir.js
 Ruta o ubicación: /src/pantallas/03-transcribir-video/services/tr-transcribir.js
 Funciones principales:
-- Ejecutar la transcripción según el motor seleccionado.
-- Usar transcripción manual TXT o SRT para pruebas sin fingir IA.
+- Ejecutar la transcripción según el motor automático seleccionado.
+- Eliminar transcripción manual TXT/SRT del flujo.
 - Llamar al motor real de Electron cuando exista Whisper local.
 - Normalizar el resultado final de transcripción.
 Con qué se conecta:
 - tr-service.js
 - tr-validar.js
-- tr-txt.js
-- tr-srt.js
 - tr-json.js
 ========================================================= */
 
 import {
+  MOTOR_TRANSCRIPCION_DEFECTO_TR,
   MOTORES_TRANSCRIPCION_TR,
   validarAntesDeTranscribirTR
 } from "../validaciones/tr-validar.js";
-
-import {
-  leerTxtManualTR
-} from "../formatos/tr-txt.js";
-
-import {
-  leerSrtManualTR
-} from "../formatos/tr-srt.js";
 
 import {
   normalizarTranscripcionJsonTR
@@ -62,66 +53,27 @@ function obtenerAPITranscripcionTR() {
   return null;
 }
 
-function crearTranscripcionDesdeSrtTR({ lecturaSrt, video, idioma }) {
-  return normalizarTranscripcionJsonTR({
-    id: `tr-${video?.id || Date.now()}-${Date.now()}`,
-    videoId: video?.id || "",
-    idioma: limpiarTextoTR(idioma) || "es",
-    motor: "manual-srt",
-    modo: "manual",
-    texto: lecturaSrt.texto,
-    segmentos: lecturaSrt.segmentos,
-    creadoEn: new Date().toISOString()
-  }, { video });
+function esMotorAutomaticoWhisperTR(motorId) {
+  return [
+    MOTORES_TRANSCRIPCION_TR.WHISPER_RAPIDO,
+    MOTORES_TRANSCRIPCION_TR.WHISPER_EQUILIBRADO,
+    MOTORES_TRANSCRIPCION_TR.WHISPER_PRECISO
+  ].includes(motorId);
 }
 
-async function transcribirManualTxtTR({ textoManual, video, idioma }) {
-  const lectura = leerTxtManualTR(textoManual, {
-    video,
-    idioma
-  });
-
-  if (!lectura.ok) {
-    return crearErrorTR("No se pudo leer la transcripción manual TXT.", {
-      errores: lectura.errores
-    });
-  }
-
-  const transcripcion = normalizarTranscripcionJsonTR(lectura.transcripcion, { video });
-  return crearRespuestaOkTR(transcripcion, "Transcripción manual TXT cargada.");
-}
-
-async function transcribirManualSrtTR({ textoManual, video, idioma }) {
-  const lectura = leerSrtManualTR(textoManual);
-
-  if (!lectura.ok) {
-    return crearErrorTR("No se pudo leer la transcripción manual SRT.", {
-      errores: lectura.errores
-    });
-  }
-
-  const transcripcion = crearTranscripcionDesdeSrtTR({
-    lecturaSrt: lectura,
-    video,
-    idioma
-  });
-
-  return crearRespuestaOkTR(transcripcion, "Transcripción manual SRT cargada.");
-}
-
-async function transcribirWhisperLocalTR({ video, idioma }) {
+async function transcribirWhisperAutomaticoTR({ video, idioma, motorId }) {
   const api = obtenerAPITranscripcionTR();
 
   if (!api) {
     return crearErrorTR(
-      "No hay motor de transcripción configurado. Instala Whisper local o usa transcripción manual TXT/SRT."
+      "No hay motor de transcripción configurado. Abre la app con Electron y verifica Whisper local."
     );
   }
 
   const resultado = await api.transcribirVideo({
     video,
     idioma: limpiarTextoTR(idioma) || "es",
-    motor: MOTORES_TRANSCRIPCION_TR.WHISPER_LOCAL
+    motor: motorId
   });
 
   if (!resultado?.ok) {
@@ -132,21 +84,19 @@ async function transcribirWhisperLocalTR({ video, idioma }) {
   }
 
   const transcripcion = normalizarTranscripcionJsonTR(resultado.transcripcion, { video });
-  return crearRespuestaOkTR(transcripcion, resultado.mensaje || "Transcripción real terminada.");
+  return crearRespuestaOkTR(transcripcion, resultado.mensaje || "Transcripción automática terminada.");
 }
 
 export async function transcribirVideoTR({
   proyecto,
   video,
-  motorId = MOTORES_TRANSCRIPCION_TR.MANUAL_TXT,
-  textoManual = "",
+  motorId = MOTOR_TRANSCRIPCION_DEFECTO_TR,
   idioma = "es"
 } = {}) {
   const validacion = validarAntesDeTranscribirTR({
     proyecto,
     video,
-    motorId,
-    textoManual
+    motorId
   });
 
   if (!validacion.ok) {
@@ -156,16 +106,8 @@ export async function transcribirVideoTR({
   }
 
   try {
-    if (motorId === MOTORES_TRANSCRIPCION_TR.MANUAL_TXT) {
-      return await transcribirManualTxtTR({ textoManual, video, idioma });
-    }
-
-    if (motorId === MOTORES_TRANSCRIPCION_TR.MANUAL_SRT) {
-      return await transcribirManualSrtTR({ textoManual, video, idioma });
-    }
-
-    if (motorId === MOTORES_TRANSCRIPCION_TR.WHISPER_LOCAL) {
-      return await transcribirWhisperLocalTR({ video, idioma });
+    if (esMotorAutomaticoWhisperTR(motorId)) {
+      return await transcribirWhisperAutomaticoTR({ video, idioma, motorId });
     }
 
     return crearErrorTR("El motor seleccionado no está disponible.");
