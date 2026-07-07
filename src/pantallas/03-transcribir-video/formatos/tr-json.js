@@ -5,6 +5,7 @@ Funciones principales:
 - Generar JSON de transcripción para guardar o exportar.
 - Leer JSON de transcripción de forma segura.
 - Normalizar la estructura mínima de una transcripción.
+- Conservar motor automático, nombre del motor y modelo usado.
 Con qué se conecta:
 - tr-service.js
 - tr-guardar.js
@@ -51,7 +52,9 @@ export function normalizarTranscripcionJsonTR(transcripcion, contexto = {}) {
     id: limpiarTextoTR(fuente.id) || crearIdTranscripcionTR(video.id || fuente.videoId),
     videoId: limpiarTextoTR(fuente.videoId || video.id),
     idioma: limpiarTextoTR(fuente.idioma || fuente.language) || "es",
-    motor: limpiarTextoTR(fuente.motor || fuente.engine) || "desconocido",
+    motor: limpiarTextoTR(fuente.motor || fuente.engine) || "whisper-equilibrado",
+    motorNombre: limpiarTextoTR(fuente.motorNombre || fuente.engineName) || "Whisper equilibrado",
+    modelo: limpiarTextoTR(fuente.modelo || fuente.model) || "base",
     modo: limpiarTextoTR(fuente.modo || fuente.mode) || "real",
     texto,
     segmentos,
