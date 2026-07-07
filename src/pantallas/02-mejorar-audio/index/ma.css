@@ -1,14 +1,12 @@
 /* =========================================================
 Nombre completo: ma.css
 Ruta o ubicación: /src/pantallas/02-mejorar-audio/index/ma.css
-Funciones principales:
+Función o funciones:
 - Diseñar la pantalla Mejorar audio.
-- Diseñar navegación por páginas.
-- Diseñar perfiles inteligentes de audio.
-- Diseñar controles de ruido, voz y volumen.
-- Mostrar progreso general de procesamiento por lote.
+- Mantener visibles solo los controles necesarios de la capa de audio.
 - Mostrar comparación original/mejorado lado a lado.
-- Mantener una interfaz limpia y flexible.
+- Mostrar descarga como botón pequeño superior.
+- Mostrar una sola acción de guardado y el avance a transcripción.
 Con qué se conecta:
 - ma.html
 - ma.js
@@ -352,86 +350,19 @@ Con qué se conecta:
 
 .ma-controls {
   display: grid;
-  gap: 16px;
+  gap: 14px;
   padding: 18px;
   border: 1px solid #e2e8f0;
   border-radius: 22px;
   background: #ffffff;
 }
 
-.ma-controls__head {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 12px;
-}
-
-.ma-controls__head h3 {
-  margin: 0;
-  color: #0f172a;
-  font-size: 20px;
-}
-
-.ma-controls__head p {
-  margin: 4px 0 0;
-  color: #64748b;
-  font-size: 13px;
-}
-
-.ma-profiles {
-  display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
-  gap: 10px;
-}
-
-.ma-profile {
-  min-height: 96px;
-  padding: 12px;
-  border: 1px solid #e2e8f0;
-  border-radius: 18px;
-  background: #f8fafc;
-  color: #334155;
-  text-align: left;
-  cursor: pointer;
-}
-
-.ma-profile:hover {
-  background: #f1f5f9;
-}
-
-.ma-profile.is-active {
-  border-color: #2563eb;
-  background: #eff6ff;
-  box-shadow: 0 12px 30px rgba(37, 99, 235, 0.12);
-}
-
-.ma-profile__title {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-}
-
-.ma-profile strong {
-  color: #0f172a;
-  font-size: 13px;
-}
-
-.ma-profile small {
-  display: block;
-  margin-top: 8px;
-  color: #64748b;
-  font-size: 12px;
-  line-height: 1.35;
-}
-
+.ma-controls__head,
+.ma-profiles,
+.ma-profile,
+.ma-profile__title,
 .ma-profile__badge {
-  padding: 3px 7px;
-  border-radius: 999px;
-  background: #dbeafe;
-  color: #1d4ed8;
-  font-size: 10px;
-  font-weight: 900;
+  display: none;
 }
 
 .ma-controls__list {
@@ -543,9 +474,11 @@ Con qué se conecta:
 .ma-controls__footer {
   display: flex;
   justify-content: flex-end;
+  gap: 10px;
 }
 
-.ma-compare {
+.ma-compare,
+.ma-save {
   display: grid;
   gap: 16px;
   padding: 18px;
@@ -554,22 +487,34 @@ Con qué se conecta:
   background: #ffffff;
 }
 
-.ma-compare__head {
+.ma-compare__head,
+.ma-save__head {
   display: flex;
+  align-items: flex-start;
   justify-content: space-between;
   gap: 12px;
 }
 
-.ma-compare__head h3 {
+.ma-compare__head h3,
+.ma-save h3 {
   margin: 0;
   color: #0f172a;
   font-size: 20px;
 }
 
-.ma-compare__head p {
+.ma-compare__head p,
+.ma-save p {
   margin: 4px 0 0;
   color: #64748b;
   font-size: 13px;
+}
+
+.ma-compare__top-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  flex-wrap: wrap;
 }
 
 .ma-compare-tabs {
@@ -588,10 +533,36 @@ Con qué se conecta:
   cursor: pointer;
 }
 
+.ma-tab:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
 .ma-tab.is-active {
   border-color: #2563eb;
   background: #eff6ff;
   color: #1d4ed8;
+}
+
+.ma-download-mini {
+  width: 36px;
+  height: 36px;
+  display: inline-grid;
+  place-items: center;
+  flex: 0 0 auto;
+  border: 1px solid #cbd5e1;
+  border-radius: 999px;
+  background: #ffffff;
+  color: #0f172a;
+  font-size: 20px;
+  font-weight: 900;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.ma-download-mini:hover {
+  background: #f8fafc;
+  border-color: #94a3b8;
 }
 
 .ma-compare-grid {
@@ -635,27 +606,6 @@ Con qué se conecta:
   background: #0f172a;
 }
 
-.ma-save {
-  display: grid;
-  gap: 16px;
-  padding: 18px;
-  border: 1px solid #e2e8f0;
-  border-radius: 22px;
-  background: #ffffff;
-}
-
-.ma-save h3 {
-  margin: 0;
-  color: #0f172a;
-  font-size: 20px;
-}
-
-.ma-save p {
-  margin: 0;
-  color: #64748b;
-  font-size: 13px;
-}
-
 .ma-save-card {
   padding: 14px;
   border: 1px solid #e2e8f0;
@@ -674,6 +624,21 @@ Con qué se conecta:
   margin-top: 4px;
   color: #64748b;
   font-size: 12px;
+}
+
+.ma-filter-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 10px;
+}
+
+.ma-filter-list code {
+  padding: 4px 7px;
+  border-radius: 999px;
+  background: #ffffff;
+  color: #334155;
+  font-size: 11px;
 }
 
 .ma-empty,
@@ -716,6 +681,11 @@ Con qué se conecta:
   color: #cbd5e1;
 }
 
+.ma-note {
+  color: #64748b;
+  font-size: 13px;
+}
+
 .ma-actions {
   display: flex;
   justify-content: flex-end;
@@ -724,17 +694,14 @@ Con qué se conecta:
 }
 
 @media (max-width: 1180px) {
-  .ma-profiles {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-  }
-
   .ma-layout {
     grid-template-columns: 280px minmax(0, 1fr);
   }
 }
 
 @media (max-width: 1040px) {
-  .ma-top {
+  .ma-top,
+  .ma-compare-grid {
     grid-template-columns: 1fr;
   }
 
@@ -749,10 +716,6 @@ Con qué se conecta:
   .ma-control__levels {
     justify-content: flex-start;
   }
-
-  .ma-compare-grid {
-    grid-template-columns: 1fr;
-  }
 }
 
 @media (max-width: 860px) {
@@ -764,20 +727,25 @@ Con qué se conecta:
     max-height: none;
   }
 
-  .ma-profiles {
-    grid-template-columns: 1fr;
-  }
-
   .ma-player-card {
     min-height: 260px;
   }
 
+  .ma-compare__head,
+  .ma-save__head,
+  .ma-controls__footer,
   .ma-actions {
     flex-direction: column;
   }
 
   .ma-actions .app-btn,
-  .ma-actions .app-btn--ghost {
+  .ma-actions .app-btn--ghost,
+  .ma-controls__footer .app-btn,
+  .ma-controls__footer .app-btn--ghost {
     width: 100%;
+  }
+
+  .ma-download-mini {
+    align-self: flex-end;
   }
 }
