@@ -4,7 +4,7 @@ Ruta o ubicación: /src/pantallas/03-transcribir-video/electron/tr-whisper-runne
 Funciones principales:
 - Verificar disponibilidad de Whisper local.
 - Ejecutar Whisper con un audio WAV preparado.
-- Elegir modelo según motor automático: rápido, equilibrado o preciso.
+- Elegir modelo según motor automático: local o preciso.
 - Leer salida JSON/TXT/SRT generada por Whisper.
 - Normalizar el resultado para la pantalla de transcripción.
 - Forzar UTF-8 al ejecutar Python/Whisper en Windows.
@@ -21,9 +21,10 @@ const { spawn } = require("child_process");
 const WHISPER_TIMEOUT_MS_TR = 20 * 60 * 1000;
 
 const MOTORES_WHISPER_TR = Object.freeze({
-  RAPIDO: "whisper-rapido",
-  EQUILIBRADO: "whisper-equilibrado",
-  PRECISO: "whisper-preciso"
+  LOCAL: "whisper-local",
+  PRECISO: "whisper-preciso",
+  RAPIDO_LEGACY: "whisper-rapido",
+  EQUILIBRADO_LEGACY: "whisper-equilibrado"
 });
 
 function limpiarTextoTR(valor) {
@@ -70,16 +71,26 @@ function crearEntornoWhisperTR(opciones = {}) {
   };
 }
 
-function obtenerRutaModeloWhisperTR(motorId = MOTORES_WHISPER_TR.EQUILIBRADO) {
-  const motor = limpiarTextoTR(motorId) || MOTORES_WHISPER_TR.EQUILIBRADO;
+function normalizarMotorWhisperTR(motorId = MOTORES_WHISPER_TR.LOCAL) {
+  const motor = limpiarTextoTR(motorId) || MOTORES_WHISPER_TR.LOCAL;
 
-  if (motor === MOTORES_WHISPER_TR.RAPIDO) {
-    return limpiarTextoTR(
-      process.env.WHISPER_MODEL_FAST ||
-      process.env.WHISPER_MODEL_RAPIDO ||
-      "tiny"
-    );
+  if (motor === MOTORES_WHISPER_TR.EQUILIBRADO_LEGACY) {
+    return MOTORES_WHISPER_TR.LOCAL;
   }
+
+  if (motor === MOTORES_WHISPER_TR.RAPIDO_LEGACY) {
+    return MOTORES_WHISPER_TR.LOCAL;
+  }
+
+  if (motor === MOTORES_WHISPER_TR.PRECISO) {
+    return MOTORES_WHISPER_TR.PRECISO;
+  }
+
+  return MOTORES_WHISPER_TR.LOCAL;
+}
+
+function obtenerRutaModeloWhisperTR(motorId = MOTORES_WHISPER_TR.LOCAL) {
+  const motor = normalizarMotorWhisperTR(motorId);
 
   if (motor === MOTORES_WHISPER_TR.PRECISO) {
     return limpiarTextoTR(
@@ -90,6 +101,7 @@ function obtenerRutaModeloWhisperTR(motorId = MOTORES_WHISPER_TR.EQUILIBRADO) {
   }
 
   return limpiarTextoTR(
+    process.env.WHISPER_MODEL_LOCAL ||
     process.env.WHISPER_MODEL_BALANCED ||
     process.env.WHISPER_MODEL_EQUILIBRADO ||
     process.env.WHISPER_MODEL ||
@@ -97,18 +109,14 @@ function obtenerRutaModeloWhisperTR(motorId = MOTORES_WHISPER_TR.EQUILIBRADO) {
   );
 }
 
-function obtenerNombreMotorWhisperTR(motorId = MOTORES_WHISPER_TR.EQUILIBRADO) {
-  const motor = limpiarTextoTR(motorId) || MOTORES_WHISPER_TR.EQUILIBRADO;
-
-  if (motor === MOTORES_WHISPER_TR.RAPIDO) {
-    return "Whisper rápido";
-  }
+function obtenerNombreMotorWhisperTR(motorId = MOTORES_WHISPER_TR.LOCAL) {
+  const motor = normalizarMotorWhisperTR(motorId);
 
   if (motor === MOTORES_WHISPER_TR.PRECISO) {
-    return "Whisper preciso";
+    return "Motor 2 · Whisper preciso";
   }
 
-  return "Whisper equilibrado";
+  return "Motor 1 · Whisper local";
 }
 
 function obtenerRutaSalidaWhisperTR({ obtenerRutaData, asegurarCarpeta }) {
@@ -269,7 +277,7 @@ function crearTranscripcionWhisperTR({ datosJson, textoTxt, audio, video, idioma
     id: crearIdTR(video?.id),
     videoId: video?.id || "",
     idioma: limpiarTextoTR(idioma) || "es",
-    motor: motorId || MOTORES_WHISPER_TR.EQUILIBRADO,
+    motor: normalizarMotorWhisperTR(motorId),
     motorNombre: obtenerNombreMotorWhisperTR(motorId),
     modelo,
     modo: "real",
@@ -383,7 +391,7 @@ async function transcribirAudioConWhisperTR({ audio, video, idioma, motorId, obt
   const diagnostico = {
     comando,
     modelo,
-    motorId,
+    motorId: normalizarMotorWhisperTR(motorId),
     nombreMotor,
     carpetaSalida,
     rutaJson,
