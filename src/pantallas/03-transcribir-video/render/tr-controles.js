@@ -3,7 +3,7 @@ Nombre completo: tr-controles.js
 Ruta o ubicación: /src/pantallas/03-transcribir-video/render/tr-controles.js
 Funciones principales:
 - Renderizar idioma y dos motores automáticos.
-- Mostrar progreso por etapas, no solo 15% y 100%.
+- Mostrar progreso por etapas y por lote de videos.
 - Mostrar disponibilidad de Whisper local.
 - Conectar controles con el servicio de transcripción.
 Con qué se conecta:
@@ -78,7 +78,7 @@ export function renderOpcionesTranscripcionTR({ contenedor, estado }) {
   contenedor.innerHTML = `
     <div class="tr-panel__head">
       <h3>Opciones</h3>
-      <p>Elige el idioma y uno de los dos motores de transcripción.</p>
+      <p>Elige el idioma y uno de los dos motores. Al transcribir, se procesarán todos los videos cargados.</p>
     </div>
 
     <div class="tr-options">
@@ -96,7 +96,7 @@ export function renderOpcionesTranscripcionTR({ contenedor, estado }) {
         <div class="tr-engine-grid">
           ${motores.map((motor) => crearOpcionMotorTR(motor, estado.motorId)).join("")}
         </div>
-        <p class="tr-help">Ambos motores generan texto y bloques de tiempo. El segundo tarda más, pero suele dar mejor precisión.</p>
+        <p class="tr-help">La transcripción es automática por lote: si cargaste 2 videos, se transcriben 2; si cargaste 3, se transcriben 3.</p>
       </div>
     </div>
   `;
@@ -151,6 +151,22 @@ function crearEtapasProgresoTR(progreso) {
   }).join("");
 }
 
+function renderResumenLoteTR(lote) {
+  if (!lote || !lote.total) {
+    return "";
+  }
+
+  return `
+    <div class="tr-batch-summary">
+      <strong>Lote de videos</strong>
+      <span>${escaparHtmlTR(String(lote.procesados || 0))}/${escaparHtmlTR(String(lote.total || 0))} procesados</span>
+      <span>${escaparHtmlTR(String(lote.exitosos || 0))} correctos</span>
+      <span>${escaparHtmlTR(String(lote.fallidos || 0))} con error</span>
+      ${lote.actualNombre ? `<small>Actual: ${escaparHtmlTR(lote.actualNombre)}</small>` : ""}
+    </div>
+  `;
+}
+
 export function renderProgresoTranscripcionTR({ contenedor, estado }) {
   if (!contenedor) {
     return;
@@ -159,6 +175,7 @@ export function renderProgresoTranscripcionTR({ contenedor, estado }) {
   const progreso = Math.max(0, Math.min(100, Number(estado.progreso) || 0));
   const motor = (estado.motores || []).find((item) => item.id === estado.motorId);
   const transcripcion = estado.transcripcionActual || null;
+  const lote = estado.resultadoLoteTranscripcion || null;
   const totalPalabras = transcripcion?.resumen?.totalPalabras || 0;
   const totalSegmentos = Array.isArray(transcripcion?.segmentos) ? transcripcion.segmentos.length : 0;
 
@@ -175,8 +192,10 @@ export function renderProgresoTranscripcionTR({ contenedor, estado }) {
 
       <div class="tr-progress__meta">
         <strong>${progreso}%</strong>
-        <span>${progreso >= 100 ? "Transcripción terminada" : "Procesando por etapas"}</span>
+        <span>${progreso >= 100 ? "Transcripción terminada" : "Procesando lote"}</span>
       </div>
+
+      ${renderResumenLoteTR(lote)}
 
       <div class="tr-progress-steps">
         ${crearEtapasProgresoTR(progreso)}
