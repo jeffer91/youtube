@@ -5,8 +5,8 @@ Funciones principales:
 - Mantener el estado interno de la pantalla Transcribir video.
 - Seleccionar video, motor automático e idioma.
 - Verificar Whisper local antes de usar transcripción real.
-- Ejecutar transcripción automática con progreso visual por etapas.
-- Guardar transcripción en el proyecto activo.
+- Transcribir automáticamente todos los videos cargados en lote.
+- Guardar cada transcripción dentro del proyecto activo.
 - Preparar exportaciones TXT, SRT y JSON.
 Con qué se conecta:
 - tr.js
@@ -46,57 +46,53 @@ const PASOS_TR = Object.freeze([
   {
     id: "seleccionar",
     numero: "01",
-    titulo: "Seleccionar video",
-    descripcion: "Elige el video que quieres transcribir."
+    titulo: "Videos",
+    descripcion: "Revisa los videos cargados."
   },
   {
     id: "configurar",
     numero: "02",
-    titulo: "Configurar motor",
-    descripcion: "Elige uno de los dos motores automáticos."
+    titulo: "Motor",
+    descripcion: "Elige uno de los dos motores."
   },
   {
     id: "transcribir",
     numero: "03",
-    titulo: "Transcribir",
-    descripcion: "Genera texto y bloques de tiempo."
+    titulo: "Transcribir lote",
+    descripcion: "Genera texto para todos."
   },
   {
     id: "guardar",
     numero: "04",
-    titulo: "Guardar",
-    descripcion: "Guarda y pasa a subtítulos."
+    titulo: "Subtítulos",
+    descripcion: "Continúa con subtítulos."
   }
 ]);
 
 const PROGRESO_AUTOMATICO_TR = Object.freeze([
   {
-    progreso: 12,
+    interno: 10,
     mensaje: "Preparando video y fuente de audio..."
   },
   {
-    progreso: 24,
+    interno: 24,
     mensaje: "Extrayendo audio limpio para transcripción..."
   },
   {
-    progreso: 38,
+    interno: 38,
     mensaje: "Iniciando motor de transcripción..."
   },
   {
-    progreso: 52,
+    interno: 55,
     mensaje: "Analizando voz y generando texto..."
   },
   {
-    progreso: 68,
+    interno: 72,
     mensaje: "Separando la transcripción por bloques de tiempo..."
   },
   {
-    progreso: 82,
+    interno: 88,
     mensaje: "Preparando segmentos y subtítulos..."
-  },
-  {
-    progreso: 92,
-    mensaje: "Revisando resultado final antes de mostrarlo..."
   }
 ]);
 
@@ -127,8 +123,57 @@ function obtenerVideoPorIdTR(videos, videoId) {
   return videos.find((video) => video.id === videoId) || videos[0] || null;
 }
 
+function obtenerNombreVideoTR(video, indice = 0) {
+  return String(video?.nombre || `Video ${indice + 1}`).trim() || `Video ${indice + 1}`;
+}
+
 function existeTranscripcionTR(transcripcion) {
   return Boolean(transcripcion?.texto);
+}
+
+function videoTieneTranscripcionTR(video) {
+  return existeTranscripcionTR(obtenerTranscripcionVideoTR(video));
+}
+
+function todosVideosTranscritosTR(videos) {
+  const lista = Array.isArray(videos) ? videos : [];
+
+  if (!lista.length) {
+    return false;
+  }
+
+  return lista.every((video) => videoTieneTranscripcionTR(video));
+}
+
+function contarVideosTranscritosTR(videos) {
+  const lista = Array.isArray(videos) ? videos : [];
+  return lista.filter((video) => videoTieneTranscripcionTR(video)).length;
+}
+
+function crearResultadoLoteVacioTR(videos = []) {
+  const total = Array.isArray(videos) ? videos.length : 0;
+  const transcritos = contarVideosTranscritosTR(videos);
+
+  return {
+    total,
+    procesados: 0,
+    exitosos: transcritos,
+    fallidos: 0,
+    pendientes: Math.max(total - transcritos, 0),
+    actualIndice: 0,
+    actualVideoId: "",
+    actualNombre: "",
+    errores: []
+  };
+}
+
+function calcularProgresoLoteTR({ indice, total, interno }) {
+  const totalSeguro = Math.max(1, Number(total) || 1);
+  const indiceSeguro = Math.max(0, Number(indice) || 0);
+  const internoSeguro = Math.max(0, Math.min(100, Number(interno) || 0));
+  const progreso = ((indiceSeguro + (internoSeguro / 100)) / totalSeguro) * 100;
+
+  return Math.max(1, Math.min(96, Math.round(progreso)));
 }
 
 function crearEstadoInicialTR({ proyectoActivo }) {
@@ -138,13 +183,13 @@ function crearEstadoInicialTR({ proyectoActivo }) {
   const videoActualId = obtenerPrimerVideoIdTR(videos);
   const videoActual = obtenerVideoPorIdTR(videos, videoActualId);
   const transcripcionActual = obtenerTranscripcionVideoTR(videoActual);
-  const tieneTranscripcion = existeTranscripcionTR(transcripcionActual);
+  const todosTranscritos = todosVideosTranscritosTR(videos);
 
   return {
     proyecto,
     proyectoValido: adaptado.ok,
     pasos: PASOS_TR,
-    pasoActual: tieneTranscripcion ? "guardar" : "seleccionar",
+    pasoActual: todosTranscritos ? "guardar" : "seleccionar",
     videos,
     videoActualId,
     idioma: "es",
@@ -152,26 +197,23 @@ function crearEstadoInicialTR({ proyectoActivo }) {
     motores: obtenerMotoresTranscripcionTR(),
     formatosExportacion: obtenerFormatosExportacionTR(),
     transcripcionActual,
-    transcripcionGuardada: tieneTranscripcion,
-    puedeAvanzarSubtitulos: tieneTranscripcion,
+    transcripcionGuardada: todosTranscritos,
+    puedeAvanzarSubtitulos: todosTranscritos,
     exportacionActual: null,
     whisperDisponible: null,
     ultimoDiagnosticoWhisper: null,
+    resultadoLoteTranscripcion: crearResultadoLoteVacioTR(videos),
     procesando: false,
     guardando: false,
     exportando: false,
     verificandoWhisper: false,
-    progreso: tieneTranscripcion ? 100 : 0,
-    estadoProceso: tieneTranscripcion
-      ? "Transcripción guardada. Puedes pasar a subtítulos."
-      : (adaptado.ok ? "Listo para transcribir." : adaptado.mensaje),
+    progreso: todosTranscritos ? 100 : 0,
+    estadoProceso: todosTranscritos
+      ? "Todos los videos tienen transcripción. Puedes pasar a subtítulos."
+      : (adaptado.ok ? "Listo para transcribir todos los videos cargados." : adaptado.mensaje),
     mensajes: adaptado.ok ? [] : [],
     errores: adaptado.ok ? [] : [adaptado.mensaje]
   };
-}
-
-function calcularPasoDespuesDeTranscripcionTR(transcripcion) {
-  return transcripcion ? "guardar" : "configurar";
 }
 
 async function consultarWhisperElectronTR() {
@@ -216,6 +258,12 @@ export function crearTranscripcionService({ proyectoActivo, estadoApp } = {}) {
     return obtenerEstado();
   }
 
+  function sincronizarProyectoActivo(proyecto) {
+    if (estadoApp?.establecerProyectoActivo) {
+      estadoApp.establecerProyectoActivo(proyecto);
+    }
+  }
+
   function detenerProgresoAutomatico() {
     if (temporizadorProgreso) {
       clearInterval(temporizadorProgreso);
@@ -225,7 +273,7 @@ export function crearTranscripcionService({ proyectoActivo, estadoApp } = {}) {
     indiceProgreso = 0;
   }
 
-  function iniciarProgresoAutomatico() {
+  function iniciarProgresoAutomatico({ indice, total, nombre }) {
     detenerProgresoAutomatico();
     indiceProgreso = 0;
 
@@ -240,11 +288,17 @@ export function crearTranscripcionService({ proyectoActivo, estadoApp } = {}) {
       if (etapa) {
         indiceProgreso += 1;
 
-        if (etapa.progreso > estado.progreso) {
+        const progreso = calcularProgresoLoteTR({
+          indice,
+          total,
+          interno: etapa.interno
+        });
+
+        if (progreso > estado.progreso) {
           actualizar({
-            progreso: etapa.progreso,
-            estadoProceso: etapa.mensaje,
-            mensajes: [etapa.mensaje],
+            progreso,
+            estadoProceso: `${etapa.mensaje} ${nombre}`,
+            mensajes: [`Procesando ${nombre}.`],
             errores: []
           });
         }
@@ -252,12 +306,17 @@ export function crearTranscripcionService({ proyectoActivo, estadoApp } = {}) {
         return;
       }
 
-      const progresoSiguiente = Math.min(96, Math.max(estado.progreso + 1, estado.progreso));
+      const limiteVideo = calcularProgresoLoteTR({
+        indice,
+        total,
+        interno: 96
+      });
+      const progresoSiguiente = Math.min(limiteVideo, estado.progreso + 1);
 
       if (progresoSiguiente !== estado.progreso) {
         actualizar({
           progreso: progresoSiguiente,
-          estadoProceso: "El motor sigue procesando. Esto puede tardar según el tamaño del video.",
+          estadoProceso: `El motor sigue transcribiendo ${nombre}.`,
           mensajes: ["Transcripción en proceso. No cierres la app."],
           errores: []
         });
@@ -302,18 +361,18 @@ export function crearTranscripcionService({ proyectoActivo, estadoApp } = {}) {
     }
 
     const transcripcionVideo = obtenerTranscripcionVideoTR(video);
-    const tieneTranscripcion = existeTranscripcionTR(transcripcionVideo);
+    const todosTranscritos = todosVideosTranscritosTR(estado.videos);
 
     return actualizar({
       videoActualId: video.id,
-      pasoActual: tieneTranscripcion ? "guardar" : "configurar",
+      pasoActual: todosTranscritos ? "guardar" : "configurar",
       transcripcionActual: transcripcionVideo,
-      transcripcionGuardada: tieneTranscripcion,
-      puedeAvanzarSubtitulos: tieneTranscripcion,
+      transcripcionGuardada: todosTranscritos,
+      puedeAvanzarSubtitulos: todosTranscritos,
       exportacionActual: null,
-      progreso: tieneTranscripcion ? 100 : 0,
-      estadoProceso: tieneTranscripcion ? "Este video ya tiene transcripción guardada." : "Video seleccionado.",
-      mensajes: [tieneTranscripcion ? "Video con transcripción cargada." : "Video seleccionado para transcripción."],
+      progreso: todosTranscritos ? 100 : estado.progreso,
+      estadoProceso: transcripcionVideo ? "Este video ya tiene transcripción." : "Video seleccionado.",
+      mensajes: [transcripcionVideo ? "Video con transcripción cargada." : "Video seleccionado para transcripción."],
       errores: []
     });
   }
@@ -386,7 +445,8 @@ export function crearTranscripcionService({ proyectoActivo, estadoApp } = {}) {
 
   async function transcribirActual() {
     const validacionProyecto = validarProyectoTranscripcionTR(estado.proyecto);
-    const video = obtenerVideoActual();
+    const videosIniciales = Array.isArray(estado.videos) ? estado.videos : [];
+    const total = videosIniciales.length;
 
     if (!validacionProyecto.ok) {
       return actualizar({
@@ -395,66 +455,263 @@ export function crearTranscripcionService({ proyectoActivo, estadoApp } = {}) {
       });
     }
 
+    if (!total) {
+      return actualizar({
+        errores: ["No hay videos cargados para transcribir."],
+        mensajes: []
+      });
+    }
+
+    let proyectoTrabajo = estado.proyecto;
+    let videosTrabajo = crearListaVideosTR(proyectoTrabajo);
+    let ultimoVideoOk = null;
+    let ultimaTranscripcionOk = null;
+    const erroresLote = [];
+    const resultadosLote = [];
+
     actualizar({
       procesando: true,
       pasoActual: "transcribir",
-      progreso: 8,
+      progreso: 1,
       transcripcionGuardada: false,
       puedeAvanzarSubtitulos: false,
-      estadoProceso: "Preparando transcripción automática...",
-      mensajes: ["Iniciando transcripción automática."],
+      resultadoLoteTranscripcion: {
+        total,
+        procesados: 0,
+        exitosos: 0,
+        fallidos: 0,
+        pendientes: total,
+        actualIndice: 0,
+        actualVideoId: "",
+        actualNombre: "",
+        errores: []
+      },
+      estadoProceso: `Preparando transcripción automática para ${total} video(s).`,
+      mensajes: [`Se transcribirán automáticamente ${total} video(s).`],
       errores: []
     });
 
-    iniciarProgresoAutomatico();
+    for (let indice = 0; indice < videosIniciales.length; indice += 1) {
+      const video = videosIniciales[indice];
+      const nombre = obtenerNombreVideoTR(video, indice);
+      const progresoInicio = calcularProgresoLoteTR({ indice, total, interno: 4 });
 
-    try {
-      const resultado = await transcribirVideoTR({
-        proyecto: estado.proyecto,
-        video,
-        motorId: estado.motorId,
-        idioma: estado.idioma
-      });
-
-      detenerProgresoAutomatico();
-
-      if (!resultado.ok) {
-        return actualizar({
-          procesando: false,
-          progreso: 0,
-          transcripcionGuardada: false,
-          puedeAvanzarSubtitulos: false,
-          estadoProceso: resultado.mensaje || "No se pudo transcribir.",
-          mensajes: [],
-          errores: resultado.errores || [resultado.mensaje || "No se pudo transcribir."]
-        });
-      }
-
-      return actualizar({
-        procesando: false,
-        pasoActual: calcularPasoDespuesDeTranscripcionTR(resultado.transcripcion),
-        progreso: 100,
-        transcripcionActual: resultado.transcripcion,
-        transcripcionGuardada: false,
-        puedeAvanzarSubtitulos: true,
-        exportacionActual: null,
-        estadoProceso: resultado.mensaje || "Transcripción terminada.",
-        mensajes: [resultado.mensaje || "Transcripción terminada."],
+      actualizar({
+        videoActualId: video.id,
+        transcripcionActual: obtenerTranscripcionVideoTR(video),
+        progreso: Math.max(estado.progreso, progresoInicio),
+        estadoProceso: `Transcribiendo ${indice + 1} de ${total}: ${nombre}`,
+        mensajes: [`Transcribiendo ${indice + 1} de ${total}: ${nombre}`],
+        resultadoLoteTranscripcion: {
+          total,
+          procesados: indice,
+          exitosos: resultadosLote.filter((item) => item.ok).length,
+          fallidos: resultadosLote.filter((item) => !item.ok).length,
+          pendientes: Math.max(total - indice, 0),
+          actualIndice: indice + 1,
+          actualVideoId: video.id || "",
+          actualNombre: nombre,
+          errores: erroresLote
+        },
         errores: []
       });
-    } catch (error) {
-      detenerProgresoAutomatico();
 
+      iniciarProgresoAutomatico({ indice, total, nombre });
+
+      try {
+        const resultado = await transcribirVideoTR({
+          proyecto: proyectoTrabajo,
+          video,
+          motorId: estado.motorId,
+          idioma: estado.idioma
+        });
+
+        detenerProgresoAutomatico();
+
+        if (!resultado.ok) {
+          const mensaje = `${nombre}: ${resultado.mensaje || "No se pudo transcribir."}`;
+          erroresLote.push(mensaje);
+          resultadosLote.push({
+            videoId: video.id || "",
+            nombre,
+            ok: false,
+            mensaje
+          });
+
+          actualizar({
+            progreso: calcularProgresoLoteTR({ indice, total, interno: 100 }),
+            estadoProceso: `No se pudo transcribir ${nombre}. Continuando con el siguiente video.`,
+            mensajes: [],
+            errores: [mensaje],
+            resultadoLoteTranscripcion: {
+              total,
+              procesados: indice + 1,
+              exitosos: resultadosLote.filter((item) => item.ok).length,
+              fallidos: resultadosLote.filter((item) => !item.ok).length,
+              pendientes: Math.max(total - indice - 1, 0),
+              actualIndice: indice + 1,
+              actualVideoId: video.id || "",
+              actualNombre: nombre,
+              errores: erroresLote
+            }
+          });
+
+          continue;
+        }
+
+        const guardado = guardarTranscripcionEnProyectoTR({
+          proyecto: proyectoTrabajo,
+          video,
+          transcripcion: resultado.transcripcion
+        });
+
+        if (!guardado.ok) {
+          const mensaje = `${nombre}: ${guardado.errores?.[0] || "No se pudo guardar la transcripción."}`;
+          erroresLote.push(mensaje);
+          resultadosLote.push({
+            videoId: video.id || "",
+            nombre,
+            ok: false,
+            mensaje
+          });
+
+          actualizar({
+            estadoProceso: `La transcripción de ${nombre} se generó, pero no se pudo guardar.`,
+            mensajes: [],
+            errores: [mensaje]
+          });
+
+          continue;
+        }
+
+        proyectoTrabajo = guardado.proyecto;
+        videosTrabajo = crearListaVideosTR(proyectoTrabajo);
+        ultimoVideoOk = guardado.video;
+        ultimaTranscripcionOk = guardado.transcripcion;
+        resultadosLote.push({
+          videoId: guardado.video.id || "",
+          nombre,
+          ok: true,
+          mensaje: guardado.mensaje || "Transcripción guardada."
+        });
+
+        sincronizarProyectoActivo(proyectoTrabajo);
+
+        actualizar({
+          proyecto: proyectoTrabajo,
+          videos: videosTrabajo,
+          videoActualId: guardado.video.id,
+          transcripcionActual: guardado.transcripcion,
+          progreso: Math.min(100, Math.round(((indice + 1) / total) * 100)),
+          estadoProceso: `Transcripción guardada para ${nombre}.`,
+          mensajes: [`${nombre} transcrito correctamente.`],
+          errores: erroresLote.length ? [...erroresLote] : [],
+          resultadoLoteTranscripcion: {
+            total,
+            procesados: indice + 1,
+            exitosos: resultadosLote.filter((item) => item.ok).length,
+            fallidos: resultadosLote.filter((item) => !item.ok).length,
+            pendientes: Math.max(total - indice - 1, 0),
+            actualIndice: indice + 1,
+            actualVideoId: guardado.video.id || "",
+            actualNombre: nombre,
+            errores: erroresLote
+          }
+        });
+      } catch (error) {
+        detenerProgresoAutomatico();
+
+        const mensaje = `${nombre}: ${error?.message || "No se pudo completar la transcripción."}`;
+        erroresLote.push(mensaje);
+        resultadosLote.push({
+          videoId: video.id || "",
+          nombre,
+          ok: false,
+          mensaje
+        });
+
+        actualizar({
+          estadoProceso: `Error al transcribir ${nombre}. Continuando con el siguiente video.`,
+          mensajes: [],
+          errores: [mensaje],
+          resultadoLoteTranscripcion: {
+            total,
+            procesados: indice + 1,
+            exitosos: resultadosLote.filter((item) => item.ok).length,
+            fallidos: resultadosLote.filter((item) => !item.ok).length,
+            pendientes: Math.max(total - indice - 1, 0),
+            actualIndice: indice + 1,
+            actualVideoId: video.id || "",
+            actualNombre: nombre,
+            errores: erroresLote
+          }
+        });
+      }
+    }
+
+    detenerProgresoAutomatico();
+
+    const exitosos = resultadosLote.filter((item) => item.ok).length;
+    const fallidos = resultadosLote.filter((item) => !item.ok).length;
+    const todosOk = exitosos === total && fallidos === 0;
+    const puedeAvanzar = exitosos > 0 && todosVideosTranscritosTR(videosTrabajo);
+
+    if (!exitosos) {
       return actualizar({
         procesando: false,
+        pasoActual: "configurar",
         progreso: 0,
         transcripcionGuardada: false,
         puedeAvanzarSubtitulos: false,
-        estadoProceso: "No se pudo completar la transcripción.",
+        estadoProceso: "No se pudo transcribir ningún video.",
         mensajes: [],
-        errores: [error?.message || "No se pudo completar la transcripción."]
+        errores: erroresLote.length ? erroresLote : ["No se pudo transcribir ningún video."],
+        resultadoLoteTranscripcion: {
+          total,
+          procesados: total,
+          exitosos,
+          fallidos,
+          pendientes: 0,
+          actualIndice: total,
+          actualVideoId: "",
+          actualNombre: "",
+          errores: erroresLote
+        }
       });
     }
+
+    return actualizar({
+      procesando: false,
+      proyecto: proyectoTrabajo,
+      videos: videosTrabajo,
+      videoActualId: ultimoVideoOk?.id || estado.videoActualId,
+      transcripcionActual: ultimaTranscripcionOk || estado.transcripcionActual,
+      pasoActual: puedeAvanzar ? "guardar" : "transcribir",
+      progreso: 100,
+      transcripcionGuardada: puedeAvanzar,
+      puedeAvanzarSubtitulos: puedeAvanzar,
+      exportacionActual: null,
+      estadoProceso: todosOk
+        ? `Transcripción terminada para ${total} video(s). Puedes pasar a subtítulos.`
+        : `Se transcribieron ${exitosos} de ${total} video(s). Revisa los pendientes antes de continuar.`,
+      mensajes: [
+        todosOk
+          ? `Todos los videos fueron transcritos correctamente.`
+          : `Se transcribieron ${exitosos} de ${total} video(s).`
+      ],
+      errores: erroresLote,
+      resultadoLoteTranscripcion: {
+        total,
+        procesados: total,
+        exitosos,
+        fallidos,
+        pendientes: Math.max(total - exitosos - fallidos, 0),
+        actualIndice: total,
+        actualVideoId: ultimoVideoOk?.id || "",
+        actualNombre: ultimoVideoOk?.nombre || "",
+        errores: erroresLote
+      }
+    });
   }
 
   function guardarActual() {
@@ -465,7 +722,8 @@ export function crearTranscripcionService({ proyectoActivo, estadoApp } = {}) {
       return actualizar({
         errores: validacion.errores,
         mensajes: [],
-        transcripcionGuardada: false
+        transcripcionGuardada: todosVideosTranscritosTR(estado.videos),
+        puedeAvanzarSubtitulos: todosVideosTranscritosTR(estado.videos)
       });
     }
 
@@ -484,28 +742,31 @@ export function crearTranscripcionService({ proyectoActivo, estadoApp } = {}) {
     if (!resultado.ok) {
       return actualizar({
         guardando: false,
-        transcripcionGuardada: false,
-        puedeAvanzarSubtitulos: false,
+        transcripcionGuardada: todosVideosTranscritosTR(estado.videos),
+        puedeAvanzarSubtitulos: todosVideosTranscritosTR(estado.videos),
         errores: resultado.errores,
         mensajes: []
       });
     }
 
-    if (estadoApp?.establecerProyectoActivo) {
-      estadoApp.establecerProyectoActivo(resultado.proyecto);
-    }
+    const videosActualizados = crearListaVideosTR(resultado.proyecto);
+    const todosTranscritos = todosVideosTranscritosTR(videosActualizados);
+
+    sincronizarProyectoActivo(resultado.proyecto);
 
     return actualizar({
       guardando: false,
       proyecto: resultado.proyecto,
-      videos: crearListaVideosTR(resultado.proyecto),
+      videos: videosActualizados,
       videoActualId: resultado.video.id,
       transcripcionActual: resultado.transcripcion,
-      transcripcionGuardada: true,
-      puedeAvanzarSubtitulos: true,
-      pasoActual: "guardar",
-      estadoProceso: "Transcripción guardada. Puedes pasar a subtítulos.",
-      mensajes: [resultado.mensaje, "Ya puedes continuar a la pantalla de subtítulos."].filter(Boolean),
+      transcripcionGuardada: todosTranscritos,
+      puedeAvanzarSubtitulos: todosTranscritos,
+      pasoActual: todosTranscritos ? "guardar" : "transcribir",
+      estadoProceso: todosTranscritos
+        ? "Todas las transcripciones están guardadas. Puedes pasar a subtítulos."
+        : "Transcripción guardada. Aún faltan videos por transcribir.",
+      mensajes: [resultado.mensaje].filter(Boolean),
       errores: []
     });
   }
