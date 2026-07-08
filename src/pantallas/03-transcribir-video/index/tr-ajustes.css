@@ -28,6 +28,12 @@ Con qué se conecta:
   overflow: visible;
 }
 
+.tr-left.tr-header {
+  min-height: auto;
+  max-height: none;
+  overflow: visible;
+}
+
 .tr-header__main {
   display: grid;
   grid-template-columns: minmax(240px, 1fr) auto;
@@ -318,6 +324,10 @@ Con qué se conecta:
 }
 
 @media (max-width: 860px) {
+  .tr-left.tr-header {
+    max-height: none;
+  }
+
   .tr-time-block {
     grid-template-columns: 1fr;
   }
