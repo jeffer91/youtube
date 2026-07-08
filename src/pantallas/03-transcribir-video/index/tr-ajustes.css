@@ -3,9 +3,10 @@ Nombre completo: tr-ajustes.css
 Ruta o ubicación: /src/pantallas/03-transcribir-video/index/tr-ajustes.css
 Funciones principales:
 - Ajustar la pantalla de transcripción sin romper el estilo base.
+- Mover pasos a panel superior corto.
 - Diseñar dos motores de transcripción.
-- Mejorar barra de progreso por etapas.
-- Mostrar bloques de tiempo y botón de siguiente pantalla.
+- Mejorar barra de progreso por etapas y por lote.
+- Mostrar bloques de tiempo y botón superior para pasar a subtítulos.
 Con qué se conecta:
 - tr.js
 - tr-controles.js
@@ -13,8 +14,99 @@ Con qué se conecta:
 - tr-botones.js
 ========================================================= */
 
+.tr-layout--top {
+  height: 100%;
+  grid-template-columns: 1fr;
+  grid-template-rows: auto minmax(0, 1fr);
+  gap: 14px;
+}
+
+.tr-header {
+  display: grid;
+  padding: 16px 18px;
+  gap: 14px;
+  overflow: visible;
+}
+
+.tr-header__main {
+  display: grid;
+  grid-template-columns: minmax(240px, 1fr) auto;
+  gap: 16px;
+  align-items: center;
+}
+
+.tr-header .tr-title {
+  margin: 0;
+}
+
+.tr-header .tr-title h2 {
+  font-size: 24px;
+}
+
+.tr-header .tr-title span {
+  max-width: 780px;
+  font-size: 13px;
+}
+
+.tr-steps--top {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.tr-steps--top .tr-step {
+  min-height: 62px;
+  padding: 10px;
+  border-radius: 16px;
+  grid-template-columns: 36px 1fr;
+  gap: 10px;
+}
+
+.tr-steps--top .tr-step__number {
+  width: 36px;
+  height: 36px;
+  border-radius: 12px;
+  font-size: 12px;
+}
+
+.tr-steps--top .tr-step__info strong {
+  font-size: 13px;
+}
+
+.tr-steps--top .tr-step__info small {
+  font-size: 11px;
+}
+
+.tr-right {
+  grid-template-rows: auto auto auto minmax(0, 1fr);
+}
+
 .tr-top {
   grid-template-columns: minmax(260px, 1fr) minmax(300px, 0.75fr);
+}
+
+.tr-actions--top {
+  max-width: 680px;
+  justify-content: flex-end;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.tr-btn--compact {
+  min-height: 38px;
+  padding: 0 12px;
+  border-radius: 12px;
+  font-size: 12px;
+}
+
+.tr-btn--next {
+  border-color: #bbf7d0;
+  background: #dcfce7;
+  color: #166534;
+}
+
+.tr-btn--next:hover {
+  background: #bbf7d0;
 }
 
 .tr-engine-grid {
@@ -79,6 +171,35 @@ Con qué se conecta:
   color: #6b7280;
   font-size: 13px;
   line-height: 1.4;
+}
+
+.tr-batch-summary {
+  display: flex;
+  flex-wrap: wrap;
+  padding: 10px;
+  border: 1px solid #e5e7eb;
+  border-radius: 14px;
+  background: #f8fafc;
+  gap: 8px 10px;
+  align-items: center;
+}
+
+.tr-batch-summary strong {
+  color: #111827;
+  font-size: 13px;
+}
+
+.tr-batch-summary span,
+.tr-batch-summary small {
+  display: inline-flex;
+  min-height: 24px;
+  padding: 0 8px;
+  border-radius: 999px;
+  background: #ffffff;
+  color: #475569;
+  font-size: 11px;
+  font-weight: 800;
+  align-items: center;
 }
 
 .tr-progress-steps {
@@ -175,24 +296,24 @@ Con qué se conecta:
   line-height: 1.55;
 }
 
-.tr-actions {
-  flex-wrap: wrap;
-  padding-bottom: 2px;
-}
-
-.tr-btn--next {
-  border-color: #bbf7d0;
-  background: #dcfce7;
-  color: #166534;
-}
-
-.tr-btn--next:hover {
-  background: #bbf7d0;
-}
-
 @media (max-width: 1250px) {
+  .tr-header__main {
+    grid-template-columns: 1fr;
+  }
+
+  .tr-actions--top {
+    max-width: none;
+    justify-content: flex-start;
+  }
+
   .tr-progress-steps {
     grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 980px) {
+  .tr-steps--top {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 
@@ -201,11 +322,12 @@ Con qué se conecta:
     grid-template-columns: 1fr;
   }
 
-  .tr-progress-steps {
+  .tr-progress-steps,
+  .tr-steps--top {
     grid-template-columns: 1fr;
   }
 
-  .tr-actions {
+  .tr-actions--top {
     justify-content: stretch;
   }
 
