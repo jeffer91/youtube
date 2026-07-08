@@ -6,9 +6,11 @@ Funciones principales:
 - Crear el servicio de transcripción.
 - Renderizar pasos, videos, controles, progreso, resultado y acciones.
 - Conectar eventos de usuario sin duplicarlos.
+- Cargar ajustes visuales propios de la pantalla.
 Con qué se conecta:
 - tr.html
 - tr.css
+- tr-ajustes.css
 - tr-service.js
 - Archivos render de 03-transcribir-video
 ========================================================= */
@@ -45,6 +47,20 @@ import {
 let serviceActualTR = null;
 let routerActualTR = null;
 let estadoAppActualTR = null;
+
+function asegurarCssAjustesTR() {
+  const cssId = "css-03-transcribir-video-ajustes";
+
+  if (document.getElementById(cssId)) {
+    return;
+  }
+
+  const link = document.createElement("link");
+  link.id = cssId;
+  link.rel = "stylesheet";
+  link.href = new URL("./tr-ajustes.css", import.meta.url).href;
+  document.head.appendChild(link);
+}
 
 function obtenerElementosTR() {
   return {
@@ -126,6 +142,8 @@ function renderizarTR(service) {
 }
 
 export async function iniciarPantallaTranscribirVideo({ router, estadoApp }) {
+  asegurarCssAjustesTR();
+
   routerActualTR = router;
   estadoAppActualTR = estadoApp;
 
