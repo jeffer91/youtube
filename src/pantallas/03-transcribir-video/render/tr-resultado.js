@@ -3,6 +3,7 @@ Nombre completo: tr-resultado.js
 Ruta o ubicación: /src/pantallas/03-transcribir-video/render/tr-resultado.js
 Funciones principales:
 - Renderizar resultado de transcripción.
+- Mostrar bloques de tiempo como vista principal.
 - Mostrar texto limpio, segmentos y exportación preparada.
 - Mostrar nombre del motor automático usado.
 - Mantener HTML seguro al pintar texto generado.
@@ -21,6 +22,44 @@ import {
 import {
   formatearTiempoCortoTR
 } from "../helpers/tr-tiempo.js";
+
+function renderBloquesTiempoTR(segmentos, textoCompleto) {
+  const lista = Array.isArray(segmentos) ? segmentos : [];
+
+  if (!lista.length && textoCompleto) {
+    return `
+      <div class="tr-result__box">
+        La transcripción tiene texto, pero el motor no devolvió bloques de tiempo.
+
+${escaparHtmlTR(textoCompleto)}
+      </div>
+    `;
+  }
+
+  if (!lista.length) {
+    return `<div class="tr-result__box">No hay bloques de tiempo todavía.</div>`;
+  }
+
+  return `
+    <div class="tr-time-blocks">
+      ${lista.map((segmento, index) => {
+        const inicio = segmento.inicioTexto || formatearTiempoCortoTR(segmento.inicio || 0);
+        const fin = segmento.finTexto || formatearTiempoCortoTR(segmento.fin || 0);
+        const duracion = Number(segmento.duracion || ((segmento.fin || 0) - (segmento.inicio || 0)) || 0).toFixed(1);
+
+        return `
+          <article class="tr-time-block">
+            <div class="tr-time-block__time">
+              <strong>${escaparHtmlTR(inicio)} - ${escaparHtmlTR(fin)}</strong>
+              <span>Bloque ${index + 1} · ${escaparHtmlTR(duracion)} s</span>
+            </div>
+            <p>${escaparHtmlTR(segmento.texto || "")}</p>
+          </article>
+        `;
+      }).join("")}
+    </div>
+  `;
+}
 
 function renderSegmentosTR(segmentos) {
   const lista = Array.isArray(segmentos) ? segmentos : [];
@@ -65,7 +104,7 @@ ${escaparHtmlTR(limitarTextoTR(exportacion.contenido, 2500))}
 }
 
 function obtenerNombreMotorResultadoTR(transcripcion) {
-  return transcripcion?.motorNombre || transcripcion?.motor || "Whisper automático";
+  return transcripcion?.motorNombre || transcripcion?.motor || "Motor automático";
 }
 
 export function renderResultadoTranscripcionTR({ contenedor, estado }) {
@@ -84,7 +123,7 @@ export function renderResultadoTranscripcionTR({ contenedor, estado }) {
       <div class="tr-result__head">
         <div>
           <h3>Resultado</h3>
-          <p>Cuando transcribas un video, el texto aparecerá aquí.</p>
+          <p>Cuando transcribas un video, el texto aparecerá aquí dividido por tiempo.</p>
         </div>
       </div>
 
@@ -102,17 +141,22 @@ export function renderResultadoTranscripcionTR({ contenedor, estado }) {
     <div class="tr-result__head">
       <div>
         <h3>Resultado</h3>
-        <p>${escaparHtmlTR(resumen.totalPalabras || 0)} palabras · ${escaparHtmlTR(segmentos.length)} segmentos · Motor ${escaparHtmlTR(motor)}</p>
+        <p>${escaparHtmlTR(resumen.totalPalabras || 0)} palabras · ${escaparHtmlTR(segmentos.length)} bloques · ${escaparHtmlTR(motor)}</p>
       </div>
     </div>
 
     <div class="tr-result__tabs" role="tablist">
-      <button class="tr-tab is-active" type="button" data-tr-tab="texto">Texto limpio</button>
+      <button class="tr-tab is-active" type="button" data-tr-tab="bloques">Bloques de tiempo</button>
+      <button class="tr-tab" type="button" data-tr-tab="texto">Texto limpio</button>
       <button class="tr-tab" type="button" data-tr-tab="segmentos">Segmentos</button>
       <button class="tr-tab" type="button" data-tr-tab="exportacion">Exportación</button>
     </div>
 
-    <div id="trResultadoTexto" class="tr-tab-content" data-tr-content="texto">
+    <div id="trResultadoBloques" class="tr-tab-content" data-tr-content="bloques">
+      ${renderBloquesTiempoTR(segmentos, texto)}
+    </div>
+
+    <div id="trResultadoTexto" class="tr-tab-content tr-hidden" data-tr-content="texto">
       <div class="tr-result__box">${escaparHtmlTR(texto || "Sin texto transcrito.")}</div>
     </div>
 
