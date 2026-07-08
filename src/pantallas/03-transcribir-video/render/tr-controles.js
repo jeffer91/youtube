@@ -2,9 +2,8 @@
 Nombre completo: tr-controles.js
 Ruta o ubicación: /src/pantallas/03-transcribir-video/render/tr-controles.js
 Funciones principales:
-- Renderizar opciones de motor automático e idioma.
-- Eliminar campos de transcripción manual TXT/SRT.
-- Renderizar progreso y estado del proceso de transcripción.
+- Renderizar idioma y dos motores automáticos.
+- Mostrar progreso por etapas, no solo 15% y 100%.
 - Mostrar disponibilidad de Whisper local.
 - Conectar controles con el servicio de transcripción.
 Con qué se conecta:
@@ -18,11 +17,39 @@ import {
   escaparHtmlTR
 } from "../helpers/tr-texto.js";
 
+const ETAPAS_PROGRESO_TR = Object.freeze([
+  {
+    porcentaje: 10,
+    titulo: "Preparar",
+    descripcion: "Video y fuente"
+  },
+  {
+    porcentaje: 25,
+    titulo: "Audio",
+    descripcion: "Extraer WAV"
+  },
+  {
+    porcentaje: 45,
+    titulo: "Motor",
+    descripcion: "Procesar voz"
+  },
+  {
+    porcentaje: 70,
+    titulo: "Bloques",
+    descripcion: "Ordenar tiempos"
+  },
+  {
+    porcentaje: 95,
+    titulo: "Resultado",
+    descripcion: "Texto final"
+  }
+]);
+
 function crearOpcionMotorTR(motor, motorActual) {
   const activo = motor.id === motorActual;
 
   return `
-    <label class="tr-option-card ${activo ? "is-active" : ""}">
+    <label class="tr-option-card tr-engine-card ${activo ? "is-active" : ""}">
       <span class="tr-radio-line">
         <input
           type="radio"
@@ -30,9 +57,11 @@ function crearOpcionMotorTR(motor, motorActual) {
           value="${escaparHtmlTR(motor.id)}"
           ${activo ? "checked" : ""}
         />
-        <span>
-          <strong>${escaparHtmlTR(motor.nombre)}</strong><br />
+        <span class="tr-engine-card__body">
+          <small class="tr-engine-card__tag">${escaparHtmlTR(motor.numero || "Motor")}</small>
+          <strong>${escaparHtmlTR(motor.nombre)}</strong>
           <span>${escaparHtmlTR(motor.descripcion)}</span>
+          <em>Modelo: ${escaparHtmlTR(motor.modelo || "base")} · ${escaparHtmlTR(motor.detalle || "Transcripción automática local.")}</em>
         </span>
       </span>
     </label>
@@ -49,7 +78,7 @@ export function renderOpcionesTranscripcionTR({ contenedor, estado }) {
   contenedor.innerHTML = `
     <div class="tr-panel__head">
       <h3>Opciones</h3>
-      <p>Elige el idioma y el motor automático de transcripción.</p>
+      <p>Elige el idioma y uno de los dos motores de transcripción.</p>
     </div>
 
     <div class="tr-options">
@@ -63,8 +92,11 @@ export function renderOpcionesTranscripcionTR({ contenedor, estado }) {
       </div>
 
       <div class="tr-field">
-        <span>Motor automático</span>
-        ${motores.map((motor) => crearOpcionMotorTR(motor, estado.motorId)).join("")}
+        <span>Motores de transcripción</span>
+        <div class="tr-engine-grid">
+          ${motores.map((motor) => crearOpcionMotorTR(motor, estado.motorId)).join("")}
+        </div>
+        <p class="tr-help">Ambos motores generan texto y bloques de tiempo. El segundo tarda más, pero suele dar mejor precisión.</p>
       </div>
     </div>
   `;
@@ -104,6 +136,21 @@ function crearEstadoWhisperTextoTR(estado) {
   return "Whisper: sin verificar";
 }
 
+function crearEtapasProgresoTR(progreso) {
+  return ETAPAS_PROGRESO_TR.map((etapa) => {
+    const completada = progreso >= etapa.porcentaje + 5;
+    const activa = !completada && progreso >= etapa.porcentaje - 10;
+
+    return `
+      <div class="tr-progress-step ${completada ? "is-done" : ""} ${activa ? "is-active" : ""}">
+        <span class="tr-progress-step__dot"></span>
+        <strong>${escaparHtmlTR(etapa.titulo)}</strong>
+        <small>${escaparHtmlTR(etapa.descripcion)}</small>
+      </div>
+    `;
+  }).join("");
+}
+
 export function renderProgresoTranscripcionTR({ contenedor, estado }) {
   if (!contenedor) {
     return;
@@ -126,8 +173,13 @@ export function renderProgresoTranscripcionTR({ contenedor, estado }) {
         <div class="tr-progress__fill" style="width: ${progreso}%;"></div>
       </div>
 
-      <div class="tr-progress__text">
-        ${progreso}% completado
+      <div class="tr-progress__meta">
+        <strong>${progreso}%</strong>
+        <span>${progreso >= 100 ? "Transcripción terminada" : "Procesando por etapas"}</span>
+      </div>
+
+      <div class="tr-progress-steps">
+        ${crearEtapasProgresoTR(progreso)}
       </div>
 
       <div class="tr-progress__details">
@@ -136,7 +188,7 @@ export function renderProgresoTranscripcionTR({ contenedor, estado }) {
           <span class="tr-chip">Idioma: ${escaparHtmlTR(estado.idioma || "es")}</span>
           <span class="tr-chip">${escaparHtmlTR(crearEstadoWhisperTextoTR(estado))}</span>
           <span class="tr-chip">Palabras: ${escaparHtmlTR(String(totalPalabras))}</span>
-          <span class="tr-chip">Segmentos: ${escaparHtmlTR(String(totalSegmentos))}</span>
+          <span class="tr-chip">Bloques: ${escaparHtmlTR(String(totalSegmentos))}</span>
         </div>
       </div>
     </div>
