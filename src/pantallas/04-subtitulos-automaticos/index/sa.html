@@ -1,0 +1,33 @@
+<!-- =========================================================
+Nombre completo: sa.html
+Ruta o ubicación: /src/pantallas/04-subtitulos-automaticos/index/sa.html
+Funciones principales:
+- Crear la estructura visual base de Subtítulos automáticos.
+- Recibir las transcripciones guardadas desde la pantalla 03.
+- Mostrar estado por video antes de generar subtítulos.
+- Servir como pantalla 04 de la app.
+Con qué se conecta:
+- sa.css
+- sa.js
+- estadoApp.proyectoActivo
+========================================================= -->
+
+<section class="sa-screen" id="saRoot">
+  <header class="sa-header app-card">
+    <div>
+      <p>Pantalla 04</p>
+      <h2>Subtítulos automáticos</h2>
+      <span>Revisa las transcripciones guardadas y prepara los subtítulos por video.</span>
+    </div>
+
+    <div class="sa-actions">
+      <button id="saBtnVolverTranscripcion" class="sa-btn" type="button">Volver a transcripción</button>
+      <button id="saBtnContinuar" class="sa-btn sa-btn--primary" type="button">Preparar subtítulos</button>
+    </div>
+  </header>
+
+  <main class="sa-content">
+    <section id="saResumen" class="sa-panel app-card"></section>
+    <section id="saVideos" class="sa-panel app-card"></section>
+  </main>
+</section>
