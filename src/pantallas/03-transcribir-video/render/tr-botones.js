@@ -3,7 +3,7 @@ Nombre completo: tr-botones.js
 Ruta o ubicación: /src/pantallas/03-transcribir-video/render/tr-botones.js
 Funciones principales:
 - Renderizar mensajes y acciones principales de Transcribir video.
-- Conectar botones de verificar Whisper, transcribir, guardar y exportar.
+- Conectar botones de verificar Whisper, transcribir, guardar, exportar y avanzar.
 - Mantener botones bloqueados durante procesos.
 Con qué se conecta:
 - tr.js
@@ -53,6 +53,7 @@ export function renderAccionesTranscripcionTR({ contenedor, estado }) {
 
   const tieneTranscripcion = Boolean(estado.transcripcionActual?.texto);
   const proyectoValido = Boolean(estado.proyectoValido);
+  const puedeAvanzar = Boolean(estado.puedeAvanzarSubtitulos || estado.transcripcionGuardada || tieneTranscripcion);
 
   contenedor.innerHTML = `
     <button id="trBtnVolverAudio" class="tr-btn" type="button" ${bloqueado ? "disabled" : ""}>
@@ -64,19 +65,23 @@ export function renderAccionesTranscripcionTR({ contenedor, estado }) {
     </button>
 
     <button id="trBtnExportarTxt" class="tr-btn" type="button" ${bloqueado || !tieneTranscripcion ? "disabled" : ""}>
-      Preparar TXT
+      TXT
     </button>
 
     <button id="trBtnExportarSrt" class="tr-btn" type="button" ${bloqueado || !tieneTranscripcion ? "disabled" : ""}>
-      Preparar SRT
+      SRT
     </button>
 
     <button id="trBtnExportarJson" class="tr-btn" type="button" ${bloqueado || !tieneTranscripcion ? "disabled" : ""}>
-      Preparar JSON
+      JSON
     </button>
 
     <button id="trBtnGuardar" class="tr-btn" type="button" ${bloqueado || !tieneTranscripcion ? "disabled" : ""}>
-      Guardar transcripción
+      ${estado.transcripcionGuardada ? "Guardado" : "Guardar"}
+    </button>
+
+    <button id="trBtnSiguiente" class="tr-btn tr-btn--next" type="button" ${bloqueado || !puedeAvanzar ? "disabled" : ""}>
+      Siguiente: subtítulos
     </button>
 
     <button id="trBtnTranscribir" class="tr-btn tr-btn--primary" type="button" ${bloqueado || !proyectoValido ? "disabled" : ""}>
@@ -90,6 +95,7 @@ export function conectarAccionesTranscripcionTR({ service, router }) {
   const btnVerificarWhisper = document.getElementById("trBtnVerificarWhisper");
   const btnTranscribir = document.getElementById("trBtnTranscribir");
   const btnGuardar = document.getElementById("trBtnGuardar");
+  const btnSiguiente = document.getElementById("trBtnSiguiente");
   const btnTxt = document.getElementById("trBtnExportarTxt");
   const btnSrt = document.getElementById("trBtnExportarSrt");
   const btnJson = document.getElementById("trBtnExportarJson");
@@ -117,6 +123,16 @@ export function conectarAccionesTranscripcionTR({ service, router }) {
   if (btnGuardar) {
     btnGuardar.addEventListener("click", () => {
       service.guardarActual();
+    });
+  }
+
+  if (btnSiguiente) {
+    btnSiguiente.addEventListener("click", () => {
+      const estado = service.guardarActual();
+
+      if (estado?.puedeAvanzarSubtitulos && router?.irA) {
+        router.irA("04-subtitulos-automaticos");
+      }
     });
   }
 
