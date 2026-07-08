@@ -39,11 +39,11 @@ const RUTAS = {
 
   "04-subtitulos-automaticos": {
     id: "04-subtitulos-automaticos",
-    html: null,
-    cssId: null,
-    css: null,
-    js: null,
-    init: null
+    html: "./pantallas/04-subtitulos-automaticos/index/sa.html",
+    cssId: "css-04-subtitulos-automaticos",
+    css: "./pantallas/04-subtitulos-automaticos/index/sa.css",
+    js: "../pantallas/04-subtitulos-automaticos/index/sa.js",
+    init: "iniciarPantallaSubtitulosAutomaticos"
   },
 
   "05-detectar-silencios": {
