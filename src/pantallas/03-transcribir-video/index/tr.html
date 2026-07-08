@@ -3,11 +3,13 @@ Nombre completo: tr.html
 Ruta o ubicación: /src/pantallas/03-transcribir-video/index/tr.html
 Funciones principales:
 - Crear la estructura visual base de la pantalla Transcribir video.
-- Mantener contenedores separados para pasos, videos, opciones, progreso, resultado y acciones.
+- Usar un panel superior corto para pasos y acciones.
+- Mantener contenedores separados para videos, opciones, progreso y resultado.
 - Evitar lógica dentro del HTML.
 - Servir como pantalla 03 de la app.
 Con qué se conecta:
 - tr.css
+- tr-ajustes.css
 - tr.js
 - tr-videos.js
 - tr-controles.js
@@ -16,16 +18,20 @@ Con qué se conecta:
 ========================================================= -->
 
 <section class="tr-screen" id="trRoot">
-  <div class="tr-layout">
-    <aside class="tr-left app-card">
-      <div class="tr-title">
-        <p>Pantalla 03</p>
-        <h2>Transcribir video</h2>
-        <span>Convierte la voz del video en texto limpio, segmentos y subtítulos.</span>
+  <div class="tr-layout tr-layout--top">
+    <header class="tr-left tr-header app-card">
+      <div class="tr-header__main">
+        <div class="tr-title">
+          <p>Pantalla 03</p>
+          <h2>Transcribir video</h2>
+          <span>Convierte la voz de todos los videos cargados en texto, bloques de tiempo y subtítulos.</span>
+        </div>
+
+        <div id="trAcciones" class="tr-actions tr-actions--top" data-tr-zone="acciones"></div>
       </div>
 
-      <div id="trPasos" class="tr-steps" data-tr-zone="pasos"></div>
-    </aside>
+      <div id="trPasos" class="tr-steps tr-steps--top" data-tr-zone="pasos"></div>
+    </header>
 
     <section class="tr-right">
       <div id="trMensajes" class="tr-messages" data-tr-zone="mensajes"></div>
@@ -41,8 +47,6 @@ Con qué se conecta:
       </div>
 
       <div id="trResultado" class="tr-result app-card" data-tr-zone="resultado"></div>
-
-      <div id="trAcciones" class="tr-actions" data-tr-zone="acciones"></div>
     </section>
   </div>
 </section>
