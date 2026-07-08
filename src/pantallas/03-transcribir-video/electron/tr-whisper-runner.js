@@ -7,6 +7,7 @@ Funciones principales:
 - Elegir modelo según motor automático: rápido, equilibrado o preciso.
 - Leer salida JSON/TXT/SRT generada por Whisper.
 - Normalizar el resultado para la pantalla de transcripción.
+- Forzar UTF-8 al ejecutar Python/Whisper en Windows.
 Con qué se conecta:
 - tr-electron.js
 - tr-audio-extractor.js
@@ -51,6 +52,22 @@ function asegurarCarpetaTR(rutaCarpeta) {
 
 function obtenerComandoWhisperTR() {
   return process.env.WHISPER_BIN || process.env.WHISPER_COMMAND || "whisper";
+}
+
+function crearEntornoWhisperTR(opciones = {}) {
+  const envOpciones = opciones?.env && typeof opciones.env === "object"
+    ? opciones.env
+    : {};
+
+  return {
+    ...process.env,
+    PYTHONIOENCODING: "utf-8",
+    PYTHONUTF8: "1",
+    PYTHONUNBUFFERED: "1",
+    LANG: process.env.LANG || "C.UTF-8",
+    LC_ALL: process.env.LC_ALL || "C.UTF-8",
+    ...envOpciones
+  };
 }
 
 function obtenerRutaModeloWhisperTR(motorId = MOTORES_WHISPER_TR.EQUILIBRADO) {
@@ -110,11 +127,14 @@ function ejecutarComandoTR(comando, argumentos, opciones = {}) {
   return new Promise((resolve) => {
     const salida = [];
     const errores = [];
-    const proceso = spawn(comando, argumentos, {
+    const opcionesProceso = {
+      ...opciones,
       windowsHide: true,
       shell: false,
-      ...opciones
-    });
+      env: crearEntornoWhisperTR(opciones)
+    };
+
+    const proceso = spawn(comando, argumentos, opcionesProceso);
 
     const timeout = setTimeout(() => {
       proceso.kill("SIGTERM");
