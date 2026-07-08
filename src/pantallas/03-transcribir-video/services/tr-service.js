@@ -5,7 +5,7 @@ Funciones principales:
 - Mantener el estado interno de la pantalla Transcribir video.
 - Seleccionar video, motor automático e idioma.
 - Verificar Whisper local antes de usar transcripción real.
-- Ejecutar transcripción automática.
+- Ejecutar transcripción automática con progreso visual por etapas.
 - Guardar transcripción en el proyecto activo.
 - Preparar exportaciones TXT, SRT y JSON.
 Con qué se conecta:
@@ -53,19 +53,50 @@ const PASOS_TR = Object.freeze([
     id: "configurar",
     numero: "02",
     titulo: "Configurar motor",
-    descripcion: "Usa uno de los motores automáticos de Whisper."
+    descripcion: "Elige uno de los dos motores automáticos."
   },
   {
     id: "transcribir",
     numero: "03",
     titulo: "Transcribir",
-    descripcion: "Genera texto y segmentos."
+    descripcion: "Genera texto y bloques de tiempo."
   },
   {
     id: "guardar",
     numero: "04",
     titulo: "Guardar",
-    descripcion: "Guarda y prepara subtítulos."
+    descripcion: "Guarda y pasa a subtítulos."
+  }
+]);
+
+const PROGRESO_AUTOMATICO_TR = Object.freeze([
+  {
+    progreso: 12,
+    mensaje: "Preparando video y fuente de audio..."
+  },
+  {
+    progreso: 24,
+    mensaje: "Extrayendo audio limpio para transcripción..."
+  },
+  {
+    progreso: 38,
+    mensaje: "Iniciando motor de transcripción..."
+  },
+  {
+    progreso: 52,
+    mensaje: "Analizando voz y generando texto..."
+  },
+  {
+    progreso: 68,
+    mensaje: "Separando la transcripción por bloques de tiempo..."
+  },
+  {
+    progreso: 82,
+    mensaje: "Preparando segmentos y subtítulos..."
+  },
+  {
+    progreso: 92,
+    mensaje: "Revisando resultado final antes de mostrarlo..."
   }
 ]);
 
@@ -96,6 +127,10 @@ function obtenerVideoPorIdTR(videos, videoId) {
   return videos.find((video) => video.id === videoId) || videos[0] || null;
 }
 
+function existeTranscripcionTR(transcripcion) {
+  return Boolean(transcripcion?.texto);
+}
+
 function crearEstadoInicialTR({ proyectoActivo }) {
   const adaptado = adaptarProyectoParaTranscripcionTR(proyectoActivo);
   const proyecto = adaptado.ok ? adaptado.proyecto : null;
@@ -103,12 +138,13 @@ function crearEstadoInicialTR({ proyectoActivo }) {
   const videoActualId = obtenerPrimerVideoIdTR(videos);
   const videoActual = obtenerVideoPorIdTR(videos, videoActualId);
   const transcripcionActual = obtenerTranscripcionVideoTR(videoActual);
+  const tieneTranscripcion = existeTranscripcionTR(transcripcionActual);
 
   return {
     proyecto,
     proyectoValido: adaptado.ok,
     pasos: PASOS_TR,
-    pasoActual: "seleccionar",
+    pasoActual: tieneTranscripcion ? "guardar" : "seleccionar",
     videos,
     videoActualId,
     idioma: "es",
@@ -116,6 +152,8 @@ function crearEstadoInicialTR({ proyectoActivo }) {
     motores: obtenerMotoresTranscripcionTR(),
     formatosExportacion: obtenerFormatosExportacionTR(),
     transcripcionActual,
+    transcripcionGuardada: tieneTranscripcion,
+    puedeAvanzarSubtitulos: tieneTranscripcion,
     exportacionActual: null,
     whisperDisponible: null,
     ultimoDiagnosticoWhisper: null,
@@ -123,8 +161,10 @@ function crearEstadoInicialTR({ proyectoActivo }) {
     guardando: false,
     exportando: false,
     verificandoWhisper: false,
-    progreso: 0,
-    estadoProceso: adaptado.ok ? "Listo para transcribir." : adaptado.mensaje,
+    progreso: tieneTranscripcion ? 100 : 0,
+    estadoProceso: tieneTranscripcion
+      ? "Transcripción guardada. Puedes pasar a subtítulos."
+      : (adaptado.ok ? "Listo para transcribir." : adaptado.mensaje),
     mensajes: adaptado.ok ? [] : [],
     errores: adaptado.ok ? [] : [adaptado.mensaje]
   };
@@ -148,6 +188,8 @@ async function consultarWhisperElectronTR() {
 
 export function crearTranscripcionService({ proyectoActivo, estadoApp } = {}) {
   let estado = crearEstadoInicialTR({ proyectoActivo });
+  let temporizadorProgreso = null;
+  let indiceProgreso = 0;
   const listeners = new Set();
 
   function notificar() {
@@ -172,6 +214,55 @@ export function crearTranscripcionService({ proyectoActivo, estadoApp } = {}) {
 
     notificar();
     return obtenerEstado();
+  }
+
+  function detenerProgresoAutomatico() {
+    if (temporizadorProgreso) {
+      clearInterval(temporizadorProgreso);
+      temporizadorProgreso = null;
+    }
+
+    indiceProgreso = 0;
+  }
+
+  function iniciarProgresoAutomatico() {
+    detenerProgresoAutomatico();
+    indiceProgreso = 0;
+
+    temporizadorProgreso = setInterval(() => {
+      if (!estado.procesando) {
+        detenerProgresoAutomatico();
+        return;
+      }
+
+      const etapa = PROGRESO_AUTOMATICO_TR[indiceProgreso];
+
+      if (etapa) {
+        indiceProgreso += 1;
+
+        if (etapa.progreso > estado.progreso) {
+          actualizar({
+            progreso: etapa.progreso,
+            estadoProceso: etapa.mensaje,
+            mensajes: [etapa.mensaje],
+            errores: []
+          });
+        }
+
+        return;
+      }
+
+      const progresoSiguiente = Math.min(96, Math.max(estado.progreso + 1, estado.progreso));
+
+      if (progresoSiguiente !== estado.progreso) {
+        actualizar({
+          progreso: progresoSiguiente,
+          estadoProceso: "El motor sigue procesando. Esto puede tardar según el tamaño del video.",
+          mensajes: ["Transcripción en proceso. No cierres la app."],
+          errores: []
+        });
+      }
+    }, 1300);
   }
 
   function limpiarMensajes() {
@@ -210,14 +301,19 @@ export function crearTranscripcionService({ proyectoActivo, estadoApp } = {}) {
       });
     }
 
+    const transcripcionVideo = obtenerTranscripcionVideoTR(video);
+    const tieneTranscripcion = existeTranscripcionTR(transcripcionVideo);
+
     return actualizar({
       videoActualId: video.id,
-      pasoActual: "configurar",
-      transcripcionActual: obtenerTranscripcionVideoTR(video),
+      pasoActual: tieneTranscripcion ? "guardar" : "configurar",
+      transcripcionActual: transcripcionVideo,
+      transcripcionGuardada: tieneTranscripcion,
+      puedeAvanzarSubtitulos: tieneTranscripcion,
       exportacionActual: null,
-      progreso: 0,
-      estadoProceso: "Video seleccionado.",
-      mensajes: ["Video seleccionado para transcripción."],
+      progreso: tieneTranscripcion ? 100 : 0,
+      estadoProceso: tieneTranscripcion ? "Este video ya tiene transcripción guardada." : "Video seleccionado.",
+      mensajes: [tieneTranscripcion ? "Video con transcripción cargada." : "Video seleccionado para transcripción."],
       errores: []
     });
   }
@@ -302,39 +398,63 @@ export function crearTranscripcionService({ proyectoActivo, estadoApp } = {}) {
     actualizar({
       procesando: true,
       pasoActual: "transcribir",
-      progreso: 15,
+      progreso: 8,
+      transcripcionGuardada: false,
+      puedeAvanzarSubtitulos: false,
       estadoProceso: "Preparando transcripción automática...",
       mensajes: ["Iniciando transcripción automática."],
       errores: []
     });
 
-    const resultado = await transcribirVideoTR({
-      proyecto: estado.proyecto,
-      video,
-      motorId: estado.motorId,
-      idioma: estado.idioma
-    });
+    iniciarProgresoAutomatico();
 
-    if (!resultado.ok) {
+    try {
+      const resultado = await transcribirVideoTR({
+        proyecto: estado.proyecto,
+        video,
+        motorId: estado.motorId,
+        idioma: estado.idioma
+      });
+
+      detenerProgresoAutomatico();
+
+      if (!resultado.ok) {
+        return actualizar({
+          procesando: false,
+          progreso: 0,
+          transcripcionGuardada: false,
+          puedeAvanzarSubtitulos: false,
+          estadoProceso: resultado.mensaje || "No se pudo transcribir.",
+          mensajes: [],
+          errores: resultado.errores || [resultado.mensaje || "No se pudo transcribir."]
+        });
+      }
+
+      return actualizar({
+        procesando: false,
+        pasoActual: calcularPasoDespuesDeTranscripcionTR(resultado.transcripcion),
+        progreso: 100,
+        transcripcionActual: resultado.transcripcion,
+        transcripcionGuardada: false,
+        puedeAvanzarSubtitulos: true,
+        exportacionActual: null,
+        estadoProceso: resultado.mensaje || "Transcripción terminada.",
+        mensajes: [resultado.mensaje || "Transcripción terminada."],
+        errores: []
+      });
+    } catch (error) {
+      detenerProgresoAutomatico();
+
       return actualizar({
         procesando: false,
         progreso: 0,
-        estadoProceso: resultado.mensaje || "No se pudo transcribir.",
+        transcripcionGuardada: false,
+        puedeAvanzarSubtitulos: false,
+        estadoProceso: "No se pudo completar la transcripción.",
         mensajes: [],
-        errores: resultado.errores || [resultado.mensaje || "No se pudo transcribir."]
+        errores: [error?.message || "No se pudo completar la transcripción."]
       });
     }
-
-    return actualizar({
-      procesando: false,
-      pasoActual: calcularPasoDespuesDeTranscripcionTR(resultado.transcripcion),
-      progreso: 100,
-      transcripcionActual: resultado.transcripcion,
-      exportacionActual: null,
-      estadoProceso: resultado.mensaje || "Transcripción terminada.",
-      mensajes: [resultado.mensaje || "Transcripción terminada."],
-      errores: []
-    });
   }
 
   function guardarActual() {
@@ -344,7 +464,8 @@ export function crearTranscripcionService({ proyectoActivo, estadoApp } = {}) {
     if (!validacion.ok) {
       return actualizar({
         errores: validacion.errores,
-        mensajes: []
+        mensajes: [],
+        transcripcionGuardada: false
       });
     }
 
@@ -363,6 +484,8 @@ export function crearTranscripcionService({ proyectoActivo, estadoApp } = {}) {
     if (!resultado.ok) {
       return actualizar({
         guardando: false,
+        transcripcionGuardada: false,
+        puedeAvanzarSubtitulos: false,
         errores: resultado.errores,
         mensajes: []
       });
@@ -378,9 +501,11 @@ export function crearTranscripcionService({ proyectoActivo, estadoApp } = {}) {
       videos: crearListaVideosTR(resultado.proyecto),
       videoActualId: resultado.video.id,
       transcripcionActual: resultado.transcripcion,
+      transcripcionGuardada: true,
+      puedeAvanzarSubtitulos: true,
       pasoActual: "guardar",
-      estadoProceso: resultado.mensaje,
-      mensajes: [resultado.mensaje],
+      estadoProceso: "Transcripción guardada. Puedes pasar a subtítulos.",
+      mensajes: [resultado.mensaje, "Ya puedes continuar a la pantalla de subtítulos."].filter(Boolean),
       errores: []
     });
   }
