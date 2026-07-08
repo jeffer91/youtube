@@ -4,7 +4,7 @@ Ruta o ubicación: /src/pantallas/03-transcribir-video/validaciones/tr-validar.j
 Funciones principales:
 - Validar proyecto activo para transcripción.
 - Validar video seleccionado.
-- Validar motores automáticos de transcripción.
+- Validar dos motores automáticos de transcripción.
 - Validar resultado de transcripción.
 Con qué se conecta:
 - tr-service.js
@@ -18,41 +18,53 @@ import {
 } from "../helpers/tr-texto.js";
 
 export const MOTORES_TRANSCRIPCION_TR = Object.freeze({
-  WHISPER_RAPIDO: "whisper-rapido",
-  WHISPER_EQUILIBRADO: "whisper-equilibrado",
-  WHISPER_PRECISO: "whisper-preciso"
+  WHISPER_LOCAL: "whisper-local",
+  WHISPER_PRECISO: "whisper-preciso",
+  WHISPER_EQUILIBRADO_LEGACY: "whisper-equilibrado",
+  WHISPER_RAPIDO_LEGACY: "whisper-rapido"
 });
 
-export const MOTOR_TRANSCRIPCION_DEFECTO_TR = MOTORES_TRANSCRIPCION_TR.WHISPER_EQUILIBRADO;
+export const MOTOR_TRANSCRIPCION_DEFECTO_TR = MOTORES_TRANSCRIPCION_TR.WHISPER_LOCAL;
 
 export function obtenerMotoresTranscripcionTR() {
   return [
     {
-      id: MOTORES_TRANSCRIPCION_TR.WHISPER_RAPIDO,
-      nombre: "Whisper rápido",
-      descripcion: "Transcripción automática más ligera para pruebas rápidas.",
-      modelo: "tiny",
-      requiereElectron: true
-    },
-    {
-      id: MOTORES_TRANSCRIPCION_TR.WHISPER_EQUILIBRADO,
-      nombre: "Whisper equilibrado",
-      descripcion: "Transcripción automática recomendada por velocidad y calidad.",
+      id: MOTORES_TRANSCRIPCION_TR.WHISPER_LOCAL,
+      numero: "Motor 1",
+      nombre: "Whisper local",
+      descripcion: "Motor recomendado para transcribir rápido con buena calidad.",
+      detalle: "Usa el modelo base y prioriza el audio mejorado si existe.",
       modelo: "base",
       requiereElectron: true
     },
     {
       id: MOTORES_TRANSCRIPCION_TR.WHISPER_PRECISO,
+      numero: "Motor 2",
       nombre: "Whisper preciso",
-      descripcion: "Transcripción automática con mayor precisión para audios importantes.",
+      descripcion: "Motor más lento, pero más útil para audios importantes.",
+      detalle: "Usa el modelo small para mejorar precisión y segmentación.",
       modelo: "small",
       requiereElectron: true
     }
   ];
 }
 
-export function obtenerMotorTranscripcionTR(motorId) {
+function normalizarMotorLegacyTR(motorId) {
   const id = limpiarTextoTR(motorId) || MOTOR_TRANSCRIPCION_DEFECTO_TR;
+
+  if (id === MOTORES_TRANSCRIPCION_TR.WHISPER_EQUILIBRADO_LEGACY) {
+    return MOTORES_TRANSCRIPCION_TR.WHISPER_LOCAL;
+  }
+
+  if (id === MOTORES_TRANSCRIPCION_TR.WHISPER_RAPIDO_LEGACY) {
+    return MOTORES_TRANSCRIPCION_TR.WHISPER_LOCAL;
+  }
+
+  return id;
+}
+
+export function obtenerMotorTranscripcionTR(motorId) {
+  const id = normalizarMotorLegacyTR(motorId);
   return obtenerMotoresTranscripcionTR().find((motor) => motor.id === id) || null;
 }
 
