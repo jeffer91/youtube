@@ -1,0 +1,39 @@
+<!-- =========================================================
+Nombre completo: tan.html
+Ruta o ubicación: /src/pantallas/03-transcripcion-analisis/index/tan.html
+Funciones principales:
+- Crear la estructura visual de Transcripción y análisis.
+- Mantener compatibilidad con la pantalla anterior de transcripción.
+Con qué se conecta:
+- tan.css
+- tan.js
+========================================================= -->
+
+<section class="tr-screen" id="trRoot">
+  <div class="tr-layout tr-layout--top">
+    <header class="tr-left tr-header app-card">
+      <div class="tr-header__main">
+        <div class="tr-title">
+          <p>Pantalla 03</p>
+          <h2>Transcripción y análisis</h2>
+          <span>Convierte la voz en texto, bloques de tiempo y datos para cortes, subtítulos y ritmo.</span>
+        </div>
+        <div id="trAcciones" class="tr-actions tr-actions--top" data-tr-zone="acciones"></div>
+      </div>
+      <div id="trPasos" class="tr-steps tr-steps--top" data-tr-zone="pasos"></div>
+    </header>
+
+    <section class="tr-right">
+      <div id="trMensajes" class="tr-messages" data-tr-zone="mensajes"></div>
+      <div class="tr-top app-card">
+        <div id="trSelectorVideos" data-tr-zone="selector-videos"></div>
+        <div id="trResumenVideo" data-tr-zone="resumen-video"></div>
+      </div>
+      <div class="tr-grid">
+        <div id="trOpciones" class="tr-panel app-card" data-tr-zone="opciones"></div>
+        <div id="trProgreso" class="tr-panel app-card" data-tr-zone="progreso"></div>
+      </div>
+      <div id="trResultado" class="tr-result app-card" data-tr-zone="resultado"></div>
+    </section>
+  </div>
+</section>
