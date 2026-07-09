@@ -10,43 +10,21 @@ Funciones principales:
 - Mostrar el flujo profesional de edición por capas.
 - Mantener los subtítulos como última capa visible antes de exportar.
 - Agregar un botón flotante único para conectar todo el flujo.
+Con qué se conecta:
+- app-state.js
+- router.js
+- flujo-editor.js
 ========================================================= */
 
 import { crearEstadoApp } from "./app-state.js";
 import { crearRouter } from "../router/router.js";
+import {
+  ACCIONES_PRINCIPALES_EDITOR,
+  obtenerPantallasMenuEditor
+} from "../shared/flujo/flujo-editor.js";
 
 const appRoot = document.getElementById("appRoot");
-
-const PANTALLAS_BASE = [
-  { id: "01-cargar-proyecto", numero: "01", nombre: "Video base", descripcion: "Diagnóstico" },
-  { id: "17-adaptar-cuadrado", numero: "02", nombre: "Formato IA", descripcion: "Sujeto centrado" },
-  { id: "03-transcribir-video", numero: "03", nombre: "Análisis", descripcion: "Transcripción" },
-  { id: "05-detectar-silencios", numero: "04", nombre: "Cortes", descripcion: "Ritmo natural" },
-  { id: "15-transiciones", numero: "05", nombre: "Transiciones", descripcion: "Selectivas" },
-  { id: "02-mejorar-audio", numero: "06", nombre: "Audio principal", descripcion: "Voz clara" },
-  { id: "11-musica-fondo", numero: "07", nombre: "Música", descripcion: "Ducking" },
-  { id: "16-correccion-color", numero: "08", nombre: "Color", descripcion: "Limpieza" },
-  { id: "13-agregar-imagen-video", numero: "09", nombre: "Recursos", descripcion: "Visuales" },
-  { id: "10-texto-graficos", numero: "10", nombre: "Textos", descripcion: "Animación" },
-  { id: "04-subtitulos-automaticos", numero: "11", nombre: "Subtítulos", descripcion: "Finales" },
-  { id: "19-exportar-video-final", numero: "12", nombre: "Revisión", descripcion: "Exportación" },
-  { id: "99-manual-app", numero: "M", nombre: "Manual", descripcion: "Cómo funciona" }
-];
-
-const ACCIONES_PRINCIPALES_RUTA = {
-  "01-cargar-proyecto": ["#cpBtnSiguiente", "#cpBtnGuardar"],
-  "17-adaptar-cuadrado": ["#acBtnContinuar"],
-  "03-transcribir-video": ["#trBtnSiguiente"],
-  "05-detectar-silencios": ["#dsBtnContinuar"],
-  "15-transiciones": ["#tnBtnContinuar"],
-  "02-mejorar-audio": ["#maBtnSiguiente", "#maBtnGuardarCapa", "#maBtnContinuarFlujo"],
-  "11-musica-fondo": ["#mfBtnContinuar"],
-  "16-correccion-color": ["#ccBtnContinuar"],
-  "13-agregar-imagen-video": ["#rvBtnContinuar"],
-  "10-texto-graficos": ["#txBtnContinuar"],
-  "04-subtitulos-automaticos": ["#saBtnContinuar"],
-  "19-exportar-video-final": ["#exBtnGenerar"]
-};
+const PANTALLAS_BASE = obtenerPantallasMenuEditor();
 
 function crearMenuPantallas(pantallas) {
   return pantallas.map((pantalla) => {
@@ -138,7 +116,7 @@ function obtenerPantalla(routeId) {
 }
 
 function obtenerBotonPrincipalDePantalla(routeId) {
-  const selectores = ACCIONES_PRINCIPALES_RUTA[routeId] || [];
+  const selectores = ACCIONES_PRINCIPALES_EDITOR[routeId] || [];
   for (const selector of selectores) {
     const boton = document.querySelector(selector);
     if (boton) return boton;
