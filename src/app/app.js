@@ -106,15 +106,6 @@ const ACCIONES_PRINCIPALES_RUTA = {
   "19-exportar-video-final": ["#exBtnGenerar"]
 };
 
-function escaparHtmlApp(texto) {
-  return String(texto || "")
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;")
-    .replaceAll("'", "&#039;");
-}
-
 function crearMenuPantallas(pantallas) {
   return pantallas
     .map((pantalla) => {
@@ -316,7 +307,7 @@ function conectarBotonFlotante(router) {
 
     if (botonPantalla && !botonPantalla.disabled) {
       botonPantalla.click();
-      setTimeout(() => actualizarBotonFlotante(router, router.obtenerRutaActual?.()), 120);
+      setTimeout(() => actualizarBotonFlotante(router, router.obtenerRutaActual?.()), 160);
       return;
     }
 
@@ -328,6 +319,29 @@ function conectarBotonFlotante(router) {
     }
 
     actualizarBotonFlotante(router, rutaActual);
+  });
+}
+
+function observarCambiosPantalla(router) {
+  const root = document.getElementById("screenRoot");
+
+  if (!root || typeof MutationObserver === "undefined") {
+    return;
+  }
+
+  let temporizador = null;
+  const observer = new MutationObserver(() => {
+    clearTimeout(temporizador);
+    temporizador = setTimeout(() => {
+      actualizarBotonFlotante(router, router.obtenerRutaActual?.());
+    }, 80);
+  });
+
+  observer.observe(root, {
+    childList: true,
+    subtree: true,
+    attributes: true,
+    attributeFilter: ["disabled", "hidden", "class"]
   });
 }
 
@@ -352,6 +366,7 @@ async function iniciarApp() {
   conectarMenu(router);
   conectarBotonProyectos();
   conectarBotonFlotante(router);
+  observarCambiosPantalla(router);
 
   await router.irA("01-cargar-proyecto");
 }
