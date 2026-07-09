@@ -18,113 +18,48 @@ import { crearRouter } from "../router/router.js";
 const appRoot = document.getElementById("appRoot");
 
 const PANTALLAS_BASE = [
-  {
-    id: "01-cargar-proyecto",
-    numero: "01",
-    nombre: "Video base",
-    descripcion: "Diagnóstico"
-  },
-  {
-    id: "17-adaptar-cuadrado",
-    numero: "02",
-    nombre: "Formato IA",
-    descripcion: "Sujeto centrado"
-  },
-  {
-    id: "03-transcribir-video",
-    numero: "03",
-    nombre: "Análisis",
-    descripcion: "Transcripción"
-  },
-  {
-    id: "05-detectar-silencios",
-    numero: "04",
-    nombre: "Cortes",
-    descripcion: "Ritmo natural"
-  },
-  {
-    id: "15-transiciones",
-    numero: "05",
-    nombre: "Transiciones",
-    descripcion: "Selectivas"
-  },
-  {
-    id: "02-mejorar-audio",
-    numero: "06",
-    nombre: "Audio principal",
-    descripcion: "Voz clara"
-  },
-  {
-    id: "11-musica-fondo",
-    numero: "07",
-    nombre: "Música",
-    descripcion: "Ducking"
-  },
-  {
-    id: "16-correccion-color",
-    numero: "08",
-    nombre: "Color",
-    descripcion: "Limpieza"
-  },
-  {
-    id: "13-agregar-imagen-video",
-    numero: "09",
-    nombre: "Recursos",
-    descripcion: "Visuales"
-  },
-  {
-    id: "10-texto-graficos",
-    numero: "10",
-    nombre: "Textos",
-    descripcion: "Animación"
-  },
-  {
-    id: "04-subtitulos-automaticos",
-    numero: "11",
-    nombre: "Subtítulos",
-    descripcion: "Finales"
-  },
-  {
-    id: "19-exportar-video-final",
-    numero: "12",
-    nombre: "Revisión",
-    descripcion: "Exportación"
-  },
-  {
-    id: "99-manual-app",
-    numero: "M",
-    nombre: "Manual",
-    descripcion: "Cómo funciona"
-  }
+  { id: "01-cargar-proyecto", numero: "01", nombre: "Video base", descripcion: "Diagnóstico" },
+  { id: "17-adaptar-cuadrado", numero: "02", nombre: "Formato IA", descripcion: "Sujeto centrado" },
+  { id: "03-transcribir-video", numero: "03", nombre: "Análisis", descripcion: "Transcripción" },
+  { id: "05-detectar-silencios", numero: "04", nombre: "Cortes", descripcion: "Ritmo natural" },
+  { id: "15-transiciones", numero: "05", nombre: "Transiciones", descripcion: "Selectivas" },
+  { id: "02-mejorar-audio", numero: "06", nombre: "Audio principal", descripcion: "Voz clara" },
+  { id: "11-musica-fondo", numero: "07", nombre: "Música", descripcion: "Ducking" },
+  { id: "16-correccion-color", numero: "08", nombre: "Color", descripcion: "Limpieza" },
+  { id: "13-agregar-imagen-video", numero: "09", nombre: "Recursos", descripcion: "Visuales" },
+  { id: "10-texto-graficos", numero: "10", nombre: "Textos", descripcion: "Animación" },
+  { id: "04-subtitulos-automaticos", numero: "11", nombre: "Subtítulos", descripcion: "Finales" },
+  { id: "19-exportar-video-final", numero: "12", nombre: "Revisión", descripcion: "Exportación" },
+  { id: "99-manual-app", numero: "M", nombre: "Manual", descripcion: "Cómo funciona" }
 ];
 
 const ACCIONES_PRINCIPALES_RUTA = {
   "01-cargar-proyecto": ["#cpBtnSiguiente", "#cpBtnGuardar"],
-  "02-mejorar-audio": ["#maBtnSiguiente", "#maBtnGuardarCapa", "#maBtnContinuarFlujo"],
+  "17-adaptar-cuadrado": ["#acBtnContinuar"],
   "03-transcribir-video": ["#trBtnSiguiente"],
+  "05-detectar-silencios": ["#dsBtnContinuar"],
+  "15-transiciones": ["#tnBtnContinuar"],
+  "02-mejorar-audio": ["#maBtnSiguiente", "#maBtnGuardarCapa", "#maBtnContinuarFlujo"],
+  "11-musica-fondo": ["#mfBtnContinuar"],
+  "16-correccion-color": ["#ccBtnContinuar"],
+  "13-agregar-imagen-video": ["#rvBtnContinuar"],
+  "10-texto-graficos": ["#txBtnContinuar"],
   "04-subtitulos-automaticos": ["#saBtnContinuar"],
   "19-exportar-video-final": ["#exBtnGenerar"]
 };
 
 function crearMenuPantallas(pantallas) {
-  return pantallas
-    .map((pantalla) => {
-      return `
-        <button
-          class="app-menu__item"
-          type="button"
-          data-route="${pantalla.id}"
-          title="${pantalla.numero}. ${pantalla.nombre}"
-        >
-          <span class="app-menu__number">${pantalla.numero}</span>
-          <span class="app-menu__text">
-            <strong>${pantalla.nombre}</strong>
-            <small>${pantalla.descripcion}</small>
-          </span>
-        </button>
-      `;
-    })
-    .join("");
+  return pantallas.map((pantalla) => {
+    return `
+      <button class="app-menu__item" type="button" data-route="${pantalla.id}" title="${pantalla.numero}. ${pantalla.nombre}">
+        <span class="app-menu__number">${pantalla.numero}</span>
+        <span class="app-menu__text">
+          <strong>${pantalla.nombre}</strong>
+          <small>${pantalla.descripcion}</small>
+        </span>
+      </button>
+    `;
+  }).join("");
 }
 
 function pintarShell() {
@@ -152,13 +87,7 @@ function pintarShell() {
           </div>
 
           <div class="app-header__actions">
-            <button
-              id="btnAbrirCarpetaProyectos"
-              class="app-btn app-btn--ghost"
-              type="button"
-            >
-              Proyectos
-            </button>
+            <button id="btnAbrirCarpetaProyectos" class="app-btn app-btn--ghost" type="button">Proyectos</button>
           </div>
         </header>
 
@@ -174,50 +103,34 @@ function pintarShell() {
 }
 
 function marcarRutaActiva(routeId) {
-  const botones = document.querySelectorAll("[data-route]");
-
-  botones.forEach((boton) => {
-    const esActivo = boton.dataset.route === routeId;
-    boton.classList.toggle("is-active", esActivo);
+  document.querySelectorAll("[data-route]").forEach((boton) => {
+    boton.classList.toggle("is-active", boton.dataset.route === routeId);
   });
 }
 
 function conectarMenu(router) {
-  const botones = document.querySelectorAll("[data-route]");
-
-  botones.forEach((boton) => {
+  document.querySelectorAll("[data-route]").forEach((boton) => {
     boton.addEventListener("click", async () => {
-      const routeId = boton.dataset.route;
-      await router.irA(routeId);
+      await router.irA(boton.dataset.route);
     });
   });
 }
 
 function conectarBotonProyectos() {
   const boton = document.getElementById("btnAbrirCarpetaProyectos");
-
-  if (!boton) {
-    return;
-  }
+  if (!boton) return;
 
   boton.addEventListener("click", async () => {
-    if (!window.videoEditorAPI?.abrirCarpetaProyectos) {
-      return;
+    if (window.videoEditorAPI?.abrirCarpetaProyectos) {
+      await window.videoEditorAPI.abrirCarpetaProyectos();
     }
-
-    await window.videoEditorAPI.abrirCarpetaProyectos();
   });
 }
 
 function actualizarTitulo(routeId) {
   const titulo = document.getElementById("appHeaderTitle");
   const pantalla = PANTALLAS_BASE.find((item) => item.id === routeId);
-
-  if (!titulo || !pantalla) {
-    return;
-  }
-
-  titulo.textContent = `${pantalla.numero}. ${pantalla.nombre}`;
+  if (titulo && pantalla) titulo.textContent = `${pantalla.numero}. ${pantalla.nombre}`;
 }
 
 function obtenerPantalla(routeId) {
@@ -226,14 +139,10 @@ function obtenerPantalla(routeId) {
 
 function obtenerBotonPrincipalDePantalla(routeId) {
   const selectores = ACCIONES_PRINCIPALES_RUTA[routeId] || [];
-
   for (const selector of selectores) {
     const boton = document.querySelector(selector);
-    if (boton) {
-      return boton;
-    }
+    if (boton) return boton;
   }
-
   return null;
 }
 
@@ -246,10 +155,7 @@ function actualizarBotonFlotante(router, routeId) {
   const boton = document.getElementById("appFloatingNext");
   const textoPrincipal = document.getElementById("appFloatingNextMain");
   const textoSecundario = document.getElementById("appFloatingNextSub");
-
-  if (!boton || !textoPrincipal || !textoSecundario) {
-    return;
-  }
+  if (!boton || !textoPrincipal || !textoSecundario) return;
 
   const rutaActual = routeId || router?.obtenerRutaActual?.();
   const siguienteRuta = obtenerSiguienteRuta(router, rutaActual);
@@ -268,9 +174,7 @@ function actualizarBotonFlotante(router, routeId) {
   if (botonPantalla) {
     const textoAccion = botonPantalla.textContent.trim() || "Continuar";
     textoPrincipal.textContent = textoAccion;
-    textoSecundario.textContent = siguientePantalla
-      ? `Luego: ${siguientePantalla.numero}. ${siguientePantalla.nombre}`
-      : "Acción principal";
+    textoSecundario.textContent = siguientePantalla ? `Luego: ${siguientePantalla.numero}. ${siguientePantalla.nombre}` : "Acción principal";
     boton.disabled = Boolean(botonPantalla.disabled);
     boton.dataset.modo = "accion";
     return;
@@ -292,15 +196,10 @@ function actualizarBotonFlotante(router, routeId) {
 
 function conectarBotonFlotante(router) {
   const boton = document.getElementById("appFloatingNext");
-
-  if (!boton) {
-    return;
-  }
+  if (!boton) return;
 
   boton.addEventListener("click", async () => {
-    if (boton.disabled) {
-      return;
-    }
+    if (boton.disabled) return;
 
     const rutaActual = router.obtenerRutaActual?.();
     const botonPantalla = obtenerBotonPrincipalDePantalla(rutaActual);
@@ -312,29 +211,19 @@ function conectarBotonFlotante(router) {
     }
 
     const siguienteRuta = obtenerSiguienteRuta(router, rutaActual);
-
-    if (siguienteRuta) {
-      await router.irA(siguienteRuta);
-      return;
-    }
-
-    actualizarBotonFlotante(router, rutaActual);
+    if (siguienteRuta) await router.irA(siguienteRuta);
+    else actualizarBotonFlotante(router, rutaActual);
   });
 }
 
 function observarCambiosPantalla(router) {
   const root = document.getElementById("screenRoot");
-
-  if (!root || typeof MutationObserver === "undefined") {
-    return;
-  }
+  if (!root || typeof MutationObserver === "undefined") return;
 
   let temporizador = null;
   const observer = new MutationObserver(() => {
     clearTimeout(temporizador);
-    temporizador = setTimeout(() => {
-      actualizarBotonFlotante(router, router.obtenerRutaActual?.());
-    }, 80);
+    temporizador = setTimeout(() => actualizarBotonFlotante(router, router.obtenerRutaActual?.()), 80);
   });
 
   observer.observe(root, {
