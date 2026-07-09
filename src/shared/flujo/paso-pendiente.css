@@ -4,6 +4,7 @@ Ruta o ubicación: /src/shared/flujo/paso-pendiente.css
 Funciones principales:
 - Diseñar pasos funcionales provisionales del flujo profesional.
 - Mantener las pantallas pendientes claras, navegables y funcionales.
+- Mostrar estado, videos, criterios y capas del proyecto.
 Con qué se conecta:
 - paso-pendiente.js
 - index.html
@@ -19,7 +20,12 @@ Con qué se conecta:
 }
 
 .fp-header {
+  display: flex;
+  min-height: 92px;
   padding: 18px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
 }
 
 .fp-header p {
@@ -46,11 +52,45 @@ Con qué se conecta:
   line-height: 1.4;
 }
 
+.fp-chip {
+  display: inline-flex;
+  min-height: 34px;
+  padding: 0 12px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 900;
+  align-items: center;
+  white-space: nowrap;
+}
+
+.fp-chip--ok {
+  background: #f0fdf4;
+  color: #166534;
+  border: 1px solid #bbf7d0;
+}
+
+.fp-chip--warn {
+  background: #eff6ff;
+  color: #1d4ed8;
+  border: 1px solid #bfdbfe;
+}
+
+.fp-chip--danger {
+  background: #fef2f2;
+  color: #991b1b;
+  border: 1px solid #fecaca;
+}
+
 .fp-grid {
   display: grid;
   min-height: 0;
   grid-template-columns: minmax(280px, 360px) 1fr;
   gap: 14px;
+}
+
+.fp-grid--wide {
+  grid-template-columns: minmax(270px, 340px) minmax(320px, 1fr);
+  grid-auto-rows: minmax(170px, auto);
 }
 
 .fp-panel {
@@ -123,8 +163,101 @@ Con qué se conecta:
   font-weight: 800;
 }
 
-@media (max-width: 920px) {
-  .fp-grid {
+.fp-empty-box {
+  display: grid;
+  min-height: 96px;
+  padding: 16px;
+  border: 1px dashed #dce2ea;
+  border-radius: 16px;
+  background: #f8fafc;
+  place-items: center;
+  text-align: center;
+  gap: 4px;
+}
+
+.fp-empty-box strong {
+  color: #111827;
+  font-size: 14px;
+}
+
+.fp-empty-box span {
+  color: #6b7280;
+  font-size: 13px;
+}
+
+.fp-video-list,
+.fp-layer-list {
+  display: grid;
+  gap: 10px;
+}
+
+.fp-video-card {
+  display: grid;
+  padding: 12px;
+  border: 1px solid #e5e7eb;
+  border-radius: 16px;
+  background: #ffffff;
+  gap: 5px;
+}
+
+.fp-video-card strong {
+  color: #111827;
+  font-size: 14px;
+  overflow-wrap: anywhere;
+}
+
+.fp-video-card span {
+  color: #64748b;
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+
+.fp-layer-card {
+  display: grid;
+  padding: 12px;
+  border: 1px solid #e5e7eb;
+  border-radius: 16px;
+  background: #ffffff;
+  grid-template-columns: 34px 1fr;
+  gap: 10px;
+  align-items: start;
+}
+
+.fp-layer-card > span {
+  display: grid;
+  width: 30px;
+  height: 30px;
+  border-radius: 11px;
+  background: #eff6ff;
+  color: #1d4ed8;
+  font-size: 12px;
+  font-weight: 900;
+  place-items: center;
+}
+
+.fp-layer-card strong {
+  display: block;
+  color: #111827;
+  font-size: 14px;
+  line-height: 1.2;
+}
+
+.fp-layer-card small {
+  display: block;
+  margin-top: 3px;
+  color: #64748b;
+  font-size: 12px;
+}
+
+@media (max-width: 1040px) {
+  .fp-grid,
+  .fp-grid--wide {
     grid-template-columns: 1fr;
+    overflow-y: auto;
+  }
+
+  .fp-header {
+    align-items: flex-start;
+    flex-direction: column;
   }
 }
