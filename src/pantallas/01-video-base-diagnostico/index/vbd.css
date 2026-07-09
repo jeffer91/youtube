@@ -1,0 +1,12 @@
+/* =========================================================
+Nombre completo: vbd.css
+Ruta o ubicación: /src/pantallas/01-video-base-diagnostico/index/vbd.css
+Funciones principales:
+- Usar estilos existentes de carga de proyecto.
+- Mantener el paso Video base y diagnóstico con la nueva estructura.
+Con qué se conecta:
+- vbd.html
+- vbd.js
+========================================================= */
+
+@import url("../../01-cargar-proyecto/index/cp.css");
