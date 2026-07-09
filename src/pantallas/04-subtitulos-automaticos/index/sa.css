@@ -3,7 +3,7 @@ Nombre completo: sa.css
 Ruta o ubicación: /src/pantallas/04-subtitulos-automaticos/index/sa.css
 Funciones principales:
 - Diseñar la pantalla Subtítulos automáticos.
-- Mostrar resumen del proyecto y estado de videos.
+- Mostrar resumen, formatos, videos, antes/después y descarga.
 - Mantener diseño claro y consistente con la app.
 Con qué se conecta:
 - sa.html
@@ -70,8 +70,13 @@ Con qué se conecta:
   cursor: pointer;
 }
 
-.sa-btn:hover {
+.sa-btn:hover:not(:disabled) {
   background: #f8fafc;
+}
+
+.sa-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
 }
 
 .sa-btn--primary {
@@ -80,35 +85,95 @@ Con qué se conecta:
   color: #ffffff;
 }
 
-.sa-btn--primary:hover {
+.sa-btn--primary:hover:not(:disabled) {
   background: #153ca8;
 }
 
 .sa-content {
   display: grid;
   min-height: 0;
-  grid-template-columns: minmax(280px, 360px) 1fr;
+  grid-template-columns: minmax(290px, 370px) 1fr;
   gap: 14px;
   overflow: hidden;
 }
 
-.sa-panel {
+.sa-panel,
+.sa-workspace {
   min-height: 0;
   padding: 18px;
   overflow-y: auto;
 }
 
-.sa-panel h3 {
+.sa-workspace {
+  display: grid;
+  align-content: start;
+  gap: 18px;
+}
+
+.sa-panel h3,
+.sa-workspace h3 {
   margin: 0 0 8px;
   color: #111827;
   font-size: 20px;
 }
 
-.sa-panel p {
+.sa-panel p,
+.sa-workspace p {
   margin: 0;
   color: #6b7280;
   font-size: 14px;
   line-height: 1.45;
+}
+
+.sa-block {
+  display: grid;
+  gap: 12px;
+}
+
+.sa-section-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.sa-status,
+.sa-message {
+  display: grid;
+  margin-top: 14px;
+  padding: 12px;
+  border-radius: 16px;
+  gap: 4px;
+}
+
+.sa-status strong {
+  color: #111827;
+  font-size: 14px;
+}
+
+.sa-status span,
+.sa-message {
+  color: #475569;
+  font-size: 13px;
+}
+
+.sa-status.is-ok,
+.sa-message.is-success {
+  border: 1px solid #bbf7d0;
+  background: #f0fdf4;
+}
+
+.sa-status.is-warn,
+.sa-message.is-warn,
+.sa-message.is-info {
+  border: 1px solid #bfdbfe;
+  background: #eff6ff;
+}
+
+.sa-status.is-error,
+.sa-message.is-error {
+  border: 1px solid #fecaca;
+  background: #fef2f2;
 }
 
 .sa-stats {
@@ -140,18 +205,94 @@ Con qué se conecta:
   font-weight: 900;
 }
 
-.sa-video-list {
+.sa-format-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.sa-format-card {
+  display: grid;
+  min-height: 170px;
+  padding: 14px;
+  border: 1px solid #e5e7eb;
+  border-radius: 18px;
+  background: #ffffff;
+  text-align: left;
+  gap: 8px;
+  cursor: pointer;
+}
+
+.sa-format-card:hover,
+.sa-format-card.is-active {
+  border-color: #1e4ed8;
+  box-shadow: 0 14px 30px rgba(30, 78, 216, 0.12);
+}
+
+.sa-format-card strong {
+  color: #111827;
+  font-size: 15px;
+}
+
+.sa-format-card small {
+  color: #64748b;
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+.sa-format-card__tag {
+  width: fit-content;
+  padding: 4px 8px;
+  border-radius: 999px;
+  background: #eef2ff;
+  color: #1e4ed8;
+  font-size: 11px;
+  font-weight: 900;
+}
+
+.sa-preview-style {
+  display: inline-flex;
+  margin-top: auto;
+  min-height: 34px;
+  padding: 6px 12px;
+  border-radius: 10px;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 900;
+  text-align: center;
+}
+
+.sa-preview-style--green {
+  background: #164a37;
+  color: #ffffff;
+}
+
+.sa-preview-style--black {
+  background: rgba(0, 0, 0, 0.78);
+  color: #ffffff;
+}
+
+.sa-preview-style--yellow {
+  background: #111827;
+  color: #ffdd00;
+  text-shadow: 1px 1px 0 #000000;
+}
+
+.sa-video-list,
+.sa-compare-list {
   display: grid;
   gap: 10px;
 }
 
-.sa-video-card {
+.sa-video-card,
+.sa-compare-card {
   display: grid;
   padding: 14px;
   border: 1px solid #e5e7eb;
   border-radius: 16px;
   background: #ffffff;
-  gap: 8px;
+  gap: 10px;
 }
 
 .sa-video-card.is-ready {
@@ -171,7 +312,9 @@ Con qué se conecta:
   gap: 10px;
 }
 
-.sa-video-card strong {
+.sa-video-card strong,
+.sa-compare-card h4 {
+  margin: 0;
   color: #111827;
   font-size: 15px;
 }
@@ -194,6 +337,65 @@ Con qué se conecta:
   white-space: nowrap;
 }
 
+.sa-preview-list {
+  display: grid;
+  padding: 10px;
+  border: 1px solid #dbeafe;
+  border-radius: 14px;
+  background: #ffffff;
+  gap: 6px;
+}
+
+.sa-preview-list p {
+  display: grid;
+  gap: 2px;
+  color: #111827;
+  font-size: 12px;
+}
+
+.sa-preview-list small {
+  color: #1e4ed8;
+  font-weight: 900;
+}
+
+.sa-compare-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.sa-video-preview {
+  display: grid;
+  gap: 8px;
+}
+
+.sa-video-preview strong {
+  color: #111827;
+  font-size: 13px;
+}
+
+.sa-video-preview video {
+  display: block;
+  width: 100%;
+  max-height: 280px;
+  border-radius: 16px;
+  background: #0f172a;
+}
+
+.sa-download-row {
+  display: flex;
+  padding-top: 4px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.sa-download-row span {
+  color: #475569;
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+
 .sa-empty {
   display: grid;
   min-height: 220px;
@@ -202,6 +404,17 @@ Con qué se conecta:
   background: #f8fafc;
   place-items: center;
   text-align: center;
+}
+
+.sa-empty--small {
+  min-height: 150px;
+}
+
+@media (max-width: 1100px) {
+  .sa-format-grid,
+  .sa-compare-grid {
+    grid-template-columns: 1fr;
+  }
 }
 
 @media (max-width: 920px) {
