@@ -5,6 +5,7 @@ Funciones principales:
 - Renderizar mensajes y acciones principales de Transcribir video.
 - Conectar botones de verificar Whisper, transcribir lote, guardar, exportar y avanzar.
 - Mantener botones bloqueados durante procesos.
+- Conectar Transcripción y análisis con Cortes inteligentes dentro del flujo principal.
 Con qué se conecta:
 - tr.js
 - tr-service.js
@@ -66,7 +67,7 @@ export function renderAccionesTranscripcionTR({ contenedor, estado }) {
     </button>
 
     <button id="trBtnSiguiente" class="tr-btn tr-btn--next tr-btn--compact" type="button" ${bloqueado || !puedeAvanzar ? "disabled" : ""}>
-      Pasar a subtítulos
+      Pasar a cortes inteligentes
     </button>
 
     <button id="trBtnGuardar" class="tr-btn tr-btn--compact" type="button" ${bloqueado || !tieneTranscripcion ? "disabled" : ""}>
@@ -85,14 +86,14 @@ export function renderAccionesTranscripcionTR({ contenedor, estado }) {
       JSON
     </button>
 
-    <button id="trBtnVolverAudio" class="tr-btn tr-btn--compact" type="button" ${bloqueado ? "disabled" : ""}>
-      Volver a audio
+    <button id="trBtnVolverFormato" class="tr-btn tr-btn--compact" type="button" ${bloqueado ? "disabled" : ""}>
+      Volver a formato
     </button>
   `;
 }
 
 export function conectarAccionesTranscripcionTR({ service, router }) {
-  const btnVolverAudio = document.getElementById("trBtnVolverAudio");
+  const btnVolverFormato = document.getElementById("trBtnVolverFormato");
   const btnVerificarWhisper = document.getElementById("trBtnVerificarWhisper");
   const btnTranscribir = document.getElementById("trBtnTranscribir");
   const btnGuardar = document.getElementById("trBtnGuardar");
@@ -101,10 +102,10 @@ export function conectarAccionesTranscripcionTR({ service, router }) {
   const btnSrt = document.getElementById("trBtnExportarSrt");
   const btnJson = document.getElementById("trBtnExportarJson");
 
-  if (btnVolverAudio) {
-    btnVolverAudio.addEventListener("click", () => {
+  if (btnVolverFormato) {
+    btnVolverFormato.addEventListener("click", () => {
       if (router?.irA) {
-        router.irA("02-mejorar-audio");
+        router.irA("17-adaptar-cuadrado");
       }
     });
   }
@@ -136,7 +137,7 @@ export function conectarAccionesTranscripcionTR({ service, router }) {
       }
 
       if ((estado?.puedeAvanzarSubtitulos || estado?.transcripcionGuardada) && router?.irA) {
-        router.irA("04-subtitulos-automaticos");
+        router.irA("05-detectar-silencios");
       }
     });
   }
