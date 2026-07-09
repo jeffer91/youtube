@@ -5,7 +5,8 @@
   "main": "electron/main/main.js",
   "private": true,
   "scripts": {
-    "start": "electron ."
+    "start": "electron .",
+    "verify": "node tools/verificar-flujo.mjs"
   },
   "keywords": [
     "electron",
