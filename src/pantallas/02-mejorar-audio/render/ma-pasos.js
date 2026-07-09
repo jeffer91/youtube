@@ -6,7 +6,7 @@ Funciones principales:
 - Marcar la página activa.
 - Conectar navegación por páginas.
 - Mostrar una sola acción de guardar capa.
-- Mostrar el botón para avanzar a Transcribir cuando la capa ya fue guardada.
+- Mostrar el botón para avanzar al flujo correcto después de guardar audio.
 - Bloquear acciones cuando el proceso está cargando.
 Con qué se conecta:
 - ma-data.js
@@ -64,11 +64,7 @@ export function renderPaginasMA({ contenedor, paginaActual, procesando = false }
     .map((pagina) => crearItemPagina(pagina, paginaActual, procesando))
     .join("");
 
-  contenedor.innerHTML = `
-    <div class="ma-pages">
-      ${paginas}
-    </div>
-  `;
+  contenedor.innerHTML = `<div class="ma-pages">${paginas}</div>`;
 }
 
 export function conectarPaginasMA({ service }) {
@@ -76,80 +72,49 @@ export function conectarPaginasMA({ service }) {
 
   botones.forEach((boton) => {
     boton.addEventListener("click", () => {
-      if (boton.disabled) {
-        return;
+      if (!boton.disabled) {
+        service.cambiarPagina(boton.dataset.maPagina);
       }
-
-      service.cambiarPagina(boton.dataset.maPagina);
     });
   });
 }
 
-function crearBoton({
-  id,
-  texto,
-  variante = "ghost",
-  deshabilitado = false
-}) {
-  const clase = variante === "primary"
-    ? "app-btn"
-    : "app-btn app-btn--ghost";
+function crearBoton({ id, texto, variante = "ghost", deshabilitado = false }) {
+  const clase = variante === "primary" ? "app-btn" : "app-btn app-btn--ghost";
 
   return `
-    <button
-      id="${escaparHtml(id)}"
-      class="${clase}"
-      type="button"
-      ${deshabilitado ? "disabled" : ""}
-    >
+    <button id="${escaparHtml(id)}" class="${clase}" type="button" ${deshabilitado ? "disabled" : ""}>
       ${escaparHtml(texto)}
     </button>
   `;
 }
 
 function crearBotonesControles({ ocupado }) {
-  return [
-    crearBoton({
-      id: "maBtnSiguiente",
-      texto: "Ir a comparar",
-      variante: "primary",
-      deshabilitado: ocupado
-    })
-  ].join("");
+  return crearBoton({
+    id: "maBtnSiguiente",
+    texto: "Ir a comparar",
+    variante: "primary",
+    deshabilitado: ocupado
+  });
 }
 
 function crearBotonesComparar({ ocupado, tieneMejora }) {
   return [
-    crearBoton({
-      id: "maBtnAtras",
-      texto: "Volver",
-      variante: "ghost",
-      deshabilitado: ocupado
-    }),
-    crearBoton({
-      id: "maBtnSiguiente",
-      texto: "Revisar y guardar",
-      variante: "primary",
-      deshabilitado: ocupado || !tieneMejora
-    })
+    crearBoton({ id: "maBtnAtras", texto: "Volver", variante: "ghost", deshabilitado: ocupado }),
+    crearBoton({ id: "maBtnSiguiente", texto: "Revisar y guardar", variante: "primary", deshabilitado: ocupado || !tieneMejora })
   ].join("");
 }
 
 function crearBotonesGuardar({ ocupado, tieneMejora, capaGuardada }) {
   const botones = [
-    crearBoton({
-      id: "maBtnAtras",
-      texto: "Volver",
-      variante: "ghost",
-      deshabilitado: ocupado
-    })
+    crearBoton({ id: "maBtnAtras", texto: "Volver", variante: "ghost", deshabilitado: ocupado })
   ];
 
   if (capaGuardada) {
     botones.push(
       crearBoton({
-        id: "maBtnTranscribir",
-        texto: "Pasar a transcripción",
+        id: "maBtnContinuarFlujo",
+        texto: "Continuar a música",
         variante: "primary",
         deshabilitado: ocupado
       })
@@ -180,34 +145,21 @@ export function renderBotonesMA({ contenedor, estado }) {
   let botones = "";
 
   if (estado.paginaActual === "controles") {
-    botones = crearBotonesControles({
-      ocupado
-    });
+    botones = crearBotonesControles({ ocupado });
   } else if (estado.paginaActual === "comparar") {
-    botones = crearBotonesComparar({
-      ocupado,
-      tieneMejora
-    });
+    botones = crearBotonesComparar({ ocupado, tieneMejora });
   } else {
-    botones = crearBotonesGuardar({
-      ocupado,
-      tieneMejora,
-      capaGuardada: Boolean(estado.capaGuardada)
-    });
+    botones = crearBotonesGuardar({ ocupado, tieneMejora, capaGuardada: Boolean(estado.capaGuardada) });
   }
 
-  contenedor.innerHTML = `
-    <div class="ma-actions">
-      ${botones}
-    </div>
-  `;
+  contenedor.innerHTML = `<div class="ma-actions">${botones}</div>`;
 }
 
 export function conectarBotonesMA({ service, router }) {
   const btnAtras = document.getElementById("maBtnAtras");
   const btnSiguiente = document.getElementById("maBtnSiguiente");
   const btnGuardarCapa = document.getElementById("maBtnGuardarCapa");
-  const btnTranscribir = document.getElementById("maBtnTranscribir");
+  const btnContinuarFlujo = document.getElementById("maBtnContinuarFlujo");
 
   if (btnAtras) {
     btnAtras.addEventListener("click", () => {
@@ -233,10 +185,10 @@ export function conectarBotonesMA({ service, router }) {
     });
   }
 
-  if (btnTranscribir) {
-    btnTranscribir.addEventListener("click", () => {
-      if (!btnTranscribir.disabled && router?.irA) {
-        router.irA("03-transcribir-video");
+  if (btnContinuarFlujo) {
+    btnContinuarFlujo.addEventListener("click", () => {
+      if (!btnContinuarFlujo.disabled && router?.irA) {
+        router.irA("11-musica-fondo");
       }
     });
   }
