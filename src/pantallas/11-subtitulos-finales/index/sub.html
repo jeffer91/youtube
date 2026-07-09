@@ -1,0 +1,32 @@
+<!-- =========================================================
+Nombre completo: sub.html
+Ruta o ubicación: /src/pantallas/11-subtitulos-finales/index/sub.html
+Funciones principales:
+- Crear la estructura visual de Subtítulos finales.
+- Mantener compatibilidad con la pantalla anterior de subtítulos automáticos.
+Con qué se conecta:
+- sub.css
+- sub.js
+========================================================= -->
+
+<section class="sa-screen" id="saRoot">
+  <header class="sa-header app-card">
+    <div>
+      <p>Pantalla 11</p>
+      <h2>Subtítulos finales</h2>
+      <span>Prepara los subtítulos como última capa visible. El video final se genera recién en Revisión.</span>
+    </div>
+    <div class="sa-actions">
+      <button id="saBtnVolverTranscripcion" class="sa-btn" type="button">Ir a transcripción</button>
+      <button id="saBtnContinuar" class="sa-btn sa-btn--primary" type="button">Guardar subtítulos y continuar</button>
+    </div>
+  </header>
+
+  <main class="sa-content">
+    <aside id="saResumen" class="sa-panel app-card"></aside>
+    <section class="sa-workspace app-card">
+      <div id="saFormatos" class="sa-block"></div>
+      <div id="saVideos" class="sa-block"></div>
+    </section>
+  </main>
+</section>
