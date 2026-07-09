@@ -3,10 +3,13 @@ Nombre completo: rev.html
 Ruta o ubicación: /src/pantallas/12-revision-exportacion/index/rev.html
 Funciones principales:
 - Crear la estructura visual de Revisión y exportación.
-- Mantener compatibilidad con la pantalla anterior de exportar video final.
+- Mostrar checklist final de capas.
+- Mostrar resumen, orden de render, comparación y descarga.
+- Generar el video final aplicando subtítulos al último.
 Con qué se conecta:
 - rev.css
 - rev.js
+- proyecto-capas.js
 ========================================================= -->
 
 <section class="ex-screen" id="exRoot">
@@ -14,7 +17,7 @@ Con qué se conecta:
     <div>
       <p>Pantalla 12</p>
       <h2>Revisión y exportación</h2>
-      <span>Revisa el orden de capas, genera el resultado final y aplica los subtítulos al último.</span>
+      <span>Revisa video, audio, subtítulos y orden de capas antes de generar el resultado final.</span>
     </div>
     <div class="ex-actions">
       <button id="exBtnVolverSubtitulos" class="ex-btn" type="button">Volver a subtítulos</button>
@@ -22,9 +25,10 @@ Con qué se conecta:
     </div>
   </header>
 
-  <main class="ex-content">
+  <main class="ex-content rev-content">
     <aside id="exResumen" class="ex-panel app-card"></aside>
     <section class="ex-workspace app-card">
+      <div id="revChecklist" class="ex-block"></div>
       <div id="exCapas" class="ex-block"></div>
       <div id="exComparacion" class="ex-block"></div>
     </section>
