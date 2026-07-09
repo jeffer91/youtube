@@ -24,6 +24,8 @@ import {
 } from "../shared/flujo/flujo-editor.js";
 
 const appRoot = document.getElementById("appRoot");
+const RUTA_INICIAL = "01-video-base-diagnostico";
+const RUTA_FINAL = "12-revision-exportacion";
 const PANTALLAS_BASE = obtenerPantallasMenuEditor();
 
 function crearMenuPantallas(pantallas) {
@@ -140,7 +142,7 @@ function actualizarBotonFlotante(router, routeId) {
   const siguientePantalla = obtenerPantalla(siguienteRuta);
   const botonPantalla = obtenerBotonPrincipalDePantalla(rutaActual);
   const esManual = rutaActual === "99-manual-app";
-  const esFinal = rutaActual === "19-exportar-video-final" && !siguienteRuta;
+  const esFinal = rutaActual === RUTA_FINAL && !siguienteRuta;
 
   if (esManual) {
     boton.hidden = true;
@@ -216,7 +218,7 @@ async function iniciarApp() {
   pintarShell();
 
   const estadoApp = crearEstadoApp({
-    pantallaActual: "01-cargar-proyecto",
+    pantallaActual: RUTA_INICIAL,
     pantallas: PANTALLAS_BASE
   });
 
@@ -235,7 +237,7 @@ async function iniciarApp() {
   conectarBotonFlotante(router);
   observarCambiosPantalla(router);
 
-  await router.irA("01-cargar-proyecto");
+  await router.irA(RUTA_INICIAL);
 }
 
 iniciarApp();
