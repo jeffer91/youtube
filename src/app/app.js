@@ -7,7 +7,8 @@ Funciones principales:
 - Conectar el estado global mínimo.
 - Iniciar el router de pantallas.
 - Cargar por defecto la pantalla 01 Cargar proyecto.
-- Mostrar el manual interno de uso de la app.
+- Mostrar el flujo correcto de edición por capas.
+- Mantener los subtítulos como última capa visible antes de exportar.
 ========================================================= */
 
 import { crearEstadoApp } from "./app-state.js";
@@ -19,110 +20,74 @@ const PANTALLAS_BASE = [
   {
     id: "01-cargar-proyecto",
     numero: "01",
-    nombre: "Cargar",
-    descripcion: "Crear proyecto"
-  },
-  {
-    id: "02-mejorar-audio",
-    numero: "02",
-    nombre: "Audio",
-    descripcion: "Mejorar voz"
-  },
-  {
-    id: "03-transcribir-video",
-    numero: "03",
-    nombre: "Transcribir",
-    descripcion: "Texto del video"
-  },
-  {
-    id: "04-subtitulos-automaticos",
-    numero: "04",
-    nombre: "Subtítulos",
-    descripcion: "Crear subtítulos"
-  },
-  {
-    id: "05-detectar-silencios",
-    numero: "05",
-    nombre: "Silencios",
-    descripcion: "Detectar pausas"
-  },
-  {
-    id: "06-plan-video-ia",
-    numero: "06",
-    nombre: "Plan IA",
-    descripcion: "Estructura"
-  },
-  {
-    id: "07-cortar-video",
-    numero: "07",
-    nombre: "Cortar",
-    descripcion: "Editar partes"
-  },
-  {
-    id: "08-agregar-audio",
-    numero: "08",
-    nombre: "Agregar audio",
-    descripcion: "Voz o sonidos"
-  },
-  {
-    id: "09-efectos-audio",
-    numero: "09",
-    nombre: "Efectos audio",
-    descripcion: "Fade y estilo"
-  },
-  {
-    id: "10-texto-graficos",
-    numero: "10",
-    nombre: "Texto",
-    descripcion: "Gráficos"
-  },
-  {
-    id: "11-musica-fondo",
-    numero: "11",
-    nombre: "Música",
-    descripcion: "Fondo"
-  },
-  {
-    id: "12-estilo-visual",
-    numero: "12",
-    nombre: "Estilo",
-    descripcion: "Apariencia"
-  },
-  {
-    id: "13-agregar-imagen-video",
-    numero: "13",
-    nombre: "Imagen/video",
-    descripcion: "Recursos"
-  },
-  {
-    id: "14-animaciones",
-    numero: "14",
-    nombre: "Animaciones",
-    descripcion: "Movimiento"
-  },
-  {
-    id: "15-transiciones",
-    numero: "15",
-    nombre: "Transiciones",
-    descripcion: "Escenas"
-  },
-  {
-    id: "16-correccion-color",
-    numero: "16",
-    nombre: "Color",
-    descripcion: "Corrección"
+    nombre: "Video base",
+    descripcion: "Cargar y validar"
   },
   {
     id: "17-adaptar-cuadrado",
-    numero: "17",
-    nombre: "Cuadrado",
-    descripcion: "Formato"
+    numero: "02",
+    nombre: "Cuadrado IA",
+    descripcion: "Sujeto centrado"
   },
   {
-    id: "18-limpiar-imagen",
-    numero: "18",
-    nombre: "Limpiar",
-    descripcion: "Imagen clara"
+    id: "05-detectar-silencios",
+    numero: "03",
+    nombre: "Cortes",
+    descripcion: "Silencios + margen"
+  },
+  {
+    id: "15-transiciones",
+    numero: "04",
+    nombre: "Transiciones",
+    descripcion: "Entre cortes"
+  },
+  {
+    id: "02-mejorar-audio",
+    numero: "05",
+    nombre: "Audio principal",
+    descripcion: "Mejorar voz"
+  },
+  {
+    id: "11-musica-fondo",
+    numero: "06",
+    nombre: "Música",
+    descripcion: "Audio adicional"
+  },
+  {
+    id: "16-correccion-color",
+    numero: "07",
+    nombre: "Color",
+    descripcion: "Limpiar imagen"
+  },
+  {
+    id: "13-agregar-imagen-video",
+    numero: "08",
+    nombre: "Recursos",
+    descripcion: "Imagen y logos"
+  },
+  {
+    id: "10-texto-graficos",
+    numero: "09",
+    nombre: "Textos",
+    descripcion: "Textos normales"
+  },
+  {
+    id: "14-animaciones",
+    numero: "10",
+    nombre: "Animaciones",
+    descripcion: "Recursos y textos"
+  },
+  {
+    id: "04-subtitulos-automaticos",
+    numero: "11",
+    nombre: "Subtítulos",
+    descripcion: "Última capa"
+  },
+  {
+    id: "19-exportar-video-final",
+    numero: "12",
+    nombre: "Exportar",
+    descripcion: "Video final"
   },
   {
     id: "99-manual-app",
@@ -161,7 +126,7 @@ function pintarShell() {
           <div class="app-brand__icon">VE</div>
           <div>
             <h1>Video Editor</h1>
-            <p>Por pasos y capas</p>
+            <p>Render final por capas</p>
           </div>
         </div>
 
@@ -258,13 +223,10 @@ async function iniciarApp() {
     }
   });
 
-  window.videoEditorEstado = estadoApp;
-  window.videoEditorRouter = router;
-
   conectarMenu(router);
   conectarBotonProyectos();
 
   await router.irA("01-cargar-proyecto");
 }
 
-document.addEventListener("DOMContentLoaded", iniciarApp);
+iniciarApp();
