@@ -1,0 +1,12 @@
+/* =========================================================
+Nombre completo: tan.css
+Ruta o ubicación: /src/pantallas/03-transcripcion-analisis/index/tan.css
+Funciones principales:
+- Usar estilos existentes de transcripción.
+- Mantener el paso Transcripción y análisis con la nueva estructura.
+Con qué se conecta:
+- tan.html
+- tan.js
+========================================================= */
+
+@import url("../../03-transcribir-video/index/tr.css");
