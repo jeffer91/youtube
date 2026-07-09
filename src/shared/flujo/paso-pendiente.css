@@ -1,0 +1,130 @@
+/* =========================================================
+Nombre completo: paso-pendiente.css
+Ruta o ubicación: /src/shared/flujo/paso-pendiente.css
+Funciones principales:
+- Diseñar pasos funcionales provisionales del flujo profesional.
+- Mantener las pantallas pendientes claras, navegables y funcionales.
+Con qué se conecta:
+- paso-pendiente.js
+- index.html
+========================================================= */
+
+.fp-screen {
+  display: grid;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  grid-template-rows: auto minmax(0, 1fr);
+  gap: 14px;
+}
+
+.fp-header {
+  padding: 18px;
+}
+
+.fp-header p {
+  margin: 0 0 6px;
+  color: #6b7280;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.fp-header h2 {
+  margin: 0;
+  color: #111827;
+  font-size: 26px;
+  line-height: 1.1;
+}
+
+.fp-header span {
+  display: block;
+  margin-top: 6px;
+  color: #6b7280;
+  font-size: 14px;
+  line-height: 1.4;
+}
+
+.fp-grid {
+  display: grid;
+  min-height: 0;
+  grid-template-columns: minmax(280px, 360px) 1fr;
+  gap: 14px;
+}
+
+.fp-panel {
+  display: grid;
+  align-content: start;
+  min-height: 0;
+  padding: 18px;
+  gap: 12px;
+  overflow-y: auto;
+}
+
+.fp-panel h3 {
+  margin: 0;
+  color: #111827;
+  font-size: 20px;
+}
+
+.fp-panel p {
+  margin: 0;
+  color: #475569;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.fp-stat {
+  display: grid;
+  padding: 12px;
+  border: 1px solid #e5e7eb;
+  border-radius: 14px;
+  background: #f8fafc;
+  gap: 4px;
+}
+
+.fp-stat strong {
+  color: #111827;
+  font-size: 12px;
+}
+
+.fp-stat span {
+  color: #1e4ed8;
+  font-size: 14px;
+  font-weight: 900;
+  overflow-wrap: anywhere;
+}
+
+.fp-list {
+  display: grid;
+  margin: 0;
+  padding-left: 20px;
+  color: #334155;
+  gap: 8px;
+  font-size: 14px;
+  line-height: 1.45;
+}
+
+.fp-actions {
+  display: flex;
+  flex-wrap: wrap;
+  margin-top: 8px;
+  gap: 10px;
+}
+
+.fp-message {
+  padding: 12px;
+  border: 1px solid #bbf7d0;
+  border-radius: 14px;
+  background: #f0fdf4;
+  color: #166534;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+@media (max-width: 920px) {
+  .fp-grid {
+    grid-template-columns: 1fr;
+  }
+}
