@@ -3,6 +3,8 @@ Nombre completo: rev.css
 Ruta o ubicación: /src/pantallas/12-revision-exportacion/index/rev.css
 Funciones principales:
 - Usar estilos existentes de exportación final.
+- Diseñar checklist final de revisión.
+- Diseñar orden profesional de capas para render.
 - Mantener el paso Revisión y exportación con la nueva estructura.
 Con qué se conecta:
 - rev.html
@@ -10,3 +12,141 @@ Con qué se conecta:
 ========================================================= */
 
 @import url("../../19-exportar-video-final/index/ex.css");
+
+.rev-content .ex-workspace {
+  gap: 20px;
+}
+
+.rev-check-grid {
+  display: grid;
+  gap: 10px;
+}
+
+.rev-check-item {
+  display: grid;
+  padding: 12px;
+  border: 1px solid #e5e7eb;
+  border-radius: 16px;
+  background: #ffffff;
+  grid-template-columns: 38px 1fr auto;
+  gap: 12px;
+  align-items: center;
+}
+
+.rev-check-item.is-ok {
+  border-color: #bbf7d0;
+  background: #f0fdf4;
+}
+
+.rev-check-item.is-warn {
+  border-color: #bfdbfe;
+  background: #eff6ff;
+}
+
+.rev-check-item.is-error {
+  border-color: #fecaca;
+  background: #fef2f2;
+}
+
+.rev-check-item__number {
+  display: grid;
+  width: 34px;
+  height: 34px;
+  border-radius: 12px;
+  background: #ffffff;
+  color: #1e4ed8;
+  font-size: 12px;
+  font-weight: 900;
+  place-items: center;
+}
+
+.rev-check-item__body {
+  display: grid;
+  min-width: 0;
+  gap: 3px;
+}
+
+.rev-check-item__body strong {
+  color: #111827;
+  font-size: 14px;
+  line-height: 1.2;
+}
+
+.rev-check-item__body span {
+  color: #475569;
+  font-size: 12px;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
+.rev-check-item em {
+  display: inline-flex;
+  min-height: 26px;
+  padding: 0 10px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.78);
+  color: #111827;
+  font-size: 11px;
+  font-style: normal;
+  font-weight: 900;
+  align-items: center;
+  white-space: nowrap;
+}
+
+.rev-render-order {
+  display: grid;
+  gap: 8px;
+}
+
+.rev-render-step {
+  display: grid;
+  padding: 10px;
+  border: 1px solid #e5e7eb;
+  border-radius: 14px;
+  background: #ffffff;
+  grid-template-columns: 34px 1fr;
+  gap: 10px;
+  align-items: center;
+}
+
+.rev-render-step.is-required {
+  border-color: #bfdbfe;
+  background: #eff6ff;
+}
+
+.rev-render-step > span {
+  display: grid;
+  width: 30px;
+  height: 30px;
+  border-radius: 11px;
+  background: #1e4ed8;
+  color: #ffffff;
+  font-size: 11px;
+  font-weight: 900;
+  place-items: center;
+}
+
+.rev-render-step strong {
+  display: block;
+  color: #111827;
+  font-size: 13px;
+  line-height: 1.2;
+}
+
+.rev-render-step small {
+  display: block;
+  margin-top: 3px;
+  color: #64748b;
+  font-size: 11px;
+}
+
+@media (max-width: 720px) {
+  .rev-check-item {
+    grid-template-columns: 34px 1fr;
+  }
+
+  .rev-check-item em {
+    grid-column: 1 / -1;
+    width: fit-content;
+  }
+}
