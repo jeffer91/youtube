@@ -2,7 +2,7 @@
 Nombre completo: cp-pasos.js
 Ruta o ubicación: /src/pantallas/01-cargar-proyecto/render/cp-pasos.js
 Funciones principales:
-- Renderizar los 3 pasos de Cargar proyecto.
+- Renderizar los 3 pasos de Video base y diagnóstico.
 - Marcar el paso activo.
 - Mostrar contenido corto por paso.
 - Conectar botones Atrás y Siguiente.
@@ -13,17 +13,17 @@ const CP_PASOS = [
   {
     numero: 1,
     titulo: "Cargar videos",
-    texto: "Carga tus videos para empezar."
+    texto: "Selecciona los archivos base."
   },
   {
     numero: 2,
-    titulo: "Ordenar videos",
-    texto: "Organiza el orden del proyecto."
+    titulo: "Ordenar y validar",
+    texto: "Revisa el orden del proyecto."
   },
   {
     numero: 3,
     titulo: "Nombre y estilo",
-    texto: "Completa los datos del proyecto."
+    texto: "Guarda el proyecto inicial."
   }
 ];
 
@@ -51,15 +51,9 @@ export function renderPasos({ contenedor, pasoActual }) {
     return;
   }
 
-  const pasosHtml = CP_PASOS
-    .map((paso) => crearItemPaso(paso, pasoActual))
-    .join("");
+  const pasosHtml = CP_PASOS.map((paso) => crearItemPaso(paso, pasoActual)).join("");
 
-  contenedor.innerHTML = `
-    <div class="cp-steps">
-      ${pasosHtml}
-    </div>
-  `;
+  contenedor.innerHTML = `<div class="cp-steps">${pasosHtml}</div>`;
 }
 
 export function conectarPasos({ service }) {
@@ -85,8 +79,8 @@ export function renderContenidoPaso({ contenedor, estado }) {
       <section class="cp-panel">
         <div class="cp-panel__head">
           <div>
-            <h3>Cargar videos</h3>
-            <p>Carga tus videos para empezar.</p>
+            <h3>Video base</h3>
+            <p>Carga tus videos. La app los usará como base para diagnóstico, formato, análisis y edición.</p>
           </div>
         </div>
 
@@ -109,8 +103,8 @@ export function renderContenidoPaso({ contenedor, estado }) {
       <section class="cp-panel">
         <div class="cp-panel__head">
           <div>
-            <h3>Ordenar videos</h3>
-            <p>Arrastra o usa las flechas.</p>
+            <h3>Ordenar y validar</h3>
+            <p>Organiza el orden. Esta será la base para análisis, cortes y render final.</p>
           </div>
         </div>
 
@@ -124,8 +118,8 @@ export function renderContenidoPaso({ contenedor, estado }) {
     <section class="cp-panel">
       <div class="cp-panel__head">
         <div>
-          <h3>Nombre y estilo</h3>
-          <p>Completa los datos para guardar.</p>
+          <h3>Nombre y estilo inicial</h3>
+          <p>Guarda el proyecto. Después pasará a Formato inteligente.</p>
         </div>
       </div>
 
@@ -178,7 +172,7 @@ export function renderBotonesNavegacion({ contenedor, estado }) {
               type="button"
               ${estado.guardando ? "disabled" : ""}
             >
-              ${estado.guardando ? "Guardando..." : "Guardar y continuar"}
+              ${estado.guardando ? "Guardando..." : "Guardar y pasar a formato"}
             </button>
           `
           : `
