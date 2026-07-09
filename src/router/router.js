@@ -7,15 +7,16 @@ Funciones principales:
 - Importar el JS principal de cada pantalla.
 - Ejecutar la función inicial de la pantalla.
 - Mantener navegación simple entre pantallas.
-- Mostrar pasos automáticos pendientes sin romper el flujo de 12 pasos.
+- Mostrar pasos automáticos pendientes sin romper el flujo profesional de 12 pasos.
 ========================================================= */
 
 const RUTAS = {
   "01-cargar-proyecto": {
     id: "01-cargar-proyecto",
     numero: "01",
-    titulo: "Video base",
-    descripcion: "Cargar y validar el video original.",
+    titulo: "Video base y diagnóstico",
+    descripcion: "Cargar, validar y ordenar el video original antes de editar.",
+    criterio: "La app debe revisar archivo, formato, duración, peso, orientación y existencia antes de crear capas.",
     siguiente: "17-adaptar-cuadrado",
     html: "./pantallas/01-cargar-proyecto/index/cp.html",
     cssId: "css-01-cargar-proyecto",
@@ -27,10 +28,15 @@ const RUTAS = {
   "17-adaptar-cuadrado": {
     id: "17-adaptar-cuadrado",
     numero: "02",
-    titulo: "Cuadrado IA",
-    descripcion: "Convertir el video a cuadrado o vertical manteniendo el sujeto centrado.",
-    criterio: "Debe ir al inicio, porque si el formato cambia después, textos, imágenes y subtítulos pueden quedar fuera de lugar.",
-    siguiente: "05-detectar-silencios",
+    titulo: "Formato inteligente",
+    descripcion: "Elegir cuadrado, vertical u horizontal manteniendo el sujeto centrado.",
+    criterio: "El formato va al inicio. Si se cambia después, textos, logos, recursos y subtítulos pueden quedar mal ubicados.",
+    acciones: [
+      "Detectar orientación del video.",
+      "Reencuadrar con sujeto centrado.",
+      "Guardar zona segura para subtítulos y elementos visuales."
+    ],
+    siguiente: "03-transcribir-video",
     html: null,
     cssId: null,
     css: null,
@@ -38,12 +44,31 @@ const RUTAS = {
     init: null
   },
 
+  "03-transcribir-video": {
+    id: "03-transcribir-video",
+    numero: "03",
+    titulo: "Transcripción y análisis",
+    descripcion: "Crear texto, tiempos y datos que alimentan cortes, subtítulos y ritmo.",
+    criterio: "La transcripción es parte del cerebro de la edición, no solo un paso auxiliar para subtítulos.",
+    siguiente: "05-detectar-silencios",
+    html: "./pantallas/03-transcribir-video/index/tr.html",
+    cssId: "css-03-transcribir-video",
+    css: "./pantallas/03-transcribir-video/index/tr.css",
+    js: "../pantallas/03-transcribir-video/index/tr.js",
+    init: "iniciarPantallaTranscribirVideo"
+  },
+
   "05-detectar-silencios": {
     id: "05-detectar-silencios",
-    numero: "03",
-    titulo: "Cortes y silencios",
-    descripcion: "Cortar silencios dejando un margen corto para que las transiciones no queden bruscas.",
-    criterio: "Los cortes deben hacerse antes de capas visuales, porque cambian la línea de tiempo.",
+    numero: "04",
+    titulo: "Cortes inteligentes",
+    descripcion: "Cortar silencios y partes muertas manteniendo ritmo natural.",
+    criterio: "Los cortes cambian la línea de tiempo; por eso deben ocurrir antes de audio final, recursos, textos y subtítulos.",
+    acciones: [
+      "Detectar silencios y pausas largas.",
+      "Dejar margen corto antes y después del corte.",
+      "Evitar cortes robóticos o demasiado agresivos."
+    ],
     siguiente: "15-transiciones",
     html: null,
     cssId: null,
@@ -54,10 +79,15 @@ const RUTAS = {
 
   "15-transiciones": {
     id: "15-transiciones",
-    numero: "04",
-    titulo: "Transiciones",
-    descripcion: "Aplicar transiciones entre cortes cuando sean necesarias.",
-    criterio: "Las transiciones van cerca de los cortes, no al final, para no afectar subtítulos ni overlays.",
+    numero: "05",
+    titulo: "Transiciones selectivas",
+    descripcion: "Aplicar transiciones solo cuando ayudan al cambio de escena o idea.",
+    criterio: "No conviene poner transición en cada corte. Un corte limpio suele verse más profesional.",
+    acciones: [
+      "Revisar cortes bruscos.",
+      "Aplicar transición solo si hay cambio visual fuerte.",
+      "Mantener subtítulos y overlays fuera de esta etapa."
+    ],
     siguiente: "02-mejorar-audio",
     html: null,
     cssId: null,
@@ -68,9 +98,10 @@ const RUTAS = {
 
   "02-mejorar-audio": {
     id: "02-mejorar-audio",
-    numero: "05",
+    numero: "06",
     titulo: "Audio principal",
-    descripcion: "Mejorar la voz después de tener la estructura del video definida.",
+    descripcion: "Mejorar voz después de definir estructura y cortes.",
+    criterio: "La voz manda. Se mejora sin dejarla metálica ni sobreprocesada.",
     siguiente: "11-musica-fondo",
     html: "./pantallas/02-mejorar-audio/index/ma.html",
     cssId: "css-02-mejorar-audio",
@@ -81,10 +112,15 @@ const RUTAS = {
 
   "11-musica-fondo": {
     id: "11-musica-fondo",
-    numero: "06",
-    titulo: "Música y audio adicional",
-    descripcion: "Agregar música de fondo o sonidos sin tapar la voz principal.",
-    criterio: "La música debe nivelarse automáticamente para no competir con la voz.",
+    numero: "07",
+    titulo: "Música y sonidos",
+    descripcion: "Agregar música o sonidos sin tapar la voz principal.",
+    criterio: "La música debe bajar automáticamente cuando hay voz y subir solo en espacios sin habla.",
+    acciones: [
+      "Agregar música de fondo.",
+      "Aplicar ducking automático.",
+      "Evitar que música o efectos tapen la voz."
+    ],
     siguiente: "16-correccion-color",
     html: null,
     cssId: null,
@@ -95,10 +131,15 @@ const RUTAS = {
 
   "16-correccion-color": {
     id: "16-correccion-color",
-    numero: "07",
+    numero: "08",
     titulo: "Color y limpieza",
-    descripcion: "Corregir color y limpiar la imagen del video base antes de overlays.",
-    criterio: "Debe ocurrir antes de imágenes, textos y subtítulos para no alterar esas capas.",
+    descripcion: "Mejorar brillo, contraste, nitidez y limpieza del video base.",
+    criterio: "Debe ocurrir antes de logos, textos y subtítulos para no alterar esas capas.",
+    acciones: [
+      "Corregir brillo, contraste y saturación.",
+      "Aplicar nitidez suave si conviene.",
+      "Reducir ruido visual sin destruir detalle."
+    ],
     siguiente: "13-agregar-imagen-video",
     html: null,
     cssId: null,
@@ -109,10 +150,15 @@ const RUTAS = {
 
   "13-agregar-imagen-video": {
     id: "13-agregar-imagen-video",
-    numero: "08",
+    numero: "09",
     titulo: "Recursos visuales",
-    descripcion: "Agregar imágenes, logos o recursos sin invadir la zona segura de subtítulos.",
-    criterio: "Los recursos deben quedar debajo de la capa de subtítulos.",
+    descripcion: "Agregar imágenes, logos, capturas o recursos útiles.",
+    criterio: "Los recursos deben ayudar al video, no ensuciarlo ni tapar la zona segura de subtítulos.",
+    acciones: [
+      "Agregar logos o imágenes.",
+      "Respetar zona segura de subtítulos.",
+      "Mantener recursos debajo de la capa final de subtítulos."
+    ],
     siguiente: "10-texto-graficos",
     html: null,
     cssId: null,
@@ -123,11 +169,16 @@ const RUTAS = {
 
   "10-texto-graficos": {
     id: "10-texto-graficos",
-    numero: "09",
-    titulo: "Textos normales",
-    descripcion: "Agregar títulos, rótulos o frases distintas a los subtítulos.",
-    criterio: "Los textos normales no deben competir con los subtítulos finales.",
-    siguiente: "14-animaciones",
+    numero: "10",
+    titulo: "Textos y animaciones",
+    descripcion: "Agregar rótulos, títulos, frases y animaciones simples.",
+    criterio: "Texto y animación van juntos porque normalmente la animación pertenece a un texto o recurso ya creado.",
+    acciones: [
+      "Agregar títulos o rótulos normales.",
+      "Aplicar animaciones de entrada y salida.",
+      "Evitar animaciones exageradas o que tapen subtítulos."
+    ],
+    siguiente: "04-subtitulos-automaticos",
     html: null,
     cssId: null,
     css: null,
@@ -137,10 +188,10 @@ const RUTAS = {
 
   "14-animaciones": {
     id: "14-animaciones",
-    numero: "10",
-    titulo: "Animaciones",
-    descripcion: "Animar imágenes, logos, recursos y textos según corresponda.",
-    criterio: "Las animaciones pertenecen a los elementos ya agregados; no deben tapar subtítulos.",
+    numero: "AUX",
+    titulo: "Animaciones auxiliares",
+    descripcion: "Pantalla auxiliar integrada al paso Textos y animaciones.",
+    criterio: "Se mantiene como ruta auxiliar, pero el flujo principal usa Textos y animaciones como un solo paso.",
     siguiente: "04-subtitulos-automaticos",
     html: null,
     cssId: null,
@@ -149,24 +200,12 @@ const RUTAS = {
     init: null
   },
 
-  "03-transcribir-video": {
-    id: "03-transcribir-video",
-    numero: "T",
-    titulo: "Transcripción auxiliar",
-    descripcion: "Crear la transcripción que luego usará la capa de subtítulos.",
-    siguiente: "04-subtitulos-automaticos",
-    html: "./pantallas/03-transcribir-video/index/tr.html",
-    cssId: "css-03-transcribir-video",
-    css: "./pantallas/03-transcribir-video/index/tr.css",
-    js: "../pantallas/03-transcribir-video/index/tr.js",
-    init: "iniciarPantallaTranscribirVideo"
-  },
-
   "04-subtitulos-automaticos": {
     id: "04-subtitulos-automaticos",
     numero: "11",
-    titulo: "Subtítulos",
-    descripcion: "Preparar subtítulos como última capa visible, pero sin exportar todavía.",
+    titulo: "Subtítulos finales",
+    descripcion: "Preparar subtítulos como última capa visible, sin exportar todavía.",
+    criterio: "Los subtítulos van al final para que nada los tape. Se queman recién en la revisión/exportación.",
     siguiente: "19-exportar-video-final",
     html: "./pantallas/04-subtitulos-automaticos/index/sa.html",
     cssId: "css-04-subtitulos-automaticos",
@@ -178,8 +217,9 @@ const RUTAS = {
   "19-exportar-video-final": {
     id: "19-exportar-video-final",
     numero: "12",
-    titulo: "Exportar video final",
-    descripcion: "Renderizar el resultado final aplicando subtítulos al último.",
+    titulo: "Revisión y exportación",
+    descripcion: "Revisar calidad, generar video final y descargar.",
+    criterio: "La exportación debe validar video, audio, subtítulos y orden de capas antes de generar.",
     siguiente: null,
     html: "./pantallas/19-exportar-video-final/index/ex.html",
     cssId: "css-19-exportar-video-final",
@@ -193,7 +233,8 @@ const RUTAS = {
     numero: "IA",
     titulo: "Plan IA",
     descripcion: "Pantalla auxiliar para planificar la estructura.",
-    siguiente: "07-cortar-video",
+    criterio: "El plan IA puede alimentar cortes, textos y recursos, pero no debe romper el flujo principal.",
+    siguiente: "05-detectar-silencios",
     html: null,
     cssId: null,
     css: null,
@@ -204,8 +245,9 @@ const RUTAS = {
   "07-cortar-video": {
     id: "07-cortar-video",
     numero: "C",
-    titulo: "Cortar video",
+    titulo: "Cortar video manual",
     descripcion: "Pantalla auxiliar de cortes manuales.",
+    criterio: "Se mantiene como auxiliar, pero el flujo principal usa Cortes inteligentes.",
     siguiente: "15-transiciones",
     html: null,
     cssId: null,
@@ -217,8 +259,9 @@ const RUTAS = {
   "08-agregar-audio": {
     id: "08-agregar-audio",
     numero: "A",
-    titulo: "Agregar audio",
+    titulo: "Agregar audio auxiliar",
     descripcion: "Pantalla auxiliar para voz o sonidos.",
+    criterio: "Se mantiene como auxiliar, pero el flujo principal usa Música y sonidos.",
     siguiente: "11-musica-fondo",
     html: null,
     cssId: null,
@@ -232,6 +275,7 @@ const RUTAS = {
     numero: "FX",
     titulo: "Efectos de audio",
     descripcion: "Pantalla auxiliar para fades y estilo de audio.",
+    criterio: "Los efectos de audio se integran a Música y sonidos o Audio principal.",
     siguiente: "11-musica-fondo",
     html: null,
     cssId: null,
@@ -243,8 +287,9 @@ const RUTAS = {
   "12-estilo-visual": {
     id: "12-estilo-visual",
     numero: "EV",
-    titulo: "Estilo visual",
+    titulo: "Estilo visual auxiliar",
     descripcion: "Pantalla auxiliar de apariencia.",
+    criterio: "El estilo visual se reparte entre Formato inteligente, Color y limpieza, Recursos y Textos.",
     siguiente: "16-correccion-color",
     html: null,
     cssId: null,
@@ -256,8 +301,9 @@ const RUTAS = {
   "18-limpiar-imagen": {
     id: "18-limpiar-imagen",
     numero: "LI",
-    titulo: "Limpiar imagen",
+    titulo: "Limpiar imagen auxiliar",
     descripcion: "Pantalla auxiliar integrada al paso Color y limpieza.",
+    criterio: "Limpieza de imagen pertenece al paso Color y limpieza.",
     siguiente: "13-agregar-imagen-video",
     html: null,
     cssId: null,
@@ -271,6 +317,7 @@ const RUTAS = {
     numero: "M",
     titulo: "Manual",
     descripcion: "Cómo funciona la app.",
+    criterio: "Manual de uso y reglas internas.",
     siguiente: null,
     html: "./pantallas/99-manual-app/index/mn-app.html",
     cssId: "css-99-manual-app",
@@ -349,6 +396,20 @@ async function cargarModuloPantalla(ruta) {
   return modulo[ruta.init];
 }
 
+function crearAccionesPendientes(ruta) {
+  const acciones = Array.isArray(ruta.acciones) ? ruta.acciones : [];
+
+  if (!acciones.length) {
+    return "";
+  }
+
+  return `
+    <ul class="app-empty__list">
+      ${acciones.map((accion) => `<li>${escaparHtml(accion)}</li>`).join("")}
+    </ul>
+  `;
+}
+
 function crearPantallaPendiente(ruta) {
   const criterio = ruta.criterio
     ? `<p><strong>Criterio:</strong> ${escaparHtml(ruta.criterio)}</p>`
@@ -363,6 +424,7 @@ function crearPantallaPendiente(ruta) {
         <h3>${escaparHtml(ruta.numero || "")}. ${escaparHtml(ruta.titulo || ruta.id)}</h3>
         <p>${escaparHtml(ruta.descripcion || "Esta pantalla todavía no está construida.")}</p>
         ${criterio}
+        ${crearAccionesPendientes(ruta)}
         <p>Este paso queda ubicado en el orden correcto para que el render final no rompa capas posteriores.</p>
         ${boton}
       </div>
