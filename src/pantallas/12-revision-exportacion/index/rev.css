@@ -1,0 +1,12 @@
+/* =========================================================
+Nombre completo: rev.css
+Ruta o ubicación: /src/pantallas/12-revision-exportacion/index/rev.css
+Funciones principales:
+- Usar estilos existentes de exportación final.
+- Mantener el paso Revisión y exportación con la nueva estructura.
+Con qué se conecta:
+- rev.html
+- rev.js
+========================================================= */
+
+@import url("../../19-exportar-video-final/index/ex.css");
