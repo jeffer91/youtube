@@ -1,0 +1,12 @@
+/* =========================================================
+Nombre completo: aud.css
+Ruta o ubicación: /src/pantallas/06-audio-principal/index/aud.css
+Funciones principales:
+- Usar estilos existentes de mejorar audio.
+- Mantener el paso Audio principal con la nueva estructura.
+Con qué se conecta:
+- aud.html
+- aud.js
+========================================================= */
+
+@import url("../../02-mejorar-audio/index/ma.css");
