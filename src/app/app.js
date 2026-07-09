@@ -6,8 +6,8 @@ Funciones principales:
 - Crear el contenedor visual general.
 - Conectar el estado global mínimo.
 - Iniciar el router de pantallas.
-- Cargar por defecto la pantalla 01 Cargar proyecto.
-- Mostrar el flujo correcto de edición por capas.
+- Cargar por defecto la pantalla 01 Video base y diagnóstico.
+- Mostrar el flujo profesional de edición por capas.
 - Mantener los subtítulos como última capa visible antes de exportar.
 - Agregar un botón flotante único para conectar todo el flujo.
 ========================================================= */
@@ -22,73 +22,73 @@ const PANTALLAS_BASE = [
     id: "01-cargar-proyecto",
     numero: "01",
     nombre: "Video base",
-    descripcion: "Cargar y validar"
+    descripcion: "Diagnóstico"
   },
   {
     id: "17-adaptar-cuadrado",
     numero: "02",
-    nombre: "Cuadrado IA",
+    nombre: "Formato IA",
     descripcion: "Sujeto centrado"
   },
   {
-    id: "05-detectar-silencios",
+    id: "03-transcribir-video",
     numero: "03",
+    nombre: "Análisis",
+    descripcion: "Transcripción"
+  },
+  {
+    id: "05-detectar-silencios",
+    numero: "04",
     nombre: "Cortes",
-    descripcion: "Silencios + margen"
+    descripcion: "Ritmo natural"
   },
   {
     id: "15-transiciones",
-    numero: "04",
+    numero: "05",
     nombre: "Transiciones",
-    descripcion: "Entre cortes"
+    descripcion: "Selectivas"
   },
   {
     id: "02-mejorar-audio",
-    numero: "05",
+    numero: "06",
     nombre: "Audio principal",
-    descripcion: "Mejorar voz"
+    descripcion: "Voz clara"
   },
   {
     id: "11-musica-fondo",
-    numero: "06",
+    numero: "07",
     nombre: "Música",
-    descripcion: "Audio adicional"
+    descripcion: "Ducking"
   },
   {
     id: "16-correccion-color",
-    numero: "07",
+    numero: "08",
     nombre: "Color",
-    descripcion: "Limpiar imagen"
+    descripcion: "Limpieza"
   },
   {
     id: "13-agregar-imagen-video",
-    numero: "08",
+    numero: "09",
     nombre: "Recursos",
-    descripcion: "Imagen y logos"
+    descripcion: "Visuales"
   },
   {
     id: "10-texto-graficos",
-    numero: "09",
-    nombre: "Textos",
-    descripcion: "Textos normales"
-  },
-  {
-    id: "14-animaciones",
     numero: "10",
-    nombre: "Animaciones",
-    descripcion: "Recursos y textos"
+    nombre: "Textos",
+    descripcion: "Animación"
   },
   {
     id: "04-subtitulos-automaticos",
     numero: "11",
     nombre: "Subtítulos",
-    descripcion: "Última capa"
+    descripcion: "Finales"
   },
   {
     id: "19-exportar-video-final",
     numero: "12",
-    nombre: "Exportar",
-    descripcion: "Video final"
+    nombre: "Revisión",
+    descripcion: "Exportación"
   },
   {
     id: "99-manual-app",
@@ -135,7 +135,7 @@ function pintarShell() {
           <div class="app-brand__icon">VE</div>
           <div>
             <h1>Video Editor</h1>
-            <p>Render final por capas</p>
+            <p>Video final por capas</p>
           </div>
         </div>
 
@@ -148,7 +148,7 @@ function pintarShell() {
         <header class="app-header">
           <div>
             <p class="app-header__eyebrow">Proyecto</p>
-            <h2 id="appHeaderTitle">Cargar proyecto</h2>
+            <h2 id="appHeaderTitle">Video base</h2>
           </div>
 
           <div class="app-header__actions">
