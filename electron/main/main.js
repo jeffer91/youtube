@@ -6,11 +6,12 @@ Funciones principales:
 - Cargar /src/index.html.
 - Crear carpetas base generales del programa.
 - Seleccionar videos.
-- Registrar módulos Electron de Proyecto local, Audio, Transcripción, Google Sheets y PendientesSync.
+- Registrar módulos Electron de Proyecto local, Audio, Transcripción, Subtítulos, Google Sheets y PendientesSync.
 Con qué se conecta:
 - proyecto-electron.js
 - ma-audio-electron.js
 - tr-electron.js
+- sa-electron.js
 - gs-electron.js
 - sync-electron.js
 - preload.js
@@ -33,6 +34,10 @@ const {
 const {
   registrarTranscripcionElectron
 } = require("../../src/pantallas/03-transcribir-video/electron/tr-electron.js");
+
+const {
+  registrarSubtitulosAutomaticosElectron
+} = require("../../src/pantallas/04-subtitulos-automaticos/electron/sa-electron.js");
 
 const {
   registrarGoogleSheetsElectron
@@ -180,6 +185,15 @@ registrarTranscripcionElectron({
   ipcMain,
   obtenerRutaData,
   asegurarCarpeta
+});
+
+registrarSubtitulosAutomaticosElectron({
+  ipcMain,
+  dialog,
+  obtenerVentanaPrincipal,
+  obtenerRutaData,
+  asegurarCarpeta,
+  shell
 });
 
 registrarGoogleSheetsElectron({
