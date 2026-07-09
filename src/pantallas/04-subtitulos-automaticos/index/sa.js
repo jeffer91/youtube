@@ -3,25 +3,44 @@ Nombre completo: sa.js
 Ruta o ubicación: /src/pantallas/04-subtitulos-automaticos/index/sa.js
 Funciones principales:
 - Iniciar la pantalla Subtítulos automáticos.
-- Leer el proyecto activo desde estadoApp.
-- Verificar qué videos tienen transcripción guardada.
-- Generar subtítulos reales desde los segmentos de transcripción.
-- Guardar los subtítulos dentro del proyecto activo y como capa por video.
-- Mostrar resumen y vista previa de los subtítulos preparados.
+- Preparar subtítulos automáticamente desde transcripciones.
+- Permitir elegir entre tres formatos visuales.
+- Generar video final subtitulado mediante Electron + FFmpeg.
+- Mostrar antes/después y botones de descarga.
 Con qué se conecta:
 - sa.html
 - sa.css
-- estadoApp.proyectoActivo
 - router.js
-- window.videoEditorAPI.guardarProyectoLocal
+- estadoApp.proyectoActivo
+- sa-formatos.js
+- sa-subtitulos.js
+- window.videoEditorAPI
 ========================================================= */
 
-const SA_CAPA_SUBTITULOS = Object.freeze({
-  id: "subtitulos-automaticos",
-  tipo: "subtitulos",
-  nombre: "Subtítulos automáticos",
-  activa: true
-});
+import {
+  SA_FORMATO_DEFECTO,
+  obtenerFormatosSubtitulosSA,
+  obtenerFormatoSubtitulosSA
+} from "../services/sa-formatos.js";
+
+import {
+  crearResumenSA,
+  obtenerVideosSA,
+  obtenerTranscripcionSA,
+  obtenerSubtitulosPreparadosSA,
+  contarPalabrasSA,
+  prepararSubtitulosProyectoSA,
+  integrarVideosSubtituladosEnProyectoSA
+} from "../services/sa-subtitulos.js";
+
+let estadoAppActualSA = null;
+let routerActualSA = null;
+let proyectoActualSA = null;
+let formatoActualSA = SA_FORMATO_DEFECTO;
+let resultadoPreparacionSA = null;
+let resultadoExportacionSA = null;
+let mensajeTemporalSA = "";
+let tipoMensajeTemporalSA = "info";
 
 function escaparHtmlSA(valor) {
   return String(valor ?? "")
@@ -32,499 +51,58 @@ function escaparHtmlSA(valor) {
     .replace(/'/g, "&#039;");
 }
 
-function limpiarTextoSA(valor) {
-  return String(valor ?? "")
-    .replace(/\s+/g, " ")
-    .trim();
+function obtenerProyectoActivoSA() {
+  if (!estadoAppActualSA?.obtenerProyectoActivo) return proyectoActualSA;
+  return estadoAppActualSA.obtenerProyectoActivo() || proyectoActualSA;
 }
 
-function clonarSeguroSA(valor) {
-  try {
-    return JSON.parse(JSON.stringify(valor || null));
-  } catch (error) {
-    return null;
-  }
-}
+function actualizarProyectoActivoSA(proyecto) {
+  proyectoActualSA = proyecto;
 
-function obtenerProyectoActivoSA(estadoApp) {
-  if (!estadoApp?.obtenerProyectoActivo) {
-    return null;
-  }
+  if (!estadoAppActualSA?.establecerProyectoActivo) return;
 
-  return estadoApp.obtenerProyectoActivo();
-}
-
-function actualizarProyectoActivoSA(estadoApp, proyecto) {
-  if (!estadoApp?.establecerProyectoActivo) {
-    return;
-  }
-
-  const estadoGlobal = estadoApp.obtenerEstado?.() || {};
-  estadoApp.establecerProyectoActivo(
-    proyecto,
-    estadoGlobal.rutaProyectoActivo || null
-  );
-}
-
-function obtenerVideosSA(proyecto) {
-  return Array.isArray(proyecto?.videos) ? proyecto.videos : [];
-}
-
-function obtenerTranscripcionSA(video) {
-  if (video?.transcripcion?.texto) {
-    return video.transcripcion;
-  }
-
-  if (Array.isArray(video?.transcripciones) && video.transcripciones.length) {
-    return video.transcripciones[video.transcripciones.length - 1];
-  }
-
-  return null;
-}
-
-function obtenerSubtitulosPreparadosSA(video) {
-  if (Array.isArray(video?.subtitulosAutomaticos?.subtitulos)) {
-    return video.subtitulosAutomaticos.subtitulos;
-  }
-
-  if (Array.isArray(video?.subtitulos)) {
-    return video.subtitulos;
-  }
-
-  return [];
-}
-
-function videoTieneSubtitulosSA(video) {
-  return obtenerSubtitulosPreparadosSA(video).length > 0;
-}
-
-function contarPalabrasSA(transcripcion) {
-  const texto = limpiarTextoSA(transcripcion?.texto || "");
-
-  if (!texto) {
-    return 0;
-  }
-
-  return texto.split(/\s+/).filter(Boolean).length;
-}
-
-function crearResumenSA(proyecto) {
-  const videos = obtenerVideosSA(proyecto);
-  const listos = videos.filter((video) => obtenerTranscripcionSA(video));
-  const conSubtitulos = videos.filter((video) => videoTieneSubtitulosSA(video));
-  const totalSubtitulos = videos.reduce((total, video) => {
-    return total + obtenerSubtitulosPreparadosSA(video).length;
-  }, 0);
-  const pendientes = Math.max(videos.length - listos.length, 0);
-
-  return {
-    videos,
-    total: videos.length,
-    listos: listos.length,
-    pendientes,
-    conSubtitulos: conSubtitulos.length,
-    totalSubtitulos,
-    puedePreparar: videos.length > 0 && pendientes === 0
-  };
-}
-
-function normalizarSegundosSA(valor, respaldo = 0) {
-  const numero = Number(valor);
-
-  if (!Number.isFinite(numero) || numero < 0) {
-    return Math.max(0, Number(respaldo) || 0);
-  }
-
-  return Math.round(numero * 1000) / 1000;
-}
-
-function formatearTiempoSrtSA(segundosEntrada) {
-  const totalMilisegundos = Math.max(0, Math.round(normalizarSegundosSA(segundosEntrada) * 1000));
-  const horas = Math.floor(totalMilisegundos / 3600000);
-  const minutos = Math.floor((totalMilisegundos % 3600000) / 60000);
-  const segundos = Math.floor((totalMilisegundos % 60000) / 1000);
-  const milisegundos = totalMilisegundos % 1000;
-
-  return [
-    String(horas).padStart(2, "0"),
-    String(minutos).padStart(2, "0"),
-    String(segundos).padStart(2, "0")
-  ].join(":") + `,${String(milisegundos).padStart(3, "0")}`;
-}
-
-function formatearTiempoCortoSA(segundosEntrada) {
-  const totalSegundos = Math.max(0, Math.round(normalizarSegundosSA(segundosEntrada)));
-  const minutos = Math.floor(totalSegundos / 60);
-  const segundos = totalSegundos % 60;
-
-  return `${String(minutos).padStart(2, "0")}:${String(segundos).padStart(2, "0")}`;
-}
-
-function obtenerTextoSegmentoSA(segmento) {
-  return limpiarTextoSA(segmento?.texto || segmento?.text || "");
-}
-
-function dividirTextoEnBloquesSA(texto, palabrasPorBloque = 10) {
-  const palabras = limpiarTextoSA(texto).split(/\s+/).filter(Boolean);
-  const bloques = [];
-
-  for (let i = 0; i < palabras.length; i += palabrasPorBloque) {
-    const bloque = palabras.slice(i, i + palabrasPorBloque).join(" ");
-    if (bloque) {
-      bloques.push(bloque);
-    }
-  }
-
-  return bloques;
-}
-
-function crearSegmentosEstimadosSA(transcripcion) {
-  const bloques = dividirTextoEnBloquesSA(transcripcion?.texto || "");
-  let cursor = 0;
-
-  return bloques.map((texto, index) => {
-    const palabras = texto.split(/\s+/).filter(Boolean).length;
-    const duracion = Math.max(2.2, Math.min(6, (palabras / 145) * 60));
-    const inicio = cursor;
-    const fin = inicio + duracion;
-    cursor = fin;
-
-    return {
-      id: `segmento-estimado-${index + 1}`,
-      indice: index + 1,
-      inicio,
-      fin,
-      texto,
-      estimado: true
-    };
-  });
-}
-
-function normalizarSegmentosSA(transcripcion) {
-  const segmentosBase = Array.isArray(transcripcion?.segmentos)
-    ? transcripcion.segmentos
-    : [];
-  const fuente = segmentosBase.length ? segmentosBase : crearSegmentosEstimadosSA(transcripcion);
-  let ultimoFin = 0;
-
-  return fuente
-    .map((segmento, index) => {
-      const texto = obtenerTextoSegmentoSA(segmento);
-
-      if (!texto) {
-        return null;
-      }
-
-      const inicioBase = segmento?.inicio ?? segmento?.start ?? ultimoFin;
-      const inicio = Math.max(ultimoFin, normalizarSegundosSA(inicioBase, ultimoFin));
-      const finBase = segmento?.fin ?? segmento?.end ?? inicio + 3;
-      const fin = Math.max(inicio + 0.5, normalizarSegundosSA(finBase, inicio + 3));
-      ultimoFin = fin;
-
-      return {
-        id: segmento?.id || `subtitulo-${index + 1}`,
-        indice: index + 1,
-        inicio,
-        fin,
-        duracion: Math.round((fin - inicio) * 1000) / 1000,
-        inicioTexto: segmento?.inicioTexto || formatearTiempoCortoSA(inicio),
-        finTexto: segmento?.finTexto || formatearTiempoCortoSA(fin),
-        inicioSrt: segmento?.inicioSrt || formatearTiempoSrtSA(inicio),
-        finSrt: segmento?.finSrt || formatearTiempoSrtSA(fin),
-        texto,
-        estimado: Boolean(segmento?.estimado)
-      };
-    })
-    .filter(Boolean);
-}
-
-function crearTextoSrtSA(subtitulos) {
-  return subtitulos
-    .map((subtitulo, index) => {
-      return [
-        String(index + 1),
-        `${subtitulo.inicioSrt} --> ${subtitulo.finSrt}`,
-        subtitulo.texto
-      ].join("\n");
-    })
-    .join("\n\n");
-}
-
-function crearIdCapaSubtitulosSA(videoId) {
-  return `${SA_CAPA_SUBTITULOS.id}-${videoId}`;
-}
-
-function crearSubtitulosVideoSA(video) {
-  const transcripcion = obtenerTranscripcionSA(video);
-
-  if (!transcripcion?.texto) {
-    return {
-      ok: false,
-      video,
-      mensaje: `${video?.nombre || "Video"}: no tiene transcripción guardada.`
-    };
-  }
-
-  const subtitulos = normalizarSegmentosSA(transcripcion).map((segmento, index) => ({
-    id: `${video?.id || "video"}-subtitulo-${index + 1}`,
-    videoId: video?.id || "",
-    indice: index + 1,
-    inicio: segmento.inicio,
-    fin: segmento.fin,
-    duracion: segmento.duracion,
-    inicioTexto: segmento.inicioTexto,
-    finTexto: segmento.finTexto,
-    inicioSrt: segmento.inicioSrt,
-    finSrt: segmento.finSrt,
-    texto: segmento.texto,
-    estimado: segmento.estimado,
-    origen: "transcripcion"
-  }));
-
-  if (!subtitulos.length) {
-    return {
-      ok: false,
-      video,
-      mensaje: `${video?.nombre || "Video"}: la transcripción no tiene texto suficiente para subtítulos.`
-    };
-  }
-
-  const srt = crearTextoSrtSA(subtitulos);
-
-  return {
-    ok: true,
-    video,
-    subtitulos,
-    srt,
-    total: subtitulos.length,
-    mensaje: `${video?.nombre || "Video"}: ${subtitulos.length} subtítulo(s) preparado(s).`
-  };
-}
-
-function crearCapaSubtitulosSA({ video, resultado }) {
-  const fecha = new Date().toISOString();
-
-  return {
-    ...SA_CAPA_SUBTITULOS,
-    id: crearIdCapaSubtitulosSA(video.id),
-    videoId: video.id,
-    nombre: `Subtítulos automáticos - ${video.nombre || "video"}`,
-    activa: true,
-    datos: {
-      formato: "SRT",
-      total: resultado.total,
-      subtitulos: resultado.subtitulos,
-      srt: resultado.srt,
-      videoOriginal: {
-        id: video.id,
-        nombre: video.nombre,
-        ruta: video.ruta,
-        url: video.url
-      }
-    },
-    creadoEn: fecha,
-    actualizadoEn: fecha
-  };
-}
-
-function agregarOActualizarCapaSA(capasActuales, capaNueva) {
-  const capas = Array.isArray(capasActuales) ? [...capasActuales] : [];
-  const index = capas.findIndex((capa) => capa.id === capaNueva.id);
-
-  if (index >= 0) {
-    capas[index] = {
-      ...capas[index],
-      ...capaNueva,
-      actualizadoEn: new Date().toISOString()
-    };
-  } else {
-    capas.push(capaNueva);
-  }
-
-  return capas;
-}
-
-function actualizarVideoConSubtitulosSA(video, resultado) {
-  const fecha = new Date().toISOString();
-
-  return {
-    ...video,
-    subtitulos: resultado.subtitulos,
-    subtitulosAutomaticos: {
-      estado: "PREPARADO",
-      formato: "SRT",
-      total: resultado.total,
-      subtitulos: resultado.subtitulos,
-      srt: resultado.srt,
-      origen: "transcripcion",
-      actualizadoEn: fecha
-    },
-    actualizadoEn: fecha
-  };
-}
-
-function prepararSubtitulosProyectoSA(proyecto) {
-  const proyectoBase = clonarSeguroSA(proyecto);
-  const videos = obtenerVideosSA(proyectoBase);
-  const errores = [];
-  const resultados = [];
-
-  if (!proyectoBase) {
-    return {
-      ok: false,
-      proyecto: null,
-      resultados: [],
-      errores: ["No hay proyecto activo."],
-      mensajes: []
-    };
-  }
-
-  if (!videos.length) {
-    return {
-      ok: false,
-      proyecto: proyectoBase,
-      resultados: [],
-      errores: ["No hay videos cargados para preparar subtítulos."],
-      mensajes: []
-    };
-  }
-
-  videos.forEach((video) => {
-    const resultado = crearSubtitulosVideoSA(video);
-
-    if (!resultado.ok) {
-      errores.push(resultado.mensaje);
-      return;
-    }
-
-    resultados.push(resultado);
-  });
-
-  if (errores.length) {
-    return {
-      ok: false,
-      proyecto: proyectoBase,
-      resultados,
-      errores,
-      mensajes: []
-    };
-  }
-
-  const resultadosPorVideo = new Map(resultados.map((resultado) => [resultado.video.id, resultado]));
-  const videosActualizados = videos.map((video) => {
-    const resultado = resultadosPorVideo.get(video.id);
-    return resultado ? actualizarVideoConSubtitulosSA(video, resultado) : video;
-  });
-
-  let capasActualizadas = Array.isArray(proyectoBase.capas) ? [...proyectoBase.capas] : [];
-
-  videosActualizados.forEach((video) => {
-    const resultado = resultadosPorVideo.get(video.id);
-
-    if (!resultado) {
-      return;
-    }
-
-    capasActualizadas = agregarOActualizarCapaSA(
-      capasActualizadas,
-      crearCapaSubtitulosSA({ video, resultado })
-    );
-  });
-
-  const totalSubtitulos = resultados.reduce((total, resultado) => total + resultado.total, 0);
-  const fecha = new Date().toISOString();
-  const proyectoActualizado = {
-    ...proyectoBase,
-    videos: videosActualizados,
-    capas: capasActualizadas,
-    pantallaActual: "04-subtitulos-automaticos",
-    subtitulosAutomaticos: {
-      estado: "PREPARADO",
-      totalVideos: videosActualizados.length,
-      totalSubtitulos,
-      formato: "SRT",
-      actualizadoEn: fecha
-    },
-    actualizadoEn: fecha
-  };
-
-  return {
-    ok: true,
-    proyecto: proyectoActualizado,
-    resultados,
-    totalVideos: videosActualizados.length,
-    totalSubtitulos,
-    errores: [],
-    mensajes: [`Subtítulos preparados para ${videosActualizados.length} video(s).`]
-  };
+  const estadoGlobal = estadoAppActualSA.obtenerEstado?.() || {};
+  estadoAppActualSA.establecerProyectoActivo(proyecto, estadoGlobal.rutaProyectoActivo || null);
 }
 
 async function guardarProyectoLocalSA(proyecto) {
   if (!window.videoEditorAPI?.guardarProyectoLocal) {
-    return {
-      ok: false,
-      omitido: true,
-      proyecto,
-      mensaje: "Proyecto actualizado en memoria. Abre con Electron para guardar el respaldo local."
-    };
+    return { ok: false, omitido: true, mensaje: "Proyecto actualizado en memoria." };
   }
 
   return await window.videoEditorAPI.guardarProyectoLocal(proyecto);
 }
 
-function crearResultadoHtmlSA(resultado) {
-  if (!resultado) {
-    return "";
-  }
-
-  if (!resultado.ok) {
-    return `
-      <div class="sa-empty">
-        <div>
-          <h3>No se pudieron preparar los subtítulos</h3>
-          ${(resultado.errores || []).map((error) => `<p>${escaparHtmlSA(error)}</p>`).join("")}
-        </div>
-      </div>
-    `;
-  }
-
-  return `
-    <div class="sa-empty">
-      <div>
-        <h3>Subtítulos preparados</h3>
-        <p>${escaparHtmlSA(resultado.totalVideos)} video(s) · ${escaparHtmlSA(resultado.totalSubtitulos)} subtítulo(s) en formato SRT.</p>
-        ${(resultado.mensajes || []).map((mensaje) => `<p>${escaparHtmlSA(mensaje)}</p>`).join("")}
-      </div>
-    </div>
-  `;
+function mostrarMensajeSA(mensaje, tipo = "info") {
+  mensajeTemporalSA = mensaje || "";
+  tipoMensajeTemporalSA = tipo;
+  renderizarPantallaSA();
 }
 
-function crearVistaPreviaSubtitulosSA(subtitulos) {
-  const vista = subtitulos.slice(0, 3);
-
-  if (!vista.length) {
-    return "";
-  }
-
-  return `
-    <div class="sa-preview">
-      <p><strong>Vista previa</strong></p>
-      ${vista.map((subtitulo) => `
-        <p>
-          <small>${escaparHtmlSA(subtitulo.inicioTexto)} - ${escaparHtmlSA(subtitulo.finTexto)}</small><br>
-          ${escaparHtmlSA(subtitulo.texto)}
-        </p>
-      `).join("")}
-    </div>
-  `;
+function obtenerElementosSA() {
+  return {
+    resumen: document.getElementById("saResumen"),
+    formatos: document.getElementById("saFormatos"),
+    videos: document.getElementById("saVideos"),
+    comparacion: document.getElementById("saComparacion"),
+    volver: document.getElementById("saBtnVolverTranscripcion"),
+    preparar: document.getElementById("saBtnContinuar"),
+    generar: document.getElementById("saBtnGenerarVideo")
+  };
 }
 
-function renderResumenSA({ contenedor, proyecto, resultado = null }) {
-  if (!contenedor) {
-    return;
-  }
+function obtenerVideoFinalSA(video) {
+  return video?.subtitulosAutomaticos?.videoFinal || video?.videoSubtitulado || null;
+}
 
-  const resumen = crearResumenSA(proyecto);
+function obtenerUrlOriginalSA(video) {
+  return video?.url || (video?.ruta ? `file:///${String(video.ruta).replace(/\\/g, "/")}` : "");
+}
+
+function renderResumenSA(contenedor) {
+  if (!contenedor) return;
+
+  const proyecto = obtenerProyectoActivoSA();
 
   if (!proyecto) {
     contenedor.innerHTML = `
@@ -534,47 +112,73 @@ function renderResumenSA({ contenedor, proyecto, resultado = null }) {
     return;
   }
 
+  const resumen = crearResumenSA(proyecto);
+  const formato = obtenerFormatoSubtitulosSA(formatoActualSA);
+
   contenedor.innerHTML = `
     <h3>Resumen</h3>
     <p>${escaparHtmlSA(proyecto.nombre || "Proyecto sin nombre")}</p>
 
-    <div class="sa-stats">
-      <div class="sa-stat">
-        <strong>Videos cargados</strong>
-        <span>${escaparHtmlSA(resumen.total)}</span>
-      </div>
-      <div class="sa-stat">
-        <strong>Con transcripción</strong>
-        <span>${escaparHtmlSA(resumen.listos)}</span>
-      </div>
-      <div class="sa-stat">
-        <strong>Pendientes</strong>
-        <span>${escaparHtmlSA(resumen.pendientes)}</span>
-      </div>
-      <div class="sa-stat">
-        <strong>Con subtítulos</strong>
-        <span>${escaparHtmlSA(resumen.conSubtitulos)}</span>
-      </div>
-      <div class="sa-stat">
-        <strong>Total subtítulos</strong>
-        <span>${escaparHtmlSA(resumen.totalSubtitulos)}</span>
-      </div>
+    <div class="sa-status ${resumen.puedeGenerarVideo ? "is-ok" : resumen.puedePreparar ? "is-warn" : "is-error"}">
+      <strong>${resumen.puedeGenerarVideo ? "Listo para generar video" : resumen.puedePreparar ? "Listo para preparar" : "Faltan transcripciones"}</strong>
+      <span>Formato actual: ${escaparHtmlSA(formato.nombre)}</span>
     </div>
 
-    ${resultado ? crearResultadoHtmlSA(resultado) : ""}
+    ${mensajeTemporalSA ? `
+      <div class="sa-message is-${escaparHtmlSA(tipoMensajeTemporalSA)}">
+        ${escaparHtmlSA(mensajeTemporalSA)}
+      </div>
+    ` : ""}
+
+    <div class="sa-stats">
+      <div class="sa-stat"><strong>Videos cargados</strong><span>${resumen.total}</span></div>
+      <div class="sa-stat"><strong>Con transcripción</strong><span>${resumen.listos}</span></div>
+      <div class="sa-stat"><strong>Pendientes</strong><span>${resumen.pendientes}</span></div>
+      <div class="sa-stat"><strong>Con subtítulos</strong><span>${resumen.conSubtitulos}</span></div>
+      <div class="sa-stat"><strong>Videos finales</strong><span>${resumen.conVideoFinal}</span></div>
+      <div class="sa-stat"><strong>Total subtítulos</strong><span>${resumen.totalSubtitulos}</span></div>
+    </div>
   `;
 }
 
-function renderVideosSA({ contenedor, proyecto, resultado = null }) {
-  if (!contenedor) {
-    return;
-  }
+function renderFormatosSA(contenedor) {
+  if (!contenedor) return;
 
+  const formatos = obtenerFormatosSubtitulosSA();
+
+  contenedor.innerHTML = `
+    <div class="sa-section-head">
+      <div>
+        <h3>Formato automático</h3>
+        <p>Elige uno. La app aplicará el estilo sola al video final.</p>
+      </div>
+    </div>
+
+    <div class="sa-format-grid">
+      ${formatos.map((formato) => `
+        <button
+          class="sa-format-card ${formato.id === formatoActualSA ? "is-active" : ""}"
+          type="button"
+          data-sa-formato="${escaparHtmlSA(formato.id)}"
+        >
+          <span class="sa-format-card__tag">${escaparHtmlSA(formato.etiqueta || "Formato")}</span>
+          <strong>${escaparHtmlSA(formato.nombre)}</strong>
+          <small>${escaparHtmlSA(formato.descripcion)}</small>
+          <span class="sa-preview-style ${escaparHtmlSA(formato.previewClass)}">Así se verá el subtítulo</span>
+        </button>
+      `).join("")}
+    </div>
+  `;
+}
+
+function renderVideosSA(contenedor) {
+  if (!contenedor) return;
+
+  const proyecto = obtenerProyectoActivoSA();
   const videos = obtenerVideosSA(proyecto);
 
   if (!videos.length) {
     contenedor.innerHTML = `
-      <h3>Videos</h3>
       <div class="sa-empty">
         <div>
           <h3>No hay videos cargados</h3>
@@ -586,128 +190,280 @@ function renderVideosSA({ contenedor, proyecto, resultado = null }) {
   }
 
   contenedor.innerHTML = `
-    <h3>Videos listos para subtítulos</h3>
+    <div class="sa-section-head">
+      <div>
+        <h3>Videos y subtítulos</h3>
+        <p>La generación es automática. Solo revisa el estado por video.</p>
+      </div>
+    </div>
+
     <div class="sa-video-list">
       ${videos.map((video, index) => {
         const transcripcion = obtenerTranscripcionSA(video);
         const subtitulos = obtenerSubtitulosPreparadosSA(video);
+        const videoFinal = obtenerVideoFinalSA(video);
         const segmentos = Array.isArray(transcripcion?.segmentos) ? transcripcion.segmentos.length : 0;
         const palabras = contarPalabrasSA(transcripcion);
         const listo = Boolean(transcripcion?.texto);
         const preparado = subtitulos.length > 0;
+        const generado = Boolean(videoFinal?.url || videoFinal?.ruta);
 
         return `
           <article class="sa-video-card ${listo ? "is-ready" : "is-pending"}">
             <div class="sa-video-card__head">
-              <strong>${escaparHtmlSA(index + 1)}. ${escaparHtmlSA(video.nombre || "Video")}</strong>
-              <span class="sa-chip">${preparado ? "Subtítulos preparados" : listo ? "Listo" : "Pendiente"}</span>
+              <strong>${index + 1}. ${escaparHtmlSA(video.nombre || "Video")}</strong>
+              <span class="sa-chip">${generado ? "Video generado" : preparado ? "Subtítulos preparados" : listo ? "Listo" : "Pendiente"}</span>
             </div>
             <p>${listo
-              ? `${escaparHtmlSA(palabras)} palabras · ${escaparHtmlSA(segmentos)} bloques de tiempo · ${escaparHtmlSA(subtitulos.length)} subtítulo(s).`
+              ? `${palabras} palabras · ${segmentos} bloques de tiempo · ${subtitulos.length} subtítulo(s).`
               : "Este video todavía no tiene transcripción guardada."}</p>
             ${preparado ? crearVistaPreviaSubtitulosSA(subtitulos) : ""}
           </article>
         `;
       }).join("")}
     </div>
-    ${resultado ? crearResultadoHtmlSA(resultado) : ""}
   `;
 }
 
-function conectarEventosSA({ router, estadoApp, proyecto }) {
-  const btnVolver = document.getElementById("saBtnVolverTranscripcion");
-  const btnContinuar = document.getElementById("saBtnContinuar");
-  const resumen = crearResumenSA(proyecto);
+function crearVistaPreviaSubtitulosSA(subtitulos) {
+  const vista = subtitulos.slice(0, 3);
+  if (!vista.length) return "";
 
-  if (btnVolver) {
-    btnVolver.addEventListener("click", () => {
-      if (router?.irA) {
-        router.irA("03-transcribir-video");
-      }
-    });
-  }
+  return `
+    <div class="sa-preview-list">
+      ${vista.map((subtitulo) => `
+        <p><small>${escaparHtmlSA(subtitulo.inicioTexto)} - ${escaparHtmlSA(subtitulo.finTexto)}</small>${escaparHtmlSA(subtitulo.texto)}</p>
+      `).join("")}
+    </div>
+  `;
+}
 
-  if (!btnContinuar) {
+function renderComparacionSA(contenedor) {
+  if (!contenedor) return;
+
+  const proyecto = obtenerProyectoActivoSA();
+  const videos = obtenerVideosSA(proyecto);
+  const videosGenerados = videos.filter((video) => obtenerVideoFinalSA(video));
+
+  if (!videosGenerados.length) {
+    contenedor.innerHTML = `
+      <div class="sa-empty sa-empty--small">
+        <div>
+          <h3>Antes y después</h3>
+          <p>Cuando generes el video subtitulado, aquí aparecerá la comparación y la descarga.</p>
+        </div>
+      </div>
+    `;
     return;
   }
 
-  btnContinuar.disabled = !resumen.puedePreparar;
-  btnContinuar.textContent = resumen.puedePreparar
-    ? (resumen.conSubtitulos === resumen.total ? "Reconstruir subtítulos" : "Preparar subtítulos")
-    : "Faltan transcripciones";
+  contenedor.innerHTML = `
+    <div class="sa-section-head">
+      <div>
+        <h3>Antes y después</h3>
+        <p>Compara el video original con el video final subtitulado.</p>
+      </div>
+      ${resultadoExportacionSA?.carpetaSalida ? `<button id="saBtnAbrirCarpeta" class="sa-btn" type="button">Abrir carpeta</button>` : ""}
+    </div>
 
-  btnContinuar.addEventListener("click", async () => {
-    const proyectoActual = obtenerProyectoActivoSA(estadoApp) || proyecto;
-    const contenedorResumen = document.getElementById("saResumen");
-    const contenedorVideos = document.getElementById("saVideos");
+    <div class="sa-compare-list">
+      ${videosGenerados.map((video) => {
+        const videoFinal = obtenerVideoFinalSA(video);
+        return `
+          <article class="sa-compare-card">
+            <h4>${escaparHtmlSA(video.nombre || "Video")}</h4>
+            <div class="sa-compare-grid">
+              <div class="sa-video-preview">
+                <strong>Antes</strong>
+                <video controls src="${escaparHtmlSA(obtenerUrlOriginalSA(video))}"></video>
+              </div>
+              <div class="sa-video-preview">
+                <strong>Después</strong>
+                <video controls src="${escaparHtmlSA(videoFinal.url || "")}"></video>
+              </div>
+            </div>
+            <div class="sa-download-row">
+              <span>${escaparHtmlSA(videoFinal.nombre || "video_subtitulado.mp4")}</span>
+              <button class="sa-btn sa-btn--primary" type="button" data-sa-descargar="${escaparHtmlSA(video.id)}">Descargar video</button>
+            </div>
+          </article>
+        `;
+      }).join("")}
+    </div>
+  `;
+}
 
-    btnContinuar.disabled = true;
-    btnContinuar.textContent = "Preparando subtítulos...";
+function actualizarBotonesSA() {
+  const elementos = obtenerElementosSA();
+  const proyecto = obtenerProyectoActivoSA();
+  const resumen = crearResumenSA(proyecto);
+  const formato = obtenerFormatoSubtitulosSA(formatoActualSA);
 
-    try {
-      const resultado = prepararSubtitulosProyectoSA(proyectoActual);
+  if (elementos.preparar) {
+    elementos.preparar.disabled = !resumen.puedePreparar;
+    elementos.preparar.textContent = resumen.puedePreparar
+      ? (resumen.conSubtitulos === resumen.total ? `Reconstruir con ${formato.nombre}` : "Preparar subtítulos")
+      : "Faltan transcripciones";
+  }
 
-      if (!resultado.ok) {
-        renderResumenSA({ contenedor: contenedorResumen, proyecto: proyectoActual, resultado });
-        renderVideosSA({ contenedor: contenedorVideos, proyecto: proyectoActual, resultado });
-        btnContinuar.disabled = false;
-        btnContinuar.textContent = "Reintentar preparar subtítulos";
-        return;
-      }
+  if (elementos.generar) {
+    elementos.generar.disabled = !resumen.puedeGenerarVideo;
+    elementos.generar.textContent = resumen.puedeGenerarVideo ? "Generar video con subtítulos" : "Primero prepara subtítulos";
+  }
+}
 
-      let proyectoFinal = resultado.proyecto;
-      const guardadoLocal = await guardarProyectoLocalSA(proyectoFinal);
+function renderizarPantallaSA() {
+  const elementos = obtenerElementosSA();
+  renderResumenSA(elementos.resumen);
+  renderFormatosSA(elementos.formatos);
+  renderVideosSA(elementos.videos);
+  renderComparacionSA(elementos.comparacion);
+  actualizarBotonesSA();
+  conectarEventosDinamicosSA();
+}
 
-      if (guardadoLocal?.ok && guardadoLocal.proyecto) {
-        proyectoFinal = {
-          ...guardadoLocal.proyecto,
-          subtitulosAutomaticos: resultado.proyecto.subtitulosAutomaticos
-        };
-        resultado.proyecto = proyectoFinal;
-        resultado.mensajes = [
-          ...(resultado.mensajes || []),
-          guardadoLocal.mensaje || "Respaldo local actualizado."
-        ];
-      } else if (guardadoLocal?.mensaje) {
-        resultado.mensajes = [
-          ...(resultado.mensajes || []),
-          guardadoLocal.mensaje
-        ];
-      }
+async function prepararSubtitulosSA() {
+  const proyecto = obtenerProyectoActivoSA();
+  const resultado = prepararSubtitulosProyectoSA(proyecto, formatoActualSA);
+  resultadoPreparacionSA = resultado;
 
-      actualizarProyectoActivoSA(estadoApp, proyectoFinal);
-      renderResumenSA({ contenedor: contenedorResumen, proyecto: proyectoFinal, resultado });
-      renderVideosSA({ contenedor: contenedorVideos, proyecto: proyectoFinal, resultado });
-      btnContinuar.textContent = "Subtítulos preparados";
-    } catch (error) {
-      const resultadoError = {
-        ok: false,
-        proyecto: proyectoActual,
-        resultados: [],
-        errores: [error?.message || "No se pudieron preparar los subtítulos."],
-        mensajes: []
-      };
+  if (!resultado.ok) {
+    mostrarMensajeSA((resultado.errores || []).join(" | ") || "No se pudieron preparar los subtítulos.", "error");
+    return;
+  }
 
-      renderResumenSA({ contenedor: contenedorResumen, proyecto: proyectoActual, resultado: resultadoError });
-      renderVideosSA({ contenedor: contenedorVideos, proyecto: proyectoActual, resultado: resultadoError });
-      btnContinuar.disabled = false;
-      btnContinuar.textContent = "Reintentar preparar subtítulos";
-    }
+  let proyectoFinal = resultado.proyecto;
+  const guardado = await guardarProyectoLocalSA(proyectoFinal);
+
+  if (guardado?.ok && guardado.proyecto) proyectoFinal = guardado.proyecto;
+
+  actualizarProyectoActivoSA(proyectoFinal);
+  mostrarMensajeSA(resultado.mensajes?.[0] || "Subtítulos preparados automáticamente.", "success");
+}
+
+async function generarVideoSubtituladoSA() {
+  const proyecto = obtenerProyectoActivoSA();
+  const resumen = crearResumenSA(proyecto);
+
+  if (!resumen.puedeGenerarVideo) {
+    mostrarMensajeSA("Primero prepara los subtítulos para todos los videos.", "warn");
+    return;
+  }
+
+  if (!window.videoEditorAPI?.generarVideoSubtitulos) {
+    mostrarMensajeSA("La generación de video requiere abrir la app con Electron usando npm start.", "error");
+    return;
+  }
+
+  const elementos = obtenerElementosSA();
+  if (elementos.generar) {
+    elementos.generar.disabled = true;
+    elementos.generar.textContent = "Generando video...";
+  }
+
+  mensajeTemporalSA = "Generando video con subtítulos. No cierres la app.";
+  tipoMensajeTemporalSA = "info";
+  renderResumenSA(elementos.resumen);
+
+  const exportacion = await window.videoEditorAPI.generarVideoSubtitulos({
+    proyecto,
+    formatoId: formatoActualSA
   });
+
+  resultadoExportacionSA = exportacion;
+
+  if (!exportacion.ok && !exportacion.parcial) {
+    mostrarMensajeSA(exportacion.mensaje || "No se pudo generar el video subtitulado.", "error");
+    return;
+  }
+
+  const proyectoActualizado = integrarVideosSubtituladosEnProyectoSA({
+    proyecto,
+    exportacion
+  });
+
+  const guardado = await guardarProyectoLocalSA(proyectoActualizado);
+  actualizarProyectoActivoSA(guardado?.ok && guardado.proyecto ? guardado.proyecto : proyectoActualizado);
+  mostrarMensajeSA(exportacion.mensaje || "Video subtitulado generado correctamente.", exportacion.parcial ? "warn" : "success");
+}
+
+async function descargarVideoSA(videoId) {
+  const proyecto = obtenerProyectoActivoSA();
+  const video = obtenerVideosSA(proyecto).find((item) => item.id === videoId);
+  const videoFinal = obtenerVideoFinalSA(video);
+
+  if (!videoFinal) {
+    mostrarMensajeSA("No se encontró el video final para descargar.", "error");
+    return;
+  }
+
+  if (!window.videoEditorAPI?.descargarVideoSubtitulado) {
+    mostrarMensajeSA("La descarga requiere abrir la app con Electron.", "error");
+    return;
+  }
+
+  const resultado = await window.videoEditorAPI.descargarVideoSubtitulado({
+    videoSubtitulado: videoFinal,
+    nombreArchivo: videoFinal.nombre || `${video?.nombre || "video"}_subtitulado.mp4`
+  });
+
+  mostrarMensajeSA(resultado.mensaje || (resultado.ok ? "Video descargado." : "No se pudo descargar."), resultado.ok ? "success" : "warn");
+}
+
+async function abrirCarpetaSA() {
+  const ruta = resultadoExportacionSA?.carpetaSalida || proyectoActualSA?.subtitulosAutomaticos?.carpetaSalida || "";
+
+  if (!ruta || !window.videoEditorAPI?.abrirCarpetaSubtitulos) {
+    mostrarMensajeSA("No hay carpeta de subtítulos disponible.", "warn");
+    return;
+  }
+
+  const resultado = await window.videoEditorAPI.abrirCarpetaSubtitulos(ruta);
+  mostrarMensajeSA(resultado.mensaje || "Carpeta abierta.", resultado.ok ? "success" : "warn");
+}
+
+function conectarEventosDinamicosSA() {
+  document.querySelectorAll("[data-sa-formato]").forEach((boton) => {
+    boton.onclick = () => {
+      formatoActualSA = boton.dataset.saFormato || SA_FORMATO_DEFECTO;
+      resultadoPreparacionSA = null;
+      mensajeTemporalSA = `Formato seleccionado: ${obtenerFormatoSubtitulosSA(formatoActualSA).nombre}.`;
+      tipoMensajeTemporalSA = "info";
+      renderizarPantallaSA();
+    };
+  });
+
+  document.querySelectorAll("[data-sa-descargar]").forEach((boton) => {
+    boton.onclick = () => descargarVideoSA(boton.dataset.saDescargar);
+  });
+
+  const abrir = document.getElementById("saBtnAbrirCarpeta");
+  if (abrir) abrir.onclick = abrirCarpetaSA;
+}
+
+function conectarEventosBaseSA() {
+  const elementos = obtenerElementosSA();
+
+  if (elementos.volver) {
+    elementos.volver.onclick = () => {
+      if (routerActualSA?.irA) routerActualSA.irA("03-transcribir-video");
+    };
+  }
+
+  if (elementos.preparar) elementos.preparar.onclick = prepararSubtitulosSA;
+  if (elementos.generar) elementos.generar.onclick = generarVideoSubtituladoSA;
 }
 
 export async function iniciarPantallaSubtitulosAutomaticos({ router, estadoApp }) {
-  const proyecto = obtenerProyectoActivoSA(estadoApp);
+  routerActualSA = router;
+  estadoAppActualSA = estadoApp;
+  proyectoActualSA = obtenerProyectoActivoSA();
+  formatoActualSA = proyectoActualSA?.subtitulosAutomaticos?.formatoVisual || SA_FORMATO_DEFECTO;
+  resultadoPreparacionSA = null;
+  resultadoExportacionSA = null;
+  mensajeTemporalSA = "";
+  tipoMensajeTemporalSA = "info";
 
-  renderResumenSA({
-    contenedor: document.getElementById("saResumen"),
-    proyecto
-  });
-
-  renderVideosSA({
-    contenedor: document.getElementById("saVideos"),
-    proyecto
-  });
-
-  conectarEventosSA({ router, estadoApp, proyecto });
+  conectarEventosBaseSA();
+  renderizarPantallaSA();
 }
