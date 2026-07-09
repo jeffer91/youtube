@@ -6,7 +6,7 @@ Funciones principales:
 - Conectar el servicio interno con la interfaz.
 - Renderizar pasos, videos, estilos y mensajes.
 - Cargar videos y mostrar popup.
-- Guardar proyecto y pasar a Mejorar audio.
+- Guardar proyecto y pasar al flujo correcto: Cuadrado IA.
 ========================================================= */
 
 import { crearCargarProyectoService } from "../services/cp-service.js";
@@ -66,15 +66,11 @@ function renderMensajes(contenedor, estado) {
   }
 
   const erroresHtml = errores
-    .map((error) => {
-      return `<div class="cp-alert cp-alert--error">${escaparHtml(error)}</div>`;
-    })
+    .map((error) => `<div class="cp-alert cp-alert--error">${escaparHtml(error)}</div>`)
     .join("");
 
   const mensajesHtml = mensajes
-    .map((mensaje) => {
-      return `<div class="cp-alert cp-alert--success">${escaparHtml(mensaje)}</div>`;
-    })
+    .map((mensaje) => `<div class="cp-alert cp-alert--success">${escaparHtml(mensaje)}</div>`)
     .join("");
 
   contenedor.innerHTML = `
@@ -123,14 +119,9 @@ function conectarCargaVideos(service) {
 
   boton.addEventListener("click", async () => {
     const estadoAntes = service.obtenerEstado();
-    const cantidadAntes = Array.isArray(estadoAntes.videos)
-      ? estadoAntes.videos.length
-      : 0;
-
+    const cantidadAntes = Array.isArray(estadoAntes.videos) ? estadoAntes.videos.length : 0;
     const estadoDespues = await service.cargarVideos();
-    const cantidadDespues = Array.isArray(estadoDespues.videos)
-      ? estadoDespues.videos.length
-      : 0;
+    const cantidadDespues = Array.isArray(estadoDespues.videos) ? estadoDespues.videos.length : 0;
 
     if (cantidadDespues > cantidadAntes) {
       service.irAPaso(2);
@@ -145,11 +136,7 @@ function conectarPasoActual(service, estado) {
   const contenedorLista = document.getElementById("cpListaVideos");
 
   if (contenedorLista) {
-    renderListaVideos({
-      contenedor: contenedorLista,
-      videos: estado.videos
-    });
-
+    renderListaVideos({ contenedor: contenedorLista, videos: estado.videos });
     conectarListaVideos({ service });
     conectarDragVideos({ service });
   }
@@ -157,11 +144,7 @@ function conectarPasoActual(service, estado) {
   const contenedorEstilos = document.getElementById("cpSelectorEstilos");
 
   if (contenedorEstilos) {
-    renderSelectorEstilos({
-      contenedor: contenedorEstilos,
-      estiloSeleccionado: estado.estilo
-    });
-
+    renderSelectorEstilos({ contenedor: contenedorEstilos, estiloSeleccionado: estado.estilo });
     conectarSelectorEstilos({ service });
   }
 }
@@ -181,7 +164,7 @@ async function guardarYContinuar(service) {
   }
 
   if (routerActual?.irA) {
-    await routerActual.irA("02-mejorar-audio");
+    await routerActual.irA("17-adaptar-cuadrado");
   }
 }
 
@@ -189,38 +172,19 @@ function renderizar(service) {
   const estado = service.obtenerEstado();
   const elementos = obtenerElementos();
 
-  renderPasos({
-    contenedor: elementos.pasos,
-    pasoActual: estado.pasoActual
-  });
-
+  renderPasos({ contenedor: elementos.pasos, pasoActual: estado.pasoActual });
   renderMensajes(elementos.mensajes, estado);
-
-  renderContenidoPaso({
-    contenedor: elementos.contenido,
-    estado
-  });
-
+  renderContenidoPaso({ contenedor: elementos.contenido, estado });
   renderResumen(elementos.resumen, estado);
-
-  renderBotonesNavegacion({
-    contenedor: elementos.acciones,
-    estado
-  });
-
+  renderBotonesNavegacion({ contenedor: elementos.acciones, estado });
   conectarPasos({ service });
   conectarPasoActual(service, estado);
-
-  conectarBotonesNavegacion({
-    service,
-    onGuardar: () => guardarYContinuar(service)
-  });
+  conectarBotonesNavegacion({ service, onGuardar: () => guardarYContinuar(service) });
 }
 
 export async function iniciarPantallaCargarProyecto({ router, estadoApp }) {
   routerActual = router;
   estadoAppActual = estadoApp;
-
   serviceActual = crearCargarProyectoService();
 
   serviceActual.escuchar(() => {
