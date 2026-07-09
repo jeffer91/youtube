@@ -1,0 +1,12 @@
+/* =========================================================
+Nombre completo: sub.css
+Ruta o ubicación: /src/pantallas/11-subtitulos-finales/index/sub.css
+Funciones principales:
+- Usar estilos existentes de subtítulos automáticos.
+- Mantener el paso Subtítulos finales con la nueva estructura.
+Con qué se conecta:
+- sub.html
+- sub.js
+========================================================= */
+
+@import url("../../04-subtitulos-automaticos/index/sa.css");
