@@ -9,6 +9,7 @@ Funciones principales:
 - Cargar por defecto la pantalla 01 Cargar proyecto.
 - Mostrar el flujo correcto de edición por capas.
 - Mantener los subtítulos como última capa visible antes de exportar.
+- Agregar un botón flotante único para conectar todo el flujo.
 ========================================================= */
 
 import { crearEstadoApp } from "./app-state.js";
@@ -97,6 +98,23 @@ const PANTALLAS_BASE = [
   }
 ];
 
+const ACCIONES_PRINCIPALES_RUTA = {
+  "01-cargar-proyecto": ["#cpBtnSiguiente", "#cpBtnGuardar"],
+  "02-mejorar-audio": ["#maBtnSiguiente", "#maBtnGuardarCapa", "#maBtnContinuarFlujo"],
+  "03-transcribir-video": ["#trBtnSiguiente"],
+  "04-subtitulos-automaticos": ["#saBtnContinuar"],
+  "19-exportar-video-final": ["#exBtnGenerar"]
+};
+
+function escaparHtmlApp(texto) {
+  return String(texto || "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
+}
+
 function crearMenuPantallas(pantallas) {
   return pantallas
     .map((pantalla) => {
@@ -155,6 +173,11 @@ function pintarShell() {
 
         <section id="screenRoot" class="screen-root"></section>
       </section>
+
+      <button id="appFloatingNext" class="app-floating-next" type="button">
+        <span id="appFloatingNextMain">Continuar</span>
+        <small id="appFloatingNextSub">Siguiente paso</small>
+      </button>
     </div>
   `;
 }
@@ -206,6 +229,108 @@ function actualizarTitulo(routeId) {
   titulo.textContent = `${pantalla.numero}. ${pantalla.nombre}`;
 }
 
+function obtenerPantalla(routeId) {
+  return PANTALLAS_BASE.find((item) => item.id === routeId) || null;
+}
+
+function obtenerBotonPrincipalDePantalla(routeId) {
+  const selectores = ACCIONES_PRINCIPALES_RUTA[routeId] || [];
+
+  for (const selector of selectores) {
+    const boton = document.querySelector(selector);
+    if (boton) {
+      return boton;
+    }
+  }
+
+  return null;
+}
+
+function obtenerSiguienteRuta(router, routeId) {
+  const rutas = router?.obtenerRutas?.() || {};
+  return rutas[routeId]?.siguiente || null;
+}
+
+function actualizarBotonFlotante(router, routeId) {
+  const boton = document.getElementById("appFloatingNext");
+  const textoPrincipal = document.getElementById("appFloatingNextMain");
+  const textoSecundario = document.getElementById("appFloatingNextSub");
+
+  if (!boton || !textoPrincipal || !textoSecundario) {
+    return;
+  }
+
+  const rutaActual = routeId || router?.obtenerRutaActual?.();
+  const siguienteRuta = obtenerSiguienteRuta(router, rutaActual);
+  const siguientePantalla = obtenerPantalla(siguienteRuta);
+  const botonPantalla = obtenerBotonPrincipalDePantalla(rutaActual);
+  const esManual = rutaActual === "99-manual-app";
+  const esFinal = rutaActual === "19-exportar-video-final" && !siguienteRuta;
+
+  if (esManual) {
+    boton.hidden = true;
+    return;
+  }
+
+  boton.hidden = false;
+
+  if (botonPantalla) {
+    const textoAccion = botonPantalla.textContent.trim() || "Continuar";
+    textoPrincipal.textContent = textoAccion;
+    textoSecundario.textContent = siguientePantalla
+      ? `Luego: ${siguientePantalla.numero}. ${siguientePantalla.nombre}`
+      : "Acción principal";
+    boton.disabled = Boolean(botonPantalla.disabled);
+    boton.dataset.modo = "accion";
+    return;
+  }
+
+  if (siguientePantalla) {
+    textoPrincipal.textContent = "Continuar";
+    textoSecundario.textContent = `${siguientePantalla.numero}. ${siguientePantalla.nombre}`;
+    boton.disabled = false;
+    boton.dataset.modo = "ruta";
+    return;
+  }
+
+  textoPrincipal.textContent = esFinal ? "Flujo completo" : "Sin siguiente paso";
+  textoSecundario.textContent = esFinal ? "Puedes generar o descargar" : "Revisa el menú";
+  boton.disabled = true;
+  boton.dataset.modo = "final";
+}
+
+function conectarBotonFlotante(router) {
+  const boton = document.getElementById("appFloatingNext");
+
+  if (!boton) {
+    return;
+  }
+
+  boton.addEventListener("click", async () => {
+    if (boton.disabled) {
+      return;
+    }
+
+    const rutaActual = router.obtenerRutaActual?.();
+    const botonPantalla = obtenerBotonPrincipalDePantalla(rutaActual);
+
+    if (botonPantalla && !botonPantalla.disabled) {
+      botonPantalla.click();
+      setTimeout(() => actualizarBotonFlotante(router, router.obtenerRutaActual?.()), 120);
+      return;
+    }
+
+    const siguienteRuta = obtenerSiguienteRuta(router, rutaActual);
+
+    if (siguienteRuta) {
+      await router.irA(siguienteRuta);
+      return;
+    }
+
+    actualizarBotonFlotante(router, rutaActual);
+  });
+}
+
 async function iniciarApp() {
   pintarShell();
 
@@ -220,11 +345,13 @@ async function iniciarApp() {
     onRouteChange: (routeId) => {
       marcarRutaActiva(routeId);
       actualizarTitulo(routeId);
+      setTimeout(() => actualizarBotonFlotante(router, routeId), 80);
     }
   });
 
   conectarMenu(router);
   conectarBotonProyectos();
+  conectarBotonFlotante(router);
 
   await router.irA("01-cargar-proyecto");
 }
