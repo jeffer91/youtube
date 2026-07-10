@@ -1,0 +1,7 @@
+PASO 02 - FORMATO CUADRADO
+
+[OK] Motor FFmpeg registrado
+[OK] Salida 1080 x 1080
+[OK] Comparación Antes / Después
+[OK] Original conservado
+[OK] Avance bloqueado hasta completar todos los videos
