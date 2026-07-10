@@ -8,6 +8,7 @@ Funciones principales:
 - Permitir guardar el proyecto base.
 - Permitir consultar la carpeta de proyectos.
 - Permitir usar respaldo local JSON de proyectos.
+- Permitir inspeccionar y convertir videos a cuadrado 1:1.
 - Permitir mejorar audio desde la pantalla 02-mejorar-audio.
 - Permitir transcribir video desde la pantalla 03-transcribir-video.
 - Permitir generar, descargar y abrir videos subtitulados desde la pantalla 04.
@@ -49,6 +50,14 @@ contextBridge.exposeInMainWorld("videoEditorAPI", {
 
   listarProyectosLocales: async () => {
     return ipcRenderer.invoke("proyecto-local:listar");
+  },
+
+  inspeccionarVideoFormato: async (video) => {
+    return ipcRenderer.invoke("formato:inspeccionar-video", video);
+  },
+
+  convertirVideoCuadrado: async (datosFormato) => {
+    return ipcRenderer.invoke("formato:convertir-cuadrado", datosFormato);
   },
 
   mejorarAudio: async (datosMejora) => {
