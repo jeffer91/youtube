@@ -7,7 +7,7 @@ Funciones principales:
 - Guardar el proyecto usando Google Sheets como base principal.
 - Guardar JSON local solo como respaldo temporal.
 - Devolver errores claros si algo falla.
-- Preparar el paso hacia Mejorar audio.
+- Preparar el paso hacia Formato inteligente dentro del flujo nuevo.
 Con qué se conecta:
 - cp-service.js
 - cp-validar.js
@@ -30,7 +30,7 @@ export function crearProyectoCargar({ nombre, estilo, videos }) {
     estilo: limpiarTexto(estilo),
     videos: Array.isArray(videos) ? videos : [],
     capas: [],
-    pantallaActual: "02-mejorar-audio",
+    pantallaActual: "02-formato-inteligente",
     basePrincipal: "GOOGLE_SHEETS",
     respaldoLocal: "JSON_LOCAL_RESPALDO"
   };
