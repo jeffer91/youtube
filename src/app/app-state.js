@@ -11,7 +11,7 @@ Funciones principales:
 ========================================================= */
 
 const ESTADO_INICIAL = {
-  pantallaActual: "01-cargar-proyecto",
+  pantallaActual: "01-video-base-diagnostico",
   proyectoActivo: null,
   rutaProyectoActivo: null,
   pantallas: [],
