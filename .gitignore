@@ -1,4 +1,4 @@
-﻿node_modules/
+node_modules/
 dist/
 build/
 out/
@@ -9,3 +9,7 @@ out/
 *.log
 .DS_Store
 Thumbs.db
+
+# Datos locales de ejecución
+# No subir proyectos, configuraciones ni archivos procesados generados en la PC.
+data/
