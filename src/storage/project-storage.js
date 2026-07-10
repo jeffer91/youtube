@@ -6,7 +6,10 @@ Funciones principales:
 - Consultar la carpeta automática de proyectos.
 - Abrir la carpeta de proyectos.
 - Mantener separada la lógica global de guardado.
+- Crear proyectos base alineados con el flujo nuevo de 12 pasos.
 ========================================================= */
+
+const PANTALLA_INICIAL_POST_CARGA = "02-formato-inteligente";
 
 export async function guardarProyectoEnDisco(proyecto) {
   if (!window.videoEditorAPI?.guardarProyecto) {
@@ -48,6 +51,8 @@ export function crearProyectoBase({ nombre, estilo, videos }) {
     estilo: String(estilo || "").trim(),
     videos: Array.isArray(videos) ? videos : [],
     capas: [],
-    pantallaActual: "02-mejorar-audio"
+    pantallaActual: PANTALLA_INICIAL_POST_CARGA,
+    basePrincipal: "GOOGLE_SHEETS",
+    respaldoLocal: "JSON_LOCAL_RESPALDO"
   };
 }
