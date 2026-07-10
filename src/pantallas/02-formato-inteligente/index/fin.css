@@ -2,9 +2,454 @@
 Nombre completo: fin.css
 Ruta o ubicación: /src/pantallas/02-formato-inteligente/index/fin.css
 Funciones principales:
-- Reservar estilos del paso Formato inteligente.
-- Usar estilos compartidos del flujo.
+- Diseñar la comparación Antes / Después.
+- Diferenciar visualmente el formato original y el cuadrado 1:1.
+- Mostrar estados, progreso, errores y acciones.
+- Adaptar la pantalla a escritorio y ventanas estrechas.
 Con qué se conecta:
 - fin.html
 - fin.js
 ========================================================= */
+
+.fin-root,
+.fin-screen {
+  width: 100%;
+}
+
+.fin-screen {
+  display: grid;
+  gap: 18px;
+  padding-bottom: 96px;
+}
+
+.fin-summary {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(210px, 0.42fr);
+  gap: 22px;
+  align-items: center;
+  padding: 22px;
+}
+
+.fin-summary p,
+.fin-video-card__header p {
+  margin: 0 0 5px;
+  color: #667085;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.fin-summary h2,
+.fin-video-card__header h3,
+.fin-empty h2 {
+  margin: 0;
+  color: #172033;
+}
+
+.fin-summary > div:first-child > span,
+.fin-toolbar__text span,
+.fin-summary__project span,
+.fin-empty p {
+  display: block;
+  margin-top: 7px;
+  color: #667085;
+  line-height: 1.5;
+}
+
+.fin-summary__stats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(74px, 1fr));
+  gap: 10px;
+}
+
+.fin-summary__stats div {
+  min-width: 74px;
+  padding: 12px;
+  border: 1px solid #dfe5ef;
+  border-radius: 12px;
+  background: #f8fafc;
+  text-align: center;
+}
+
+.fin-summary__stats strong,
+.fin-summary__stats span {
+  display: block;
+}
+
+.fin-summary__stats strong {
+  color: #172033;
+  font-size: 23px;
+}
+
+.fin-summary__stats span {
+  margin-top: 3px;
+  color: #667085;
+  font-size: 12px;
+}
+
+.fin-summary__project {
+  padding-left: 20px;
+  border-left: 1px solid #dfe5ef;
+}
+
+.fin-summary__project small,
+.fin-summary__project strong,
+.fin-summary__project span {
+  display: block;
+}
+
+.fin-summary__project small {
+  color: #667085;
+}
+
+.fin-summary__project strong {
+  margin-top: 5px;
+  color: #172033;
+}
+
+.fin-toolbar {
+  display: flex;
+  gap: 18px;
+  align-items: center;
+  justify-content: space-between;
+  padding: 18px 20px;
+}
+
+.fin-toolbar__text {
+  min-width: 0;
+}
+
+.fin-toolbar__text strong {
+  display: block;
+  color: #172033;
+}
+
+.fin-toolbar__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: flex-end;
+}
+
+.fin-progress {
+  padding: 16px 20px;
+}
+
+.fin-progress__head {
+  display: flex;
+  gap: 14px;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+
+.fin-progress__head strong {
+  color: #172033;
+}
+
+.fin-progress__head span {
+  color: #667085;
+}
+
+.fin-progress__track {
+  overflow: hidden;
+  height: 10px;
+  border-radius: 999px;
+  background: #e9edf5;
+}
+
+.fin-progress__track span {
+  display: block;
+  height: 100%;
+  min-width: 3%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #2563eb, #0ea5e9);
+  transition: width 180ms ease;
+}
+
+.fin-video-list {
+  display: grid;
+  gap: 18px;
+}
+
+.fin-video-card {
+  overflow: hidden;
+  padding: 0;
+}
+
+.fin-video-card.is-processing {
+  outline: 2px solid rgba(37, 99, 235, 0.28);
+}
+
+.fin-video-card__header {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  justify-content: space-between;
+  padding: 18px 20px;
+  border-bottom: 1px solid #e4e8f0;
+}
+
+.fin-video-card__header h3 {
+  overflow-wrap: anywhere;
+  font-size: 17px;
+}
+
+.fin-status {
+  flex: 0 0 auto;
+  padding: 7px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.fin-status--ok {
+  color: #067647;
+  background: #ecfdf3;
+}
+
+.fin-status--pending {
+  color: #92400e;
+  background: #fff7ed;
+}
+
+.fin-status--working {
+  color: #1d4ed8;
+  background: #eff6ff;
+}
+
+.fin-comparison {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 42px minmax(0, 1fr);
+  gap: 14px;
+  align-items: center;
+  padding: 20px;
+  background: #f7f9fc;
+}
+
+.fin-comparison__arrow {
+  display: grid;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  border: 1px solid #d5ddea;
+  border-radius: 50%;
+  color: #2563eb;
+  background: #ffffff;
+  font-size: 24px;
+  font-weight: 800;
+}
+
+.fin-preview {
+  min-width: 0;
+}
+
+.fin-preview__title {
+  display: flex;
+  gap: 9px;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.fin-preview__title span {
+  padding: 4px 7px;
+  border-radius: 6px;
+  color: #475467;
+  background: #e9edf5;
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+}
+
+.fin-preview--after .fin-preview__title span {
+  color: #065f46;
+  background: #d1fae5;
+}
+
+.fin-preview__title strong {
+  color: #172033;
+  font-size: 14px;
+}
+
+.fin-preview__stage {
+  display: grid;
+  overflow: hidden;
+  place-items: center;
+  min-height: 330px;
+  border: 1px solid #cfd7e5;
+  border-radius: 14px;
+  background:
+    linear-gradient(45deg, #182033 25%, transparent 25%) 0 0 / 20px 20px,
+    linear-gradient(-45deg, #182033 25%, transparent 25%) 0 10px / 20px 20px,
+    linear-gradient(45deg, transparent 75%, #182033 75%) 10px -10px / 20px 20px,
+    linear-gradient(-45deg, transparent 75%, #182033 75%) -10px 0 / 20px 20px,
+    #101827;
+}
+
+.fin-preview__stage--square {
+  aspect-ratio: 1 / 1;
+  min-height: 0;
+  max-height: 460px;
+  margin-inline: auto;
+}
+
+.fin-video {
+  display: block;
+  width: 100%;
+  height: 100%;
+  max-width: 100%;
+  max-height: 460px;
+  background: #080d18;
+}
+
+.fin-video--original {
+  object-fit: contain;
+}
+
+.fin-video--square {
+  aspect-ratio: 1 / 1;
+  object-fit: contain;
+}
+
+.fin-preview__empty {
+  display: grid;
+  gap: 7px;
+  place-items: center;
+  padding: 24px;
+  color: #d9e2f1;
+  text-align: center;
+}
+
+.fin-preview__empty strong {
+  color: #ffffff;
+  font-size: 22px;
+}
+
+.fin-preview__empty span {
+  max-width: 250px;
+  color: #aebbd0;
+  line-height: 1.45;
+}
+
+.fin-preview > p {
+  min-height: 20px;
+  margin: 9px 0 0;
+  color: #667085;
+  font-size: 12px;
+  text-align: center;
+}
+
+.fin-video-card__footer {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 18px;
+  padding: 12px 20px 16px;
+  color: #475467;
+  font-size: 12px;
+}
+
+.fin-video-card__footer span::before {
+  content: "✓";
+  margin-right: 6px;
+  color: #059669;
+  font-weight: 900;
+}
+
+.fin-alert {
+  padding: 13px 16px;
+  border: 1px solid transparent;
+  border-radius: 11px;
+  line-height: 1.45;
+}
+
+.fin-alert--success {
+  color: #05603a;
+  border-color: #a6f4c5;
+  background: #ecfdf3;
+}
+
+.fin-alert--error {
+  color: #b42318;
+  border-color: #fecdca;
+  background: #fef3f2;
+}
+
+.fin-video-card > .fin-alert {
+  margin: 0 20px 18px;
+}
+
+.fin-empty {
+  padding: 28px;
+  text-align: center;
+}
+
+.fin-empty .app-btn {
+  margin-top: 14px;
+}
+
+@media (max-width: 1180px) {
+  .fin-summary {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .fin-summary__project {
+    grid-column: 1 / -1;
+    padding: 14px 0 0;
+    border-top: 1px solid #dfe5ef;
+    border-left: 0;
+  }
+}
+
+@media (max-width: 900px) {
+  .fin-summary,
+  .fin-toolbar {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
+  .fin-toolbar__actions {
+    justify-content: flex-start;
+  }
+
+  .fin-comparison {
+    grid-template-columns: 1fr;
+  }
+
+  .fin-comparison__arrow {
+    transform: rotate(90deg);
+    margin-inline: auto;
+  }
+
+  .fin-preview__stage {
+    min-height: 280px;
+  }
+
+  .fin-preview__stage--square {
+    width: min(100%, 520px);
+  }
+}
+
+@media (max-width: 620px) {
+  .fin-summary__stats {
+    grid-template-columns: repeat(3, 1fr);
+  }
+
+  .fin-toolbar__actions {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
+  .fin-toolbar__actions .app-btn {
+    width: 100%;
+  }
+
+  .fin-video-card__header,
+  .fin-progress__head {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .fin-preview__stage {
+    min-height: 230px;
+  }
+}
