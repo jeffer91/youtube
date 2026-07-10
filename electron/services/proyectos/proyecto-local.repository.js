@@ -6,6 +6,7 @@ Funciones principales:
 - Crear carpeta local del proyecto usando el mismo ID de Google Sheets.
 - Leer y listar respaldos locales de proyectos.
 - Mantener la lógica de archivos fuera de main.js.
+- Mantener la pantalla actual alineada con el flujo nuevo de 12 pasos.
 Con qué se conecta:
 - proyecto-electron.js
 - electron/main/main.js
@@ -16,6 +17,7 @@ const fs = require("fs");
 const path = require("path");
 
 const NOMBRE_ARCHIVO_PROYECTO = "proyecto.json";
+const PANTALLA_INICIAL_POST_CARGA = "02-formato-inteligente";
 
 function ahoraProyectoLocal() {
   return new Date().toISOString();
@@ -83,7 +85,7 @@ function normalizarProyectoLocal(proyecto) {
     nombre: limpiarTextoProyectoLocal(base.nombre),
     estilo: limpiarTextoProyectoLocal(base.estilo),
     videos: Array.isArray(base.videos) ? base.videos : [],
-    pantallaActual: limpiarTextoProyectoLocal(base.pantallaActual) || "02-mejorar-audio",
+    pantallaActual: limpiarTextoProyectoLocal(base.pantallaActual) || PANTALLA_INICIAL_POST_CARGA,
     capas: Array.isArray(base.capas) ? base.capas : [],
     basePrincipal: limpiarTextoProyectoLocal(base.basePrincipal) || "GOOGLE_SHEETS",
     respaldoLocal: "JSON_LOCAL_RESPALDO",
