@@ -2,123 +2,64 @@
 Nombre completo: preload.js
 Ruta o ubicación: /electron/preload/preload.js
 Funciones principales:
-- Crear un puente seguro entre Electron y la pantalla.
-- Permitir cargar videos sin exponer Node.js al navegador.
-- Permitir verificar archivos.
-- Permitir guardar el proyecto base.
-- Permitir consultar la carpeta de proyectos.
-- Permitir usar respaldo local JSON de proyectos.
-- Permitir inspeccionar y convertir videos a cuadrado 1:1.
-- Permitir mejorar audio desde la pantalla 02-mejorar-audio.
-- Permitir transcribir video desde la pantalla 03-transcribir-video.
-- Permitir generar, descargar y abrir videos subtitulados desde la pantalla 04.
-- Permitir conectar Google Sheets como base principal.
-- Permitir consultar y reintentar PendientesSync.
-- Permitir descargar/copiar el video mejorado.
+- Crear un puente seguro entre Electron y la interfaz.
+- Permitir cargar, verificar y guardar proyectos y videos.
+- Permitir inspeccionar, convertir y cancelar videos cuadrados.
+- Entregar progreso real de FFmpeg a la pantalla Formato IA.
+- Mantener disponibles Audio, Transcripción, Subtítulos, Google Sheets y sincronización.
 ========================================================= */
 
 const { contextBridge, ipcRenderer } = require("electron");
 
+let listenerProgresoFormato = null;
+
 contextBridge.exposeInMainWorld("videoEditorAPI", {
-  seleccionarVideos: async () => {
-    return ipcRenderer.invoke("dialog:seleccionar-videos");
+  seleccionarVideos: async () => ipcRenderer.invoke("dialog:seleccionar-videos"),
+  verificarArchivo: async (rutaArchivo) => ipcRenderer.invoke("archivo:existe", rutaArchivo),
+  obtenerRutaProyectos: async () => ipcRenderer.invoke("app:ruta-proyectos"),
+  abrirCarpetaProyectos: async () => ipcRenderer.invoke("app:abrir-carpeta-proyectos"),
+  guardarProyecto: async (proyecto) => ipcRenderer.invoke("proyecto:guardar-json", proyecto),
+  guardarProyectoLocal: async (proyecto) => ipcRenderer.invoke("proyecto-local:guardar", proyecto),
+  leerProyectoLocal: async (rutaArchivoProyecto) => ipcRenderer.invoke("proyecto-local:leer", rutaArchivoProyecto),
+  listarProyectosLocales: async () => ipcRenderer.invoke("proyecto-local:listar"),
+
+  inspeccionarVideoFormato: async (video) => ipcRenderer.invoke("formato:inspeccionar-video", video),
+  convertirVideoCuadrado: async (datosFormato) => ipcRenderer.invoke("formato:convertir-cuadrado", datosFormato),
+  cancelarConversionFormato: async (processId) => ipcRenderer.invoke("formato:cancelar-conversion", processId),
+  escucharProgresoFormato: (callback) => {
+    if (listenerProgresoFormato) {
+      ipcRenderer.removeListener("formato:progreso", listenerProgresoFormato);
+      listenerProgresoFormato = null;
+    }
+    if (typeof callback !== "function") return false;
+    listenerProgresoFormato = (_evento, datos) => callback(datos);
+    ipcRenderer.on("formato:progreso", listenerProgresoFormato);
+    return true;
+  },
+  dejarEscucharProgresoFormato: () => {
+    if (listenerProgresoFormato) {
+      ipcRenderer.removeListener("formato:progreso", listenerProgresoFormato);
+      listenerProgresoFormato = null;
+    }
+    return true;
   },
 
-  verificarArchivo: async (rutaArchivo) => {
-    return ipcRenderer.invoke("archivo:existe", rutaArchivo);
-  },
+  mejorarAudio: async (datosMejora) => ipcRenderer.invoke("audio:mejorar-video", datosMejora),
+  descargarVideoMejorado: async (datosDescarga) => ipcRenderer.invoke("audio:descargar-video-mejorado", datosDescarga),
+  verificarWhisperTranscripcion: async () => ipcRenderer.invoke("transcripcion:verificar-whisper"),
+  transcribirVideo: async (datosTranscripcion) => ipcRenderer.invoke("transcripcion:transcribir-video", datosTranscripcion),
+  generarVideoSubtitulos: async (datosSubtitulos) => ipcRenderer.invoke("subtitulos:generar-video", datosSubtitulos),
+  descargarVideoSubtitulado: async (datosDescarga) => ipcRenderer.invoke("subtitulos:descargar-video", datosDescarga),
+  abrirCarpetaSubtitulos: async (rutaCarpeta) => ipcRenderer.invoke("subtitulos:abrir-carpeta", rutaCarpeta),
 
-  obtenerRutaProyectos: async () => {
-    return ipcRenderer.invoke("app:ruta-proyectos");
-  },
-
-  abrirCarpetaProyectos: async () => {
-    return ipcRenderer.invoke("app:abrir-carpeta-proyectos");
-  },
-
-  guardarProyecto: async (proyecto) => {
-    return ipcRenderer.invoke("proyecto:guardar-json", proyecto);
-  },
-
-  guardarProyectoLocal: async (proyecto) => {
-    return ipcRenderer.invoke("proyecto-local:guardar", proyecto);
-  },
-
-  leerProyectoLocal: async (rutaArchivoProyecto) => {
-    return ipcRenderer.invoke("proyecto-local:leer", rutaArchivoProyecto);
-  },
-
-  listarProyectosLocales: async () => {
-    return ipcRenderer.invoke("proyecto-local:listar");
-  },
-
-  inspeccionarVideoFormato: async (video) => {
-    return ipcRenderer.invoke("formato:inspeccionar-video", video);
-  },
-
-  convertirVideoCuadrado: async (datosFormato) => {
-    return ipcRenderer.invoke("formato:convertir-cuadrado", datosFormato);
-  },
-
-  mejorarAudio: async (datosMejora) => {
-    return ipcRenderer.invoke("audio:mejorar-video", datosMejora);
-  },
-
-  descargarVideoMejorado: async (datosDescarga) => {
-    return ipcRenderer.invoke("audio:descargar-video-mejorado", datosDescarga);
-  },
-
-  verificarWhisperTranscripcion: async () => {
-    return ipcRenderer.invoke("transcripcion:verificar-whisper");
-  },
-
-  transcribirVideo: async (datosTranscripcion) => {
-    return ipcRenderer.invoke("transcripcion:transcribir-video", datosTranscripcion);
-  },
-
-  generarVideoSubtitulos: async (datosSubtitulos) => {
-    return ipcRenderer.invoke("subtitulos:generar-video", datosSubtitulos);
-  },
-
-  descargarVideoSubtitulado: async (datosDescarga) => {
-    return ipcRenderer.invoke("subtitulos:descargar-video", datosDescarga);
-  },
-
-  abrirCarpetaSubtitulos: async (rutaCarpeta) => {
-    return ipcRenderer.invoke("subtitulos:abrir-carpeta", rutaCarpeta);
-  },
-
-  obtenerConfigGoogleSheets: async () => {
-    return ipcRenderer.invoke("google-sheets:obtener-configuracion");
-  },
-
-  guardarConfigGoogleSheets: async (config) => {
-    return ipcRenderer.invoke("google-sheets:guardar-configuracion", config);
-  },
-
-  probarConexionGoogleSheets: async () => {
-    return ipcRenderer.invoke("google-sheets:probar-conexion");
-  },
-
-  enviarOperacionGoogleSheets: async (operacion) => {
-    return ipcRenderer.invoke("google-sheets:enviar-operacion", operacion);
-  },
-
-  listarPendientesSync: async () => {
-    return ipcRenderer.invoke("sync:pendientes-listar");
-  },
-
-  obtenerResumenPendientesSync: async () => {
-    return ipcRenderer.invoke("sync:pendientes-resumen");
-  },
-
-  guardarPendienteSync: async (pendiente) => {
-    return ipcRenderer.invoke("sync:pendientes-guardar", pendiente);
-  },
-
-  reintentarPendientesSync: async () => {
-    return ipcRenderer.invoke("sync:pendientes-reintentar");
-  },
+  obtenerConfigGoogleSheets: async () => ipcRenderer.invoke("google-sheets:obtener-configuracion"),
+  guardarConfigGoogleSheets: async (config) => ipcRenderer.invoke("google-sheets:guardar-configuracion", config),
+  probarConexionGoogleSheets: async () => ipcRenderer.invoke("google-sheets:probar-conexion"),
+  enviarOperacionGoogleSheets: async (operacion) => ipcRenderer.invoke("google-sheets:enviar-operacion", operacion),
+  listarPendientesSync: async () => ipcRenderer.invoke("sync:pendientes-listar"),
+  obtenerResumenPendientesSync: async () => ipcRenderer.invoke("sync:pendientes-resumen"),
+  guardarPendienteSync: async (pendiente) => ipcRenderer.invoke("sync:pendientes-guardar", pendiente),
+  reintentarPendientesSync: async () => ipcRenderer.invoke("sync:pendientes-reintentar"),
 
   plataforma: process.platform
 });
