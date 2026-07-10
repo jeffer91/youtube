@@ -5,7 +5,7 @@ Funciones principales:
 - Extraer audio WAV desde un video para transcripción.
 - Preferir el archivo con audio mejorado cuando exista.
 - Usar el video original solo como respaldo si no hay audio mejorado.
-- Usar FFmpeg desde Electron de forma controlada.
+- Usar FFmpeg desde @ffmpeg-installer/ffmpeg sin depender de fluent-ffmpeg.
 - Validar que el archivo de audio generado exista y tenga peso.
 - Devolver errores claros sin mostrar detalles técnicos al usuario final.
 Con qué se conecta:
@@ -16,12 +16,38 @@ Con qué se conecta:
 
 const fs = require("fs");
 const path = require("path");
-const ffmpegPath = require("@ffmpeg-installer/ffmpeg").path;
-const ffmpeg = require("fluent-ffmpeg");
+const { spawn } = require("child_process");
 
-ffmpeg.setFfmpegPath(ffmpegPath);
+let ffmpegInstaller = null;
+
+try {
+  ffmpegInstaller = require("@ffmpeg-installer/ffmpeg");
+} catch (error) {
+  ffmpegInstaller = null;
+}
 
 const PESO_MINIMO_WAV_TR = 1024;
+const TIMEOUT_EXTRACCION_MS_TR = 10 * 60 * 1000;
+
+function obtenerRutaFFmpegTR() {
+  return ffmpegInstaller?.path || "";
+}
+
+function validarMotorFFmpegTR() {
+  const rutaFFmpeg = obtenerRutaFFmpegTR();
+
+  if (!rutaFFmpeg) {
+    return {
+      ok: false,
+      mensaje: "FFmpeg no está instalado. Ejecuta npm install y vuelve a abrir la app."
+    };
+  }
+
+  return {
+    ok: true,
+    rutaFFmpeg
+  };
+}
 
 function limpiarNombreArchivoTR(texto) {
   return String(texto || "video")
@@ -165,30 +191,100 @@ function validarAudioExtraidoTR(rutaAudio) {
   };
 }
 
+function crearResumenErrorFFmpegTR(stderr, codigo) {
+  const ultimasLineas = String(stderr || "")
+    .split(/\r?\n/)
+    .map((linea) => linea.trim())
+    .filter(Boolean)
+    .slice(-10)
+    .join(" | ");
+
+  return ultimasLineas || `FFmpeg terminó con código ${codigo}.`;
+}
+
 function ejecutarExtraccionWavTR({ rutaEntrada, rutaSalida }) {
   return new Promise((resolve) => {
+    const motor = validarMotorFFmpegTR();
+
+    if (!motor.ok) {
+      resolve(motor);
+      return;
+    }
+
     borrarArchivoSiExisteTR(rutaSalida);
 
-    ffmpeg(rutaEntrada)
-      .noVideo()
-      .audioCodec("pcm_s16le")
-      .audioChannels(1)
-      .audioFrequency(16000)
-      .format("wav")
-      .outputOptions(["-map", "0:a:0?"])
-      .on("end", () => {
+    const args = [
+      "-y",
+      "-hide_banner",
+      "-i",
+      rutaEntrada,
+      "-map",
+      "0:a:0?",
+      "-vn",
+      "-acodec",
+      "pcm_s16le",
+      "-ac",
+      "1",
+      "-ar",
+      "16000",
+      "-f",
+      "wav",
+      rutaSalida
+    ];
+
+    const proceso = spawn(motor.rutaFFmpeg, args, {
+      windowsHide: true,
+      shell: false
+    });
+
+    let stderr = "";
+
+    const timeout = setTimeout(() => {
+      try {
+        proceso.kill("SIGTERM");
+      } catch (error) {
+        console.warn("No se pudo detener FFmpeg:", error.message);
+      }
+
+      borrarArchivoSiExisteTR(rutaSalida);
+      resolve({
+        ok: false,
+        mensaje: "La extracción de audio tardó demasiado y fue detenida.",
+        detalle: "Timeout de FFmpeg."
+      });
+    }, TIMEOUT_EXTRACCION_MS_TR);
+
+    proceso.stderr.on("data", (data) => {
+      stderr += data.toString();
+    });
+
+    proceso.on("error", (error) => {
+      clearTimeout(timeout);
+      borrarArchivoSiExisteTR(rutaSalida);
+      resolve({
+        ok: false,
+        mensaje: "No se pudo ejecutar FFmpeg para extraer audio.",
+        detalle: error.message
+      });
+    });
+
+    proceso.on("close", (codigo) => {
+      clearTimeout(timeout);
+
+      if (codigo === 0) {
         resolve({
           ok: true
         });
-      })
-      .on("error", (error) => {
-        resolve({
-          ok: false,
-          mensaje: "No se pudo extraer el audio del video.",
-          detalle: error.message
-        });
-      })
-      .save(rutaSalida);
+        return;
+      }
+
+      borrarArchivoSiExisteTR(rutaSalida);
+      resolve({
+        ok: false,
+        mensaje: "No se pudo extraer el audio del video.",
+        detalle: crearResumenErrorFFmpegTR(stderr, codigo)
+      });
+    });
   });
 }
 
