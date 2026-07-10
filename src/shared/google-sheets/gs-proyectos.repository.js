@@ -6,6 +6,7 @@ Funciones principales:
 - Mantener JSON local solo como respaldo temporal.
 - Crear un ID único antes de guardar para que Sheets y JSON usen el mismo proyecto.
 - Usar PendientesSync real cuando Google Sheets no responde.
+- Mantener la pantalla actual alineada con el flujo nuevo de 12 pasos.
 Con qué se conecta:
 - gs-registros.mapper.js
 - gs-operaciones.factory.js
@@ -22,6 +23,8 @@ import {
   crearOperacionGuardarProyectoGS,
   crearOperacionPendienteSyncGS
 } from "./gs-operaciones.factory.js";
+
+const PANTALLA_INICIAL_POST_CARGA_GS = "02-formato-inteligente";
 
 function limpiarTextoGS(valor) {
   return String(valor || "").trim();
@@ -55,7 +58,7 @@ export function asegurarProyectoConIdGoogleSheetsGS(proyecto) {
     id: limpiarTextoGS(base.id) || crearIdProyectoGoogleSheetsGS(base.nombre),
     videos: Array.isArray(base.videos) ? base.videos : [],
     capas: Array.isArray(base.capas) ? base.capas : [],
-    pantallaActual: limpiarTextoGS(base.pantallaActual) || "02-mejorar-audio",
+    pantallaActual: limpiarTextoGS(base.pantallaActual) || PANTALLA_INICIAL_POST_CARGA_GS,
     actualizadoEn: new Date().toISOString()
   };
 }
