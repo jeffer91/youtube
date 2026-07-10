@@ -2,24 +2,46 @@
 Nombre completo: fin.css
 Ruta o ubicación: /src/pantallas/02-formato-inteligente/index/fin.css
 Funciones principales:
+- Crear un único scroll vertical para toda la pantalla 02.
 - Diseñar la comparación Antes / Después.
-- Diferenciar visualmente el formato original y el cuadrado 1:1.
-- Mostrar estados, progreso, errores y acciones.
-- Adaptar la pantalla a escritorio y ventanas estrechas.
-Con qué se conecta:
-- fin.html
-- fin.js
+- Mostrar progreso real, velocidad, tiempo, errores y cancelación.
+- Evitar que el botón flotante tape el contenido final.
 ========================================================= */
 
-.fin-root,
-.fin-screen {
+#finRoot,
+.fin-root {
   width: 100%;
+  height: 100%;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
+}
+
+#finRoot::-webkit-scrollbar,
+.fin-root::-webkit-scrollbar {
+  width: 10px;
+}
+
+#finRoot::-webkit-scrollbar-track,
+.fin-root::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+#finRoot::-webkit-scrollbar-thumb,
+.fin-root::-webkit-scrollbar-thumb {
+  border: 2px solid transparent;
+  border-radius: 999px;
+  background: #b7c2d3;
+  background-clip: padding-box;
 }
 
 .fin-screen {
   display: grid;
+  width: 100%;
   gap: 18px;
-  padding-bottom: 96px;
+  padding: 0 4px 120px 0;
 }
 
 .fin-summary {
@@ -73,7 +95,10 @@ Con qué se conecta:
 }
 
 .fin-summary__stats strong,
-.fin-summary__stats span {
+.fin-summary__stats span,
+.fin-summary__project small,
+.fin-summary__project strong,
+.fin-summary__project span {
   display: block;
 }
 
@@ -91,12 +116,6 @@ Con qué se conecta:
 .fin-summary__project {
   padding-left: 20px;
   border-left: 1px solid #dfe5ef;
-}
-
-.fin-summary__project small,
-.fin-summary__project strong,
-.fin-summary__project span {
-  display: block;
 }
 
 .fin-summary__project small {
@@ -133,35 +152,51 @@ Con qué se conecta:
 }
 
 .fin-progress {
+  position: sticky;
+  top: 0;
+  z-index: 20;
   padding: 16px 20px;
+  border-color: #bfd1ff;
+  box-shadow: 0 12px 30px rgba(30, 78, 216, 0.12);
 }
 
-.fin-progress__head {
+.fin-progress__head,
+.fin-progress__meta {
   display: flex;
   gap: 14px;
   justify-content: space-between;
-  margin-bottom: 10px;
+}
+
+.fin-progress__head {
+  margin-bottom: 8px;
 }
 
 .fin-progress__head strong {
   color: #172033;
 }
 
-.fin-progress__head span {
+.fin-progress__head > span,
+.fin-progress__meta {
   color: #667085;
+}
+
+.fin-progress__meta {
+  flex-wrap: wrap;
+  margin-bottom: 10px;
+  font-size: 12px;
 }
 
 .fin-progress__track {
   overflow: hidden;
-  height: 10px;
+  height: 11px;
   border-radius: 999px;
   background: #e9edf5;
 }
 
 .fin-progress__track span {
   display: block;
+  width: 0;
   height: 100%;
-  min-width: 3%;
   border-radius: inherit;
   background: linear-gradient(90deg, #2563eb, #0ea5e9);
   transition: width 180ms ease;
@@ -218,6 +253,11 @@ Con qué se conecta:
   background: #eff6ff;
 }
 
+.fin-status--error {
+  color: #b42318;
+  background: #fef3f2;
+}
+
 .fin-comparison {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 42px minmax(0, 1fr);
@@ -229,7 +269,6 @@ Con qué se conecta:
 
 .fin-comparison__arrow {
   display: grid;
-  place-items: center;
   width: 42px;
   height: 42px;
   border: 1px solid #d5ddea;
@@ -238,6 +277,7 @@ Con qué se conecta:
   background: #ffffff;
   font-size: 24px;
   font-weight: 800;
+  place-items: center;
 }
 
 .fin-preview {
@@ -274,7 +314,6 @@ Con qué se conecta:
 .fin-preview__stage {
   display: grid;
   overflow: hidden;
-  place-items: center;
   min-height: 330px;
   border: 1px solid #cfd7e5;
   border-radius: 14px;
@@ -284,13 +323,14 @@ Con qué se conecta:
     linear-gradient(45deg, transparent 75%, #182033 75%) 10px -10px / 20px 20px,
     linear-gradient(-45deg, transparent 75%, #182033 75%) -10px 0 / 20px 20px,
     #101827;
+  place-items: center;
 }
 
 .fin-preview__stage--square {
-  aspect-ratio: 1 / 1;
+  width: min(100%, 460px);
   min-height: 0;
-  max-height: 460px;
   margin-inline: auto;
+  aspect-ratio: 1 / 1;
 }
 
 .fin-video {
@@ -302,22 +342,22 @@ Con qué se conecta:
   background: #080d18;
 }
 
-.fin-video--original {
+.fin-video--original,
+.fin-video--square {
   object-fit: contain;
 }
 
 .fin-video--square {
   aspect-ratio: 1 / 1;
-  object-fit: contain;
 }
 
 .fin-preview__empty {
   display: grid;
   gap: 7px;
-  place-items: center;
   padding: 24px;
   color: #d9e2f1;
   text-align: center;
+  place-items: center;
 }
 
 .fin-preview__empty strong {
@@ -416,8 +456,8 @@ Con qué se conecta:
   }
 
   .fin-comparison__arrow {
-    transform: rotate(90deg);
     margin-inline: auto;
+    transform: rotate(90deg);
   }
 
   .fin-preview__stage {
@@ -444,7 +484,8 @@ Con qué se conecta:
   }
 
   .fin-video-card__header,
-  .fin-progress__head {
+  .fin-progress__head,
+  .fin-progress__meta {
     align-items: flex-start;
     flex-direction: column;
   }
